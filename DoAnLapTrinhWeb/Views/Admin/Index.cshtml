@@ -1,0 +1,134 @@
+@model DoAnLapTrinhWeb.Models.ViewModels.AdminDashboardViewModel
+@{
+    ViewData["Title"] = "Dashboard Admin";
+}
+
+<div class="container py-5">
+    <div class="admin-hero mb-4">
+        <div>
+            <span class="section-kicker">Admin</span>
+            <h1 class="section-title mb-2">Dashboard quản trị</h1>
+            <p class="text-muted mb-0">Duyệt bài đăng phòng trọ và xét duyệt hồ sơ đăng ký làm chủ trọ.</p>
+        </div>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success">@TempData["Success"]</div>
+    }
+
+    <div class="admin-section mb-4">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+            <h2 class="h4 fw-bold mb-0">Bài đăng chờ duyệt</h2>
+            <span class="badge text-bg-primary">@Model.PendingRooms.Count() bài</span>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Ngày đăng</th>
+                        <th>Chủ trọ</th>
+                        <th>Tiêu đề</th>
+                        <th>Giá</th>
+                        <th class="text-center">Hành động</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.PendingRooms != null && Model.PendingRooms.Any())
+                    {
+                        foreach (var item in Model.PendingRooms)
+                        {
+                            <tr>
+                                <td>@item.CreatedAt.ToString("dd/MM/yyyy HH:mm")</td>
+                                <td>@item.Owner?.FullName</td>
+                                <td class="text-truncate" style="max-width: 250px;">@item.Title</td>
+                                <td>@item.Price.ToString("N0") VNĐ</td>
+                                <td class="text-center">
+                                    <a href="/Accommodation/Details/@item.Id" class="btn btn-sm btn-info text-white" target="_blank">
+                                        <i class="fas fa-eye"></i> Xem trước
+                                    </a>
+                                    <form action="/Admin/Approve" method="post" class="d-inline">
+                                        <input type="hidden" name="id" value="@item.Id" />
+                                        <button type="submit" class="btn btn-sm btn-success">
+                                            <i class="fas fa-check"></i> Duyệt
+                                        </button>
+                                    </form>
+                                    <form action="/Admin/Delete" method="post" class="d-inline" onsubmit="return confirm('Bạn có chắc muốn từ chối và xóa bài đăng này không?');">
+                                        <input type="hidden" name="id" value="@item.Id" />
+                                        <button type="submit" class="btn btn-sm btn-danger">
+                                            <i class="fas fa-times"></i> Từ chối
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="5" class="text-center py-4">Hiện không có bài đăng nào cần duyệt.</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="admin-section">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+            <h2 class="h4 fw-bold mb-0">Hồ sơ đăng ký làm chủ trọ chờ duyệt</h2>
+            <span class="badge text-bg-warning">@Model.PendingLandlordApplications.Count() hồ sơ</span>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Ngày gửi</th>
+                        <th>Người đăng ký</th>
+                        <th>SĐT</th>
+                        <th>Trạng thái</th>
+                        <th class="text-center">Hành động</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.PendingLandlordApplications != null && Model.PendingLandlordApplications.Any())
+                    {
+                        foreach (var item in Model.PendingLandlordApplications)
+                        {
+                            <tr>
+                                <td>@item.CreatedAt.ToString("dd/MM/yyyy HH:mm")</td>
+                                <td>@item.User?.FullName</td>
+                                <td>@item.Phone</td>
+                                <td><span class="badge text-bg-warning">@item.Status</span></td>
+                                <td class="text-center">
+                                    <a href="/Admin/LandlordApplicationDetails/@item.Id" class="btn btn-sm btn-primary">
+                                        <i class="fas fa-eye"></i> Xem chi tiết
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="5" class="text-center py-4">Hiện chưa có hồ sơ đăng ký nào.</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+    .admin-hero,
+    .admin-section {
+        background: rgba(255, 255, 255, 0.94);
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        border-radius: 28px;
+        box-shadow: 0 16px 40px rgba(15, 23, 42, 0.06);
+        padding: 1.75rem;
+    }
+</style>

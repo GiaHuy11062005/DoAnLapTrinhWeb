@@ -1,0 +1,107 @@
+@model DoAnLapTrinhWeb.Models.AppUser
+@{
+    ViewData["Title"] = "Đăng ký làm chủ trọ";
+    var latestApplication = ViewBag.LatestApplication as LandlordApplication;
+}
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="application-hero mb-4">
+                <div>
+                    <span class="section-kicker">Chủ trọ</span>
+                    <h1 class="section-title mb-2">Đăng ký làm chủ trọ</h1>
+                    <p class="text-muted mb-0">
+                        Tải lên ảnh CCCD mặt trước, mặt sau và giấy tờ chứng minh quyền cho thuê như sổ đỏ hoặc hợp đồng.
+                        Hệ thống demo chỉ cần ảnh bất kỳ để admin xem xét thủ công.
+                    </p>
+                </div>
+                <a href="/Profile/Update" class="btn btn-outline-secondary rounded-pill">
+                    <i class="fas fa-arrow-left me-2"></i>Quay lại hồ sơ
+                </a>
+            </div>
+
+            @if (TempData["Success"] != null)
+            {
+                <div class="alert alert-success">@TempData["Success"]</div>
+            }
+            @if (TempData["Error"] != null)
+            {
+                <div class="alert alert-danger">@TempData["Error"]</div>
+            }
+            @if (TempData["Info"] != null)
+            {
+                <div class="alert alert-info">@TempData["Info"]</div>
+            }
+
+            @if (latestApplication != null)
+            {
+                <div class="alert alert-light border rounded-4 mb-4">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <strong>Phiếu gần nhất</strong>
+                        <span class="badge rounded-pill text-bg-@(latestApplication.Status == "Approved" ? "success" : latestApplication.Status == "Rejected" ? "danger" : "warning")">
+                            @latestApplication.Status
+                        </span>
+                    </div>
+                    <div class="small text-muted mt-2">
+                        Gửi lúc: @latestApplication.CreatedAt.ToString("dd/MM/yyyy HH:mm")
+                    </div>
+                </div>
+            }
+
+            <div class="application-card">
+                <form asp-action="Create" method="post" enctype="multipart/form-data">
+                    @Html.AntiForgeryToken()
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Họ và tên</label>
+                            <input type="text" class="form-control form-control-lg" value="@Model.FullName" disabled>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Email</label>
+                            <input type="text" class="form-control form-control-lg" value="@Model.Email" disabled>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Số điện thoại <span class="text-danger">*</span></label>
+                            <input type="text" name="phone" class="form-control form-control-lg" value="@Model.Phone" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Ảnh CCCD mặt trước <span class="text-danger">*</span></label>
+                            <input type="file" name="citizenIdFrontImage" class="form-control form-control-lg" accept="image/*" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Ảnh CCCD mặt sau <span class="text-danger">*</span></label>
+                            <input type="file" name="citizenIdBackImage" class="form-control form-control-lg" accept="image/*" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Giấy tờ bổ sung</label>
+                            <input type="file" name="supportingDocuments" class="form-control form-control-lg" accept="image/*" multiple>
+                            <small class="text-muted">Ví dụ: sổ đỏ, hợp đồng thuê, giấy ủy quyền... có thể upload nhiều ảnh.</small>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Ghi chú</label>
+                            <textarea name="note" class="form-control" rows="4" placeholder="Mô tả thêm về quyền cho thuê hoặc thông tin cần admin lưu ý..."></textarea>
+                        </div>
+                        <div class="col-12 d-flex gap-2 pt-2">
+                            <button type="submit" class="btn btn-warning btn-lg rounded-pill fw-semibold px-4">
+                                <i class="fas fa-paper-plane me-2"></i>Gửi hồ sơ
+                            </button>
+                            <a href="/Profile/Update" class="btn btn-outline-secondary btn-lg rounded-pill px-4">Hủy</a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .application-hero,
+    .application-card {
+        background: rgba(255, 255, 255, 0.94);
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        border-radius: 28px;
+        box-shadow: 0 16px 40px rgba(15, 23, 42, 0.06);
+        padding: 1.75rem;
+    }
+</style>

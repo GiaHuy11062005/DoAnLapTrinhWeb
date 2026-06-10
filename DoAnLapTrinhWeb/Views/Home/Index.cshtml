@@ -1,0 +1,736 @@
+@using System.Collections.Generic
+@using System.Linq
+@{
+    ViewData["Title"] = "Trang chủ";
+
+    var cities = ViewBag.Cities as IEnumerable<City> ?? Enumerable.Empty<City>();
+    var featuredCities = (ViewBag.FeaturedCities as IEnumerable<dynamic>)?.ToList() ?? new List<dynamic>();
+    var featuredRooms = (ViewBag.FeaturedRooms as IEnumerable<Accommodation>)?.ToList() ?? new List<Accommodation>();
+    var roomsNearSchools = (ViewBag.RoomsNearSchools as IEnumerable<Accommodation>)?.ToList() ?? new List<Accommodation>();
+    var suggestedRooms = (ViewBag.SuggestedRooms as IEnumerable<Accommodation>)?.ToList() ?? new List<Accommodation>();
+
+    var featuredSchools = new[]
+    {
+        new { Name = "Đại học Bách Khoa TP.HCM", ShortName = "HCMUT", Area = "Quận 10 / Quận 5", Query = "Đại học Bách Khoa TP.HCM" },
+        new { Name = "Đại học Kinh tế - Luật", ShortName = "UEL", Area = "Thủ Đức", Query = "Đại học Kinh tế - Luật TP.HCM" },
+        new { Name = "Đại học Nông Lâm TP.HCM", ShortName = "NLU", Area = "Thủ Đức", Query = "Đại học Nông Lâm TP.HCM" },
+        new { Name = "HUTECH", ShortName = "HUTECH", Area = "Bình Thạnh / Gò Vấp", Query = "Đại học Công nghệ TP.HCM HUTECH" },
+        new { Name = "FPT University HCM", ShortName = "FPT", Area = "Quận 12 / Thủ Đức", Query = "FPT University Ho Chi Minh City" }
+    };
+
+    var heroImage = Url.Content("~/images/accommodations/5007c941-3c42-4e59-8723-0e6c6a85373d_nhatro.jpg");
+    var cityImage = Url.Content("~/images/accommodations/da3b6c60-91a7-43e6-a237-055b3af7a96c_anh1.png");
+    var fallbackRoomImage = heroImage;
+    Func<string?, string, bool> matchesSchool = (title, code) =>
+        !string.IsNullOrWhiteSpace(title) &&
+        title.Contains(code, StringComparison.OrdinalIgnoreCase);
+
+    var cityCount = Math.Max(cities.Count(), featuredCities.Count > 0 ? featuredCities.Count : 3);
+    var roomCount = Math.Max(featuredRooms.Count, 6);
+    var schoolCount = featuredSchools.Length;
+}
+
+@if (User.Identity != null && User.Identity.IsAuthenticated && User.IsInRole("Admin"))
+{
+    <div class="container py-5">
+        <div class="feature-panel text-center">
+            <span class="section-kicker">Quản trị hệ thống</span>
+            <h1 class="display-6 fw-bold mb-3">Xin chào Quản Trị Viên</h1>
+            <p class="lead text-muted mb-4">
+                Bạn đang ở trang chủ dành cho Admin. Vui lòng truy cập trang quản trị để duyệt bài đăng mới và quản lý hệ thống.
+            </p>
+            <a href="/Admin" class="btn btn-primary btn-lg px-4 rounded-pill">
+                Đi đến Dashboard Quản Trị <i class="fas fa-arrow-right ms-2"></i>
+            </a>
+        </div>
+    </div>
+}
+else if (User.Identity != null && User.Identity.IsAuthenticated && User.IsInRole("Landlord"))
+{
+    <div class="container py-5">
+        <div class="feature-panel text-center">
+            <span class="section-kicker">Dành cho chủ trọ</span>
+            <h1 class="display-6 fw-bold mb-3">Xin chào Chủ Trọ</h1>
+            <p class="lead text-muted mb-4">
+                Chào mừng bạn quay trở lại. Hãy quản lý các phòng trọ của bạn hoặc đăng tin mới ngay hôm nay để tiếp cận thêm người thuê.
+            </p>
+            <div class="d-flex flex-wrap justify-content-center gap-3">
+                <button class="btn btn-primary btn-lg px-4 rounded-pill" data-bs-toggle="modal" data-bs-target="#postAccommodationModal">
+                    <i class="fas fa-plus-circle me-2"></i> Đăng tin cho thuê mới
+                </button>
+                <a href="/Accommodation/Index" class="btn btn-outline-primary btn-lg px-4 rounded-pill">
+                    <i class="fas fa-list-ul me-2"></i> Quản lý phòng đã đăng
+                </a>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <section class="home-hero">
+        <div class="container py-5 py-lg-6">
+            <div class="row align-items-center g-5">
+                <div class="col-lg-6">
+                    <span class="section-kicker">StayEase</span>
+                    <h1 class="display-5 fw-bold lh-sm mb-3">
+                        Tìm chỗ ở tiện nghi cho hành trình tiếp theo
+                    </h1>
+                    <p class="lead text-muted mb-4">
+                        Khám phá không gian sống được sàng lọc theo khu vực, mức giá và trường đại học để bạn chốt phòng nhanh hơn, an tâm hơn.
+                    </p>
+
+                    <div class="d-flex flex-wrap gap-2 mb-4">
+                        <span class="stat-pill"><strong>@cityCount+</strong> khu vực nổi bật</span>
+                        <span class="stat-pill"><strong>@roomCount+</strong> phòng được gợi ý</span>
+                        <span class="stat-pill"><strong>@schoolCount</strong> trường đại học trọng điểm</span>
+                    </div>
+
+                    <form action="/Accommodation/Search" method="GET" class="hero-search shadow-sm">
+                        <div class="row g-3">
+                            <div class="col-12 col-lg-6">
+                                <label class="form-label fw-semibold text-muted small mb-2">Địa điểm</label>
+                                <select class="form-select form-select-lg" id="citySelect" name="cityId" required>
+                                    <option value="" selected disabled>-- Chọn Tỉnh/Thành phố --</option>
+                                    @foreach (var city in cities)
+                                    {
+                                        <option value="@city.Id">@city.Name</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-12 col-lg-6">
+                                <label class="form-label fw-semibold text-muted small mb-2">Quận / Huyện</label>
+                                <select class="form-select form-select-lg" id="districtSelect" name="districtId" disabled required>
+                                    <option value="" selected disabled>-- Chọn Quận/Huyện --</option>
+                                </select>
+                            </div>
+                            <div class="col-12 col-md-4 col-lg-3">
+                                <label class="form-label fw-semibold text-muted small mb-2">Mức giá</label>
+                                <select class="form-select form-select-lg" name="priceRange">
+                                    <option value="" selected>-- Giá --</option>
+                                    <option value="1">Dưới 2 triệu</option>
+                                    <option value="2">2 - 4 triệu</option>
+                                    <option value="3">Trên 4 triệu</option>
+                                </select>
+                            </div>
+                            <div class="col-12 col-md-8 col-lg-3 d-grid">
+                                <button type="submit" class="btn btn-primary btn-lg rounded-pill search-button">
+                                    <i class="fas fa-search me-2"></i>Tìm kiếm
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="col-lg-6">
+                    <div class="hero-visual">
+                        <img src="@heroImage" alt="Không gian phòng trọ sáng và hiện đại" class="hero-visual__image" />
+                        <div class="hero-visual__overlay"></div>
+
+                        <div class="hero-visual__card hero-visual__card--top">
+                            <span class="text-uppercase small fw-semibold text-muted">Đề xuất nhanh</span>
+                            <div class="fw-bold fs-5">Phòng mới, ảnh rõ, vị trí dễ tìm</div>
+                            <p class="mb-0 text-muted">Tập trung vào các bài đăng đã duyệt để giảm thời gian lọc.</p>
+                        </div>
+
+                        <div class="hero-visual__badge">
+                            <i class="fas fa-map-marker-alt me-2"></i>Khu vực đang hot
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="container py-4 py-lg-5">
+        <div class="d-flex justify-content-between align-items-end gap-3 mb-3">
+            <div>
+                <span class="section-kicker">Danh mục nhanh</span>
+                <h2 class="section-title mb-0">Lọc theo tiện ích</h2>
+            </div>
+        </div>
+
+        <div class="amenity-row">
+            <a class="amenity-pill amenity-pill--active text-decoration-none" href="/Accommodation/Search?parking=true">
+                <i class="fas fa-car-side"></i>
+                <span>Có chỗ để xe</span>
+            </a>
+            <a class="amenity-pill text-decoration-none" href="/Accommodation/Search?pets=true">
+                <i class="fas fa-paw"></i>
+                <span>Cho nuôi thú cưng</span>
+            </a>
+            <a class="amenity-pill text-decoration-none" href="/Accommodation/Search?school=HCMUT">
+                <i class="fas fa-graduation-cap"></i>
+                <span>Gần HCMUT</span>
+            </a>
+            <a class="amenity-pill text-decoration-none" href="/Accommodation/Search?school=UEL">
+                <i class="fas fa-graduation-cap"></i>
+                <span>Gần UEL</span>
+            </a>
+            <a class="amenity-pill text-decoration-none" href="/Accommodation/Search?school=HUTECH">
+                <i class="fas fa-graduation-cap"></i>
+                <span>Gần HUTECH</span>
+            </a>
+            <a class="amenity-pill text-decoration-none" href="/Accommodation/Search?school=FPT">
+                <i class="fas fa-graduation-cap"></i>
+                <span>Gần FPT HCM</span>
+            </a>
+        </div>
+    </section>
+
+    <section class="container py-4 py-lg-5">
+        <div class="d-flex justify-content-between align-items-end gap-3 mb-3">
+            <div>
+                <span class="section-kicker">Nổi bật</span>
+                <h2 class="section-title mb-0">Bộ sưu tập nổi bật</h2>
+            </div>
+            <a href="/Accommodation/Search" class="text-decoration-none fw-semibold">Xem tất cả <i class="fas fa-angle-right ms-1"></i></a>
+        </div>
+
+        <div class="row g-4">
+            @if (featuredCities.Any())
+            {
+                foreach (var city in featuredCities)
+                {
+                    <div class="col-md-6">
+                        <div class="city-card h-100">
+                            <div class="city-card__media">
+                                <img src="@cityImage" alt="@city.Name" class="city-card__image" />
+                                <div class="city-card__overlay"></div>
+                                <div class="city-card__content">
+                                    <span class="badge rounded-pill text-bg-dark opacity-75 px-3 py-2 mb-2">Tỉnh / Thành phố</span>
+                                    <h3 class="mb-1 text-white fw-bold">@city.Name</h3>
+                                    <p class="mb-0 text-white-50">@city.RoomCount phòng đang hoạt động</p>
+                                </div>
+                            </div>
+                            <div class="city-card__body">
+                                <div class="d-flex flex-wrap gap-2">
+                                    <a class="btn btn-primary rounded-pill" href="/Accommodation/Search?cityId=@city.Id">
+                                        Xem phòng
+                                    </a>
+                                    @if (!string.IsNullOrWhiteSpace((string?)city.GoogleMapsUrl))
+                                    {
+                                        <a class="btn btn-outline-primary rounded-pill" href="@city.GoogleMapsUrl" target="_blank" rel="noreferrer">
+                                            Google Maps
+                                        </a>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="col-md-4">
+                    <div class="card lift-card h-100">
+                        <div class="card-body p-4">
+                            <span class="badge rounded-pill text-bg-primary mb-3">Thành phố</span>
+                            <h3 class="h4 fw-bold mb-2">Thành phố Hồ Chí Minh</h3>
+                            <p class="text-muted mb-0">Khu vực có nhiều phòng đã duyệt và tỷ lệ lấp đầy cao.</p>
+                        </div>
+                        <div class="card-footer bg-transparent border-0 pt-0 pb-4 px-4">
+                            <a href="/Accommodation/Search" class="btn btn-outline-primary rounded-pill">Xem phòng</a>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </section>
+
+    <section class="container py-4 py-lg-5">
+        <div class="d-flex justify-content-between align-items-end gap-3 mb-3">
+            <div>
+                <span class="section-kicker">Gợi ý cho sinh viên</span>
+                <h2 class="section-title mb-0">Trường đại học nổi bật</h2>
+            </div>
+            <a href="/Accommodation/Search" class="text-decoration-none fw-semibold">Tìm trọ quanh trường <i class="fas fa-angle-right ms-1"></i></a>
+        </div>
+
+        <div class="row g-4">
+            @foreach (var school in featuredSchools)
+            {
+                <div class="col-md-6 col-lg-3">
+                    <div class="university-card h-100">
+                        <div class="university-card__icon">
+                            <i class="fas fa-graduation-cap"></i>
+                        </div>
+                        <span class="badge rounded-pill text-bg-warning mb-3">Trường học</span>
+                        <h3 class="h5 fw-bold mb-2">@school.ShortName</h3>
+                        <p class="text-muted mb-2">@school.Area</p>
+                        <p class="fw-semibold mb-4">@school.Name</p>
+                        <div class="d-flex flex-wrap gap-2">
+                            <a class="btn btn-outline-primary rounded-pill btn-sm" href="/Accommodation/Search?school=@school.ShortName">
+                                Tìm trọ gần @school.ShortName
+                            </a>
+                            <a class="btn btn-outline-success rounded-pill btn-sm" href="https://www.google.com/maps/search/?api=1&query=@Uri.EscapeDataString((string)school.Query)" target="_blank" rel="noreferrer">
+                                Google Maps
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </section>
+
+    @if (User.Identity != null && User.Identity.IsAuthenticated && suggestedRooms.Any())
+    {
+        <section class="container py-4 py-lg-5">
+            <div class="d-flex justify-content-between align-items-end gap-3 mb-3">
+                <div>
+                    <span class="section-kicker">Dành riêng cho bạn</span>
+                    <h2 class="section-title mb-0">Đề xuất trọ gần bạn nhất</h2>
+                </div>
+                <a href="/Accommodation/Search" class="text-decoration-none fw-semibold">Xem tất cả <i class="fas fa-angle-right ms-1"></i></a>
+            </div>
+
+            <div class="row g-4">
+                @foreach (var room in suggestedRooms)
+                {
+                    var firstImage = room.Images != null && room.Images.Any()
+                        ? room.Images.First().ImageUrl
+                        : fallbackRoomImage;
+
+                    <div class="col-md-6 col-lg-4">
+                        <div class="room-card h-100">
+                            <img src="@firstImage" class="room-card__image" alt="@room.Title" />
+                            <div class="room-card__body">
+                                <span class="badge rounded-pill text-bg-success mb-2">Gần khu vực của bạn</span>
+                                <h3 class="h5 fw-bold text-truncate mb-2" title="@room.Title">@room.Title</h3>
+                                <p class="room-price mb-3">@room.Price.ToString("N0") VNĐ/tháng</p>
+                                <div class="room-meta">
+                                    <span><i class="fas fa-city me-2"></i>@room.City?.Name</span>
+                                    <span><i class="fas fa-map-marker-alt me-2"></i>@room.SpecificAddress</span>
+                                </div>
+                            </div>
+                            <div class="room-card__footer">
+                                <a href="/Accommodation/Details/@room.Id" class="btn btn-outline-primary w-100 rounded-pill">Xem chi tiết</a>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </section>
+    }
+
+    <section class="container py-4 py-lg-5">
+        <div class="d-flex justify-content-between align-items-end gap-3 mb-3">
+            <div>
+                <span class="section-kicker">Gần trường</span>
+                <h2 class="section-title mb-0">Trọ gần các trường đại học</h2>
+            </div>
+            <a href="/Accommodation/Search" class="text-decoration-none fw-semibold">Xem thêm <i class="fas fa-angle-right ms-1"></i></a>
+        </div>
+
+        <div class="row g-4">
+            @foreach (var school in featuredSchools)
+            {
+                var room = roomsNearSchools.FirstOrDefault(r => matchesSchool(r.Title, school.ShortName))
+                           ?? featuredRooms.FirstOrDefault(r => matchesSchool(r.Title, school.ShortName));
+                var firstImage = room?.Images != null && room.Images.Any()
+                    ? room.Images.First().ImageUrl
+                    : fallbackRoomImage;
+
+                <div class="col-md-6 col-lg-4">
+                    <div class="room-card h-100">
+                        <img src="@firstImage" class="room-card__image" alt="@school.ShortName" />
+                        <div class="room-card__body">
+                            <span class="badge rounded-pill text-bg-info mb-2">Gần @school.ShortName</span>
+                            <h3 class="h5 fw-bold text-truncate mb-2" title="@(room?.Title ?? school.Name)">
+                                @(room?.Title ?? school.Name)
+                            </h3>
+                            <p class="room-price room-price--compact mb-2">
+                                @(room != null ? $"{room.Price:N0} VNĐ/tháng" : "Đang cập nhật")
+                            </p>
+                            <p class="room-mini text-muted mb-1"><i class="fas fa-city me-2"></i>@(room?.City?.Name ?? school.Area)</p>
+                            <p class="room-mini text-muted mb-1"><i class="fas fa-map-marker-alt me-2"></i>@(room?.District?.Name ?? school.ShortName)</p>
+                            <p class="room-mini text-muted text-truncate mb-0" title="@(room?.SpecificAddress ?? school.Name)">
+                                <i class="fas fa-map-pin me-2"></i>@(room?.SpecificAddress ?? "Chưa có địa chỉ mẫu")
+                            </p>
+                        </div>
+                        <div class="room-card__footer">
+                            <a href="/Accommodation/Search?school=@school.ShortName" class="btn btn-outline-primary w-100 rounded-pill">
+                                Xem trọ gần @school.ShortName
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </section>
+
+    <section class="container py-4 py-lg-5">
+        <div class="d-flex justify-content-between align-items-end gap-3 mb-3">
+            <div>
+                <span class="section-kicker">Mới nhất</span>
+                <h2 class="section-title mb-0">Trọ nổi bật</h2>
+            </div>
+            <a href="/Accommodation/Search" class="text-decoration-none fw-semibold">Xem tất cả <i class="fas fa-angle-right ms-1"></i></a>
+        </div>
+
+        <div class="row g-4">
+            @if (featuredRooms.Any())
+            {
+                foreach (var room in featuredRooms.Take(6))
+                {
+                    var firstImage = room.Images != null && room.Images.Any()
+                        ? room.Images.First().ImageUrl
+                        : fallbackRoomImage;
+
+                    <div class="col-md-6 col-lg-4">
+                        <div class="room-card h-100">
+                            <img src="@firstImage" class="room-card__image" alt="@room.Title" />
+                            <div class="room-card__body">
+                                <h3 class="h5 fw-bold text-truncate mb-2" title="@room.Title">@room.Title</h3>
+                                <p class="room-price mb-3">@room.Price.ToString("N0") VNĐ/tháng</p>
+                                <div class="room-meta">
+                                    <span><i class="fas fa-city me-2"></i>@room.City?.Name</span>
+                                    <span><i class="fas fa-map-marker-alt me-2"></i>@room.District?.Name</span>
+                                    <span class="text-truncate"><i class="fas fa-map-pin me-2"></i>@room.SpecificAddress</span>
+                                </div>
+                            </div>
+                            <div class="room-card__footer">
+                                <a href="/Accommodation/Details/@room.Id" class="btn btn-outline-primary w-100 rounded-pill">Xem chi tiết</a>
+                            </div>
+                        </div>
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="col-md-6 col-lg-4">
+                    <div class="room-card h-100">
+                        <img src="@fallbackRoomImage" class="room-card__image" alt="Phòng mẫu" />
+                        <div class="room-card__body">
+                            <h3 class="h5 fw-bold mb-2">Phòng mẫu quận 10, sạch đẹp</h3>
+                            <p class="room-price mb-3">3.200.000 VNĐ/tháng</p>
+                            <div class="room-meta">
+                                <span><i class="fas fa-city me-2"></i>Thành phố Hồ Chí Minh</span>
+                                <span><i class="fas fa-map-marker-alt me-2"></i>Quận 10</span>
+                                <span><i class="fas fa-map-pin me-2"></i>127 Lý Thường Kiệt</span>
+                            </div>
+                        </div>
+                        <div class="room-card__footer">
+                            <a href="/Accommodation/Search" class="btn btn-outline-primary w-100 rounded-pill">Xem chi tiết</a>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </section>
+}
+
+<style>
+    .py-lg-6 {
+        padding-top: 5rem;
+        padding-bottom: 5rem;
+    }
+
+    .hero-search {
+        background: rgba(255, 255, 255, 0.86);
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        backdrop-filter: blur(18px);
+        border-radius: 28px;
+        padding: 1.25rem;
+    }
+
+    .home-hero {
+        position: relative;
+        overflow: hidden;
+        background:
+            radial-gradient(circle at top left, rgba(255, 255, 255, 0.9), transparent 35%),
+            linear-gradient(135deg, rgba(36, 105, 113, 0.12), rgba(255, 107, 0, 0.08));
+    }
+
+    .home-hero::before {
+        content: "";
+        position: absolute;
+        inset: auto -8rem -10rem auto;
+        width: 22rem;
+        height: 22rem;
+        border-radius: 999px;
+        background: radial-gradient(circle, rgba(0, 109, 119, 0.18), transparent 70%);
+        pointer-events: none;
+    }
+
+    .hero-visual {
+        position: relative;
+        min-height: 520px;
+        border-radius: 34px;
+        overflow: hidden;
+        box-shadow: 0 26px 60px rgba(15, 23, 42, 0.14);
+        background: #dfeef1;
+    }
+
+    .hero-visual__image {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }
+
+    .hero-visual__overlay {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(180deg, rgba(6, 20, 24, 0.08), rgba(6, 20, 24, 0.42));
+    }
+
+    .hero-visual__card {
+        position: absolute;
+        left: 1.25rem;
+        right: 1.25rem;
+        max-width: 22rem;
+        background: rgba(255, 255, 255, 0.92);
+        backdrop-filter: blur(14px);
+        border-radius: 22px;
+        padding: 1rem 1.1rem;
+        box-shadow: 0 16px 40px rgba(15, 23, 42, 0.12);
+    }
+
+    .hero-visual__card--top {
+        bottom: 1.25rem;
+    }
+
+    .hero-visual__badge {
+        position: absolute;
+        top: 1.25rem;
+        left: 1.25rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.7rem 1rem;
+        border-radius: 999px;
+        background: rgba(0, 83, 91, 0.88);
+        color: #fff;
+        font-weight: 600;
+        box-shadow: 0 12px 24px rgba(0, 83, 91, 0.22);
+    }
+
+    .section-kicker {
+        display: inline-block;
+        margin-bottom: 0.5rem;
+        font-size: 0.78rem;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        font-weight: 800;
+        color: var(--primary-color);
+    }
+
+    .section-title {
+        font-size: clamp(1.65rem, 1.2vw + 1rem, 2.35rem);
+        font-weight: 800;
+    }
+
+    .stat-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        padding: 0.7rem 1rem;
+        border-radius: 999px;
+        background: #fff;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+        color: #334155;
+    }
+
+    .stat-pill strong {
+        color: var(--primary-color);
+    }
+
+    .search-button {
+        min-height: 56px;
+    }
+
+    .amenity-row {
+        display: flex;
+        gap: 0.75rem;
+        overflow-x: auto;
+        padding-bottom: 0.5rem;
+    }
+
+    .amenity-pill {
+        flex: 0 0 auto;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.65rem;
+        padding: 0.95rem 1.1rem;
+        border-radius: 18px;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        background: #fff;
+        color: #334155;
+        font-weight: 600;
+        box-shadow: 0 10px 22px rgba(15, 23, 42, 0.05);
+        transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    }
+
+    .amenity-pill:hover,
+    .amenity-pill--active {
+        transform: translateY(-2px);
+        border-color: rgba(0, 109, 119, 0.25);
+        box-shadow: 0 16px 30px rgba(0, 109, 119, 0.12);
+    }
+
+    .city-card,
+    .university-card,
+    .room-card,
+    .feature-panel,
+    .empty-state {
+        background: rgba(255, 255, 255, 0.92);
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        border-radius: 26px;
+        box-shadow: 0 16px 40px rgba(15, 23, 42, 0.06);
+    }
+
+    .city-card__media {
+        position: relative;
+        min-height: 270px;
+        overflow: hidden;
+        border-radius: 26px 26px 0 0;
+    }
+
+    .city-card__image {
+        width: 100%;
+        height: 100%;
+        min-height: 270px;
+        object-fit: cover;
+        display: block;
+        transform: scale(1.01);
+    }
+
+    .city-card__overlay {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(180deg, rgba(10, 18, 20, 0.12), rgba(10, 18, 20, 0.54));
+    }
+
+    .city-card__content {
+        position: absolute;
+        inset: auto 0 0 0;
+        padding: 1.25rem;
+    }
+
+    .city-card__body {
+        padding: 1.25rem;
+    }
+
+    .university-card {
+        padding: 1.4rem;
+    }
+
+    .university-card__icon {
+        width: 3.3rem;
+        height: 3.3rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        margin-bottom: 1rem;
+        background: rgba(255, 193, 7, 0.16);
+        color: #b7791f;
+        font-size: 1.2rem;
+    }
+
+    .room-card {
+        overflow: hidden;
+    }
+
+    .room-card__image {
+        width: 100%;
+        height: 220px;
+        object-fit: cover;
+        display: block;
+    }
+
+    .room-card__body {
+        padding: 1.2rem 1.2rem 0.9rem;
+    }
+
+    .room-card__footer {
+        padding: 0 1.2rem 1.2rem;
+    }
+
+    .room-price {
+        color: #dc2626;
+        font-weight: 800;
+        font-size: 1.15rem;
+    }
+
+    .room-price--compact {
+        font-size: 1rem;
+    }
+
+    .room-meta {
+        display: grid;
+        gap: 0.45rem;
+        color: #64748b;
+        font-size: 0.92rem;
+    }
+
+    .room-mini {
+        font-size: 0.88rem;
+    }
+
+    .lift-card {
+        transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    .lift-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 20px 42px rgba(15, 23, 42, 0.12);
+    }
+
+    .feature-panel {
+        padding: 3rem 1.5rem;
+    }
+
+    .empty-state {
+        padding: 1.25rem 1.5rem;
+        text-align: center;
+        color: #64748b;
+    }
+</style>
+
+@section Scripts {
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const citySelect = document.getElementById("citySelect");
+            const districtSelect = document.getElementById("districtSelect");
+
+            if (citySelect && districtSelect) {
+                citySelect.addEventListener("change", async function () {
+                    const cityId = this.value;
+
+                    districtSelect.innerHTML = '<option value="" selected disabled>-- Đang tải... --</option>';
+                    districtSelect.disabled = true;
+
+                    if (!cityId) return;
+
+                    try {
+                        const response = await fetch(`/Home/GetDistrictsWithRooms?cityId=${cityId}`);
+
+                        if (!response.ok) {
+                            throw new Error("Lỗi mạng khi tải dữ liệu");
+                        }
+
+                        const districts = await response.json();
+                        districtSelect.innerHTML = '<option value="" selected disabled>-- Chọn Quận/Huyện --</option>';
+
+                        if (districts.length > 0) {
+                            districts.forEach(d => {
+                                const option = document.createElement("option");
+                                option.value = d.id;
+                                option.textContent = d.name;
+                                districtSelect.appendChild(option);
+                            });
+                            districtSelect.disabled = false;
+                        } else {
+                            districtSelect.innerHTML = '<option value="" selected disabled>Hiện chưa có phòng tại khu vực này</option>';
+                        }
+                    } catch (error) {
+                        console.error("Lỗi:", error);
+                        districtSelect.innerHTML = '<option value="" selected disabled>Lỗi tải dữ liệu</option>';
+                    }
+                });
+            }
+        });
+    </script>
+}

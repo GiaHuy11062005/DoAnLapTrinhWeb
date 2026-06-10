@@ -1,0 +1,301 @@
+@using System.Collections.Generic
+@using System.Linq
+@model DoAnLapTrinhWeb.Models.AppUser
+@{
+    ViewData["Title"] = "Hồ sơ của bạn";
+    var cities = ViewBag.Cities as IEnumerable<City> ?? Enumerable.Empty<City>();
+    var currentDistrictName = ViewBag.CurrentDistrictName as string;
+    var selectedCityId = Model.CityId?.ToString() ?? "";
+    var selectedDistrictId = Model.DistrictId?.ToString() ?? "";
+    var latestLandlordApplication = ViewBag.LatestLandlordApplication as LandlordApplication;
+}
+
+<div class="container py-5">
+    <div class="row g-4">
+        <div class="col-lg-4">
+            <div class="profile-shell h-100">
+                <div class="profile-shell__avatar">
+                    <i class="fas fa-user"></i>
+                </div>
+                <h2 class="h3 fw-bold mb-2">@Model.FullName</h2>
+                <p class="text-muted mb-1">@Model.Email</p>
+                <p class="text-muted mb-4">Vai trò hiện tại: <strong>@(Model.Role ?? "User")</strong></p>
+
+                <div class="profile-summary">
+                    <div><span>Định danh</span><strong>@(Model.UserIdentity ?? "Chưa chọn")</strong></div>
+                    <div><span>SĐT</span><strong>@(Model.Phone ?? "Chưa cập nhật")</strong></div>
+                    <div><span>Địa chỉ</span><strong>@(Model.DestinationAddress ?? "Chưa có")</strong></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-8">
+            <div class="profile-form-panel">
+                <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4">
+                    <div>
+                        <span class="section-kicker">Tài khoản</span>
+                        <h1 class="section-title mb-1">Cập nhật hồ sơ</h1>
+                        <p class="text-muted mb-0">Thông tin này dùng cho gợi ý phòng gần nơi học tập hoặc làm việc của bạn.</p>
+                    </div>
+                    <a href="/Favorite/Index" class="btn btn-outline-danger rounded-pill">
+                        <i class="fas fa-heart me-2"></i>Mục yêu thích
+                    </a>
+                </div>
+
+                <form asp-action="Update" method="post" class="row g-3">
+                    <input type="hidden" name="id" value="@Model.Id" />
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Họ và tên</label>
+                        <input type="text" name="fullName" class="form-control form-control-lg" value="@Model.FullName" required>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Số điện thoại</label>
+                        <input type="text" name="phone" class="form-control form-control-lg" value="@Model.Phone" placeholder="VD: 0901 234 567">
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Tỉnh / Thành phố</label>
+                        <select name="cityId" id="profileCitySelect" class="form-select form-select-lg">
+                            <option value="">-- Chọn Tỉnh/Thành phố --</option>
+                            @foreach (var city in cities)
+                            {
+                                if (selectedCityId == city.Id.ToString())
+                                {
+                                    <option value="@city.Id" selected>@city.Name</option>
+                                }
+                                else
+                                {
+                                    <option value="@city.Id">@city.Name</option>
+                                }
+                            }
+                        </select>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Quận / Huyện</label>
+                        <select name="districtId" id="profileDistrictSelect" class="form-select form-select-lg" @(Model.CityId.HasValue ? "" : "disabled")>
+                            <option value="">-- Chọn Quận/Huyện --</option>
+                            @if (!string.IsNullOrWhiteSpace(currentDistrictName))
+                            {
+                                <option value="@Model.DistrictId" selected>@currentDistrictName</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Bạn là</label>
+                        <select name="userIdentity" class="form-select form-select-lg">
+                            <option value="">-- Chọn định danh --</option>
+                            @if (Model.UserIdentity == "Student")
+                            {
+                                <option value="Student" selected>Sinh viên</option>
+                            }
+                            else
+                            {
+                                <option value="Student">Sinh viên</option>
+                            }
+
+                            @if (Model.UserIdentity == "Worker")
+                            {
+                                <option value="Worker" selected>Người đi làm</option>
+                            }
+                            else
+                            {
+                                <option value="Worker">Người đi làm</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Địa chỉ trường học / nơi làm việc</label>
+                        <input type="text" name="destinationAddress" class="form-control form-control-lg" value="@Model.DestinationAddress" placeholder="VD: ĐH Bách Khoa, Quận 10">
+                        <small class="text-muted">Dùng để tính lộ trình đến phòng trọ ở trang chi tiết.</small>
+                    </div>
+
+                    <div class="col-12 d-flex flex-wrap gap-2 pt-2">
+                        <button type="submit" class="btn btn-primary btn-lg rounded-pill px-4">
+                            <i class="fas fa-save me-2"></i>Lưu hồ sơ
+                        </button>
+                        <a href="/" class="btn btn-outline-secondary btn-lg rounded-pill px-4">Về trang chủ</a>
+                    </div>
+                </form>
+            </div>
+
+            <div class="profile-cta-panel mt-4">
+                <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+                    <div>
+                        <span class="section-kicker">Chủ trọ</span>
+                        <h2 class="h4 fw-bold mb-2">Đăng ký làm chủ trọ</h2>
+                        <p class="text-muted mb-0">
+                            Nếu bạn có phòng trọ cho thuê, hãy gửi hồ sơ để admin xét duyệt quyền chủ trọ.
+                        </p>
+                    </div>
+                    <a href="/LandlordApplication/Create" class="btn btn-warning btn-lg rounded-pill fw-semibold">
+                        <i class="fas fa-file-signature me-2"></i>Gửi yêu cầu
+                    </a>
+                </div>
+
+                @if (latestLandlordApplication != null)
+                {
+                    <div class="mt-4 landlord-status landlord-status--@latestLandlordApplication.Status.ToLowerInvariant()">
+                        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                            <strong>Trạng thái gần nhất</strong>
+                            <span class="badge rounded-pill text-bg-@(latestLandlordApplication.Status == "Approved" ? "success" : latestLandlordApplication.Status == "Rejected" ? "danger" : "warning")">
+                                @latestLandlordApplication.Status
+                            </span>
+                        </div>
+                        <div class="small text-muted mt-2">
+                            Gửi lúc: @latestLandlordApplication.CreatedAt.ToString("dd/MM/yyyy HH:mm")
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(latestLandlordApplication.RejectionReason))
+                        {
+                            <div class="alert alert-danger mt-3 mb-0">
+                                Lý do từ chối: @latestLandlordApplication.RejectionReason
+                            </div>
+                        }
+
+                        @if (latestLandlordApplication.Status == "Pending")
+                        {
+                            <div class="alert alert-warning mt-3 mb-0">
+                                Hồ sơ đang chờ admin duyệt. Bạn chưa cần gửi lại.
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="alert alert-info mt-4 mb-0">
+                        Bạn chưa gửi yêu cầu nào. Hãy gửi hồ sơ khi muốn đăng ký làm chủ trọ.
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .profile-shell,
+    .profile-form-panel,
+    .profile-cta-panel {
+        background: rgba(255, 255, 255, 0.92);
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        border-radius: 28px;
+        box-shadow: 0 16px 40px rgba(15, 23, 42, 0.06);
+    }
+
+    .profile-shell {
+        padding: 2rem;
+    }
+
+    .profile-shell__avatar {
+        width: 72px;
+        height: 72px;
+        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, rgba(0, 109, 119, 0.16), rgba(255, 107, 0, 0.14));
+        color: var(--primary-color);
+        font-size: 1.6rem;
+        margin-bottom: 1rem;
+    }
+
+    .profile-summary {
+        display: grid;
+        gap: 1rem;
+    }
+
+    .profile-summary div {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+    }
+
+    .profile-summary span {
+        color: #64748b;
+    }
+
+    .profile-summary strong {
+        color: #0f172a;
+        text-align: right;
+    }
+
+    .profile-form-panel,
+    .profile-cta-panel {
+        padding: 2rem;
+    }
+
+    .landlord-status {
+        border-radius: 20px;
+        padding: 1rem 1.1rem;
+    }
+
+    .landlord-status--pending {
+        background: rgba(255, 193, 7, 0.12);
+        border: 1px solid rgba(255, 193, 7, 0.2);
+    }
+
+    .landlord-status--approved {
+        background: rgba(25, 135, 84, 0.12);
+        border: 1px solid rgba(25, 135, 84, 0.2);
+    }
+
+    .landlord-status--rejected {
+        background: rgba(220, 53, 69, 0.12);
+        border: 1px solid rgba(220, 53, 69, 0.2);
+    }
+</style>
+
+@section Scripts {
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const citySelect = document.getElementById("profileCitySelect");
+            const districtSelect = document.getElementById("profileDistrictSelect");
+            const selectedDistrictId = "@selectedDistrictId";
+
+            async function loadDistricts(cityId) {
+                districtSelect.innerHTML = '<option value="">-- Đang tải... --</option>';
+                districtSelect.disabled = true;
+
+                if (!cityId) {
+                    districtSelect.innerHTML = '<option value="">-- Chọn Quận/Huyện --</option>';
+                    return;
+                }
+
+                const response = await fetch(`/Accommodation/GetAllDistricts?cityId=${cityId}`);
+                if (!response.ok) {
+                    districtSelect.innerHTML = '<option value="">Lỗi tải dữ liệu</option>';
+                    return;
+                }
+
+                const districts = await response.json();
+                districtSelect.innerHTML = '<option value="">-- Chọn Quận/Huyện --</option>';
+                districts.forEach(d => {
+                    const option = document.createElement("option");
+                    option.value = d.id;
+                    option.textContent = d.name;
+                    if (selectedDistrictId && selectedDistrictId === String(d.id)) {
+                        option.selected = true;
+                    }
+                    districtSelect.appendChild(option);
+                });
+                districtSelect.disabled = false;
+            }
+
+            if (citySelect) {
+                citySelect.addEventListener("change", function () {
+                    loadDistricts(this.value);
+                });
+
+                if (citySelect.value) {
+                    loadDistricts(citySelect.value);
+                }
+            }
+        });
+    </script>
+}

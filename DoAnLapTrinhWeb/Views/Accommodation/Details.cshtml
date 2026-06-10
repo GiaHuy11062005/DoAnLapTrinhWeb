@@ -1,0 +1,345 @@
+@using System.Collections.Generic
+@using System.Linq
+@model DoAnLapTrinhWeb.Models.Accommodation
+@{
+    ViewData["Title"] = Model.Title;
+
+    var heroImage = ((Model.Images != null && Model.Images.Any())
+        ? (Model.Images.First().ImageUrl ?? string.Empty)
+        : Url.Content("~/images/accommodations/5007c941-3c42-4e59-8723-0e6c6a85373d_nhatro.jpg")) ?? string.Empty;
+
+    var galleryImages = (Model.Images != null && Model.Images.Any())
+        ? Model.Images.Select(x => x.ImageUrl ?? string.Empty).Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x!).ToList()
+        : new List<string> { heroImage };
+
+    var fullAddress = $"{Model.SpecificAddress}, {Model.District?.Name}, {Model.City?.Name}";
+    var googleMapsLink = $"https://www.google.com/maps/search/?api=1&query={Uri.EscapeDataString(fullAddress)}";
+}
+
+<div class="container py-4 py-lg-5">
+    <div class="row g-4">
+        <div class="col-lg-7">
+            <div class="detail-gallery">
+                <div class="detail-gallery__hero">
+                    <img src="@heroImage" alt="@Model.Title" class="detail-gallery__hero-image" />
+                    <div class="detail-gallery__badge">Trống sẵn</div>
+                </div>
+
+                @if (galleryImages.Count > 1)
+                {
+                    <div class="row g-2 mt-2">
+                        @foreach (var image in galleryImages.Take(4))
+                        {
+                            <div class="col-6 col-md-3">
+                                <img src="@image" alt="@Model.Title" class="detail-gallery__thumb" />
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="col-lg-5">
+            <div class="detail-sticky">
+                <span class="section-kicker">StayEase</span>
+                <h1 class="section-title mb-2">@Model.Title</h1>
+                <p class="text-muted mb-3">
+                    <i class="fas fa-map-marker-alt text-danger me-1"></i>
+                    @fullAddress
+                </p>
+
+                <div class="detail-price mb-3">@Model.Price.ToString("N0") VNĐ<span>/tháng</span></div>
+
+                <div class="detail-contact-card mb-3">
+                    <div class="fw-semibold text-muted small mb-1">Chủ trọ / liên hệ</div>
+                    <div class="fw-bold fs-5">@Model.ContactPhone</div>
+                </div>
+
+                <div class="d-grid gap-2 mb-3">
+                    <a href="@googleMapsLink" target="_blank" rel="noreferrer" class="btn btn-outline-success btn-lg rounded-pill">
+                        <i class="fas fa-map-marked-alt me-2"></i>Xem vị trí trên Google Maps
+                    </a>
+                    <button onclick="toggleGlobalFavorite(@Model.Id, this)" class="btn btn-danger btn-lg rounded-pill">
+                        <i class="fas fa-heart me-2"></i>Lưu vào yêu thích
+                    </button>
+                </div>
+
+                @if (User.Identity != null && User.Identity.IsAuthenticated)
+                {
+                    <div class="detail-route-card">
+                        <h2 class="h5 fw-bold mb-3"><i class="fas fa-route text-primary me-2"></i>Tiện ích di chuyển</h2>
+                        @if (!string.IsNullOrWhiteSpace(ViewBag.UserDestination))
+                        {
+                            var routeUrl = $"https://www.google.com/maps/dir/?api=1&origin={Uri.EscapeDataString(fullAddress)}&destination={Uri.EscapeDataString((string)ViewBag.UserDestination)}";
+                            <a href="@routeUrl" target="_blank" rel="noreferrer" class="btn btn-primary w-100 rounded-pill">
+                                <i class="fas fa-directions me-2"></i>Xem đường đi đến nơi ở của bạn
+                            </a>
+                        }
+                        else
+                        {
+                            <div class="alert alert-warning mb-0">
+                                Bạn chưa cập nhật địa chỉ học tập / nơi làm việc.
+                                <a href="/Profile/Update" class="fw-bold text-decoration-none">Cập nhật hồ sơ</a>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mt-1">
+        <div class="col-lg-7">
+            <div class="detail-panel">
+                <h2 class="h4 fw-bold mb-3">Tiện ích</h2>
+                <div class="d-flex flex-wrap gap-2">
+                    <span class="detail-chip"><i class="fas fa-wifi me-2"></i>Wifi tốc độ cao</span>
+                    <span class="detail-chip"><i class="fas fa-snowflake me-2"></i>Điều hòa</span>
+                    <span class="detail-chip"><i class="fas fa-bicycle me-2"></i>Chỗ để xe</span>
+                    <span class="detail-chip"><i class="fas fa-shield-alt me-2"></i>An ninh 24/7</span>
+                    <span class="detail-chip"><i class="fas fa-paw me-2"></i>@(Model.AllowsPets ? "Cho nuôi thú cưng" : "Không nuôi thú cưng")</span>
+                    <span class="detail-chip"><i class="fas fa-parking me-2"></i>@(Model.HasParking ? "Có bãi giữ xe" : "Không có bãi giữ xe")</span>
+                </div>
+            </div>
+
+            <div class="detail-panel mt-4">
+                <h2 class="h4 fw-bold mb-3">Thông tin chi tiết</h2>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="info-box"><span>Diện tích</span><strong>@Model.Area m²</strong></div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="info-box"><span>Tỉnh / Thành phố</span><strong>@Model.City?.Name</strong></div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="info-box"><span>Quận / Huyện</span><strong>@Model.District?.Name</strong></div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="info-box"><span>Địa chỉ</span><strong>@Model.SpecificAddress</strong></div>
+                    </div>
+                </div>
+
+                <div class="detail-description mt-4">
+                    <p class="mb-0" style="white-space: pre-line;">@Model.Description</p>
+                </div>
+            </div>
+
+            <div class="detail-panel mt-4">
+                <h2 class="h4 fw-bold mb-3">Vị trí & tiện ích xung quanh</h2>
+                <div class="detail-map">
+                    <div class="detail-map__inner">
+                        <i class="fas fa-map-marked-alt"></i>
+                        <span>@Model.District?.Name, @Model.City?.Name</span>
+                    </div>
+                </div>
+                <ul class="list-unstyled mt-3 mb-0 detail-nearby">
+                    <li><span>Trường / khu học tập</span><strong>@(ViewBag.UserDestination ?? "Đang cập nhật")</strong></li>
+                    <li><span>Phòng trọ</span><strong>@Model.SpecificAddress</strong></li>
+                    <li><span>Khu vực</span><strong>@Model.District?.Name</strong></li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="col-lg-5">
+            <div class="detail-side-card sticky-lg-top">
+                <div class="mb-3">
+                    <div class="fw-semibold text-muted small">Giá thuê</div>
+                    <div class="display-6 fw-bold text-primary">@Model.Price.ToString("N0")</div>
+                </div>
+
+                <div class="owner-card mb-3">
+                    <div class="owner-card__avatar">HA</div>
+                    <div>
+                        <div class="fw-bold">Chủ trọ</div>
+                        <div class="text-muted small">Phản hồi thường trong 1 giờ</div>
+                    </div>
+                </div>
+
+                <div class="d-grid gap-2">
+                    <a href="tel:@Model.ContactPhone" class="btn btn-primary rounded-pill">
+                        <i class="fas fa-phone me-2"></i>Liên hệ ngay
+                    </a>
+                    <a href="https://www.google.com/maps/search/?api=1&query=@Uri.EscapeDataString(fullAddress)" target="_blank" rel="noreferrer" class="btn btn-outline-primary rounded-pill">
+                        <i class="fas fa-map me-2"></i>Xem bản đồ
+                    </a>
+                </div>
+
+                <p class="text-muted small mt-3 mb-0 text-center">
+                    Bạn sẽ không bị trừ tiền khi chỉ xem thông tin phòng.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .detail-gallery__hero {
+        position: relative;
+        border-radius: 28px;
+        overflow: hidden;
+        min-height: 420px;
+        box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+    }
+
+    .detail-gallery__hero-image {
+        width: 100%;
+        height: 100%;
+        min-height: 420px;
+        object-fit: cover;
+        display: block;
+    }
+
+    .detail-gallery__badge {
+        position: absolute;
+        top: 1rem;
+        left: 1rem;
+        padding: 0.55rem 0.95rem;
+        border-radius: 999px;
+        background: rgba(0, 83, 91, 0.9);
+        color: #fff;
+        font-weight: 700;
+    }
+
+    .detail-gallery__thumb {
+        width: 100%;
+        height: 110px;
+        object-fit: cover;
+        border-radius: 18px;
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+    }
+
+    .detail-sticky,
+    .detail-panel,
+    .detail-side-card {
+        background: rgba(255, 255, 255, 0.94);
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        border-radius: 28px;
+        box-shadow: 0 16px 40px rgba(15, 23, 42, 0.06);
+    }
+
+    .detail-sticky {
+        padding: 1.5rem;
+        position: sticky;
+        top: 6rem;
+    }
+
+    .detail-price {
+        font-size: clamp(2rem, 2vw + 1rem, 3rem);
+        font-weight: 800;
+        color: #dc2626;
+    }
+
+    .detail-price span {
+        font-size: 1rem;
+        color: #64748b;
+        font-weight: 500;
+        margin-left: 0.25rem;
+    }
+
+    .detail-contact-card,
+    .owner-card,
+    .info-box {
+        background: #f8fafc;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        border-radius: 20px;
+        padding: 1rem;
+    }
+
+    .detail-route-card,
+    .detail-panel {
+        padding: 1.5rem;
+    }
+
+    .detail-chip {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.7rem 1rem;
+        border-radius: 999px;
+        background: #eef5f7;
+        color: #334155;
+        font-weight: 600;
+    }
+
+    .info-box {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+    }
+
+    .info-box span,
+    .detail-nearby span {
+        color: #64748b;
+        font-size: 0.92rem;
+    }
+
+    .info-box strong,
+    .detail-nearby strong {
+        color: #0f172a;
+    }
+
+    .detail-description {
+        background: #f8fafc;
+        border-radius: 20px;
+        padding: 1rem 1.25rem;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+    }
+
+    .detail-map {
+        height: 260px;
+        border-radius: 22px;
+        background: linear-gradient(135deg, rgba(0, 109, 119, 0.16), rgba(255, 107, 0, 0.12));
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .detail-map__inner {
+        display: inline-flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.75rem;
+        color: #0f172a;
+        font-weight: 700;
+        font-size: 1.1rem;
+    }
+
+    .detail-map__inner i {
+        font-size: 2rem;
+        color: var(--primary-color);
+    }
+
+    .detail-nearby li {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 0.7rem 0;
+        border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+    }
+
+    .detail-nearby li:last-child {
+        border-bottom: 0;
+    }
+
+    .detail-side-card {
+        padding: 1.5rem;
+    }
+
+    .owner-card {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .owner-card__avatar {
+        width: 56px;
+        height: 56px;
+        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0, 109, 119, 0.16);
+        color: var(--primary-color);
+        font-weight: 800;
+    }
+</style>

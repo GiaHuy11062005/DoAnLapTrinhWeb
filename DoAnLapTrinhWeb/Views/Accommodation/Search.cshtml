@@ -1,0 +1,70 @@
+@model IEnumerable<DoAnLapTrinhWeb.Models.Accommodation>
+@{
+    ViewData["Title"] = "Kết quả tìm kiếm";
+    var fallbackImage = Url.Content("~/images/accommodations/5007c941-3c42-4e59-8723-0e6c6a85373d_nhatro.jpg");
+    var school = Context.Request.Query["school"].ToString();
+    var parking = Context.Request.Query["parking"].ToString();
+    var pets = Context.Request.Query["pets"].ToString();
+}
+
+<div class="container mt-5 mb-5" style="min-height: 60vh;">
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4 border-bottom pb-2">
+        <div>
+            <h3 class="fw-bold mb-2">Kết quả tìm kiếm (@(Model?.Count() ?? 0) phòng)</h3>
+            <div class="d-flex flex-wrap gap-2">
+                @if (!string.IsNullOrWhiteSpace(school))
+                {
+                    <span class="badge rounded-pill text-bg-primary">Trường: @school</span>
+                }
+                @if (parking == "true")
+                {
+                    <span class="badge rounded-pill text-bg-success">Có chỗ để xe</span>
+                }
+                @if (pets == "true")
+                {
+                    <span class="badge rounded-pill text-bg-warning">Cho nuôi thú cưng</span>
+                }
+            </div>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <a class="btn btn-outline-primary rounded-pill" href="/Accommodation/Search?school=FPT">Gần FPT</a>
+            <a class="btn btn-outline-primary rounded-pill" href="/Accommodation/Search?school=HUTECH">Gần HUTECH</a>
+            <a class="btn btn-outline-primary rounded-pill" href="/Accommodation/Search?parking=true">Có chỗ để xe</a>
+            <a class="btn btn-outline-primary rounded-pill" href="/Accommodation/Search?pets=true">Cho thú cưng</a>
+        </div>
+    </div>
+
+    @if (Model != null && Model.Any())
+    {
+        <div class="row">
+            @foreach (var room in Model)
+            {
+                <div class="col-md-4 mb-4">
+                    <div class="card h-100 shadow-sm border-0 transition-hover">
+                        <button onclick="toggleGlobalFavorite(@room.Id, this)" class="btn btn-light position-absolute top-0 end-0 m-2 rounded-circle shadow-sm" style="z-index: 10;">
+                            <i class="far fa-heart text-muted"></i>
+                        </button>
+                        @{
+                            var firstImage = (room.Images != null && room.Images.Any()) ? room.Images.First().ImageUrl : fallbackImage;
+                        }
+                        <img src="@firstImage" class="card-img-top" style="height: 220px; object-fit: cover;">
+                        <div class="card-body">
+                            <h5 class="card-title text-truncate fw-bold">@room.Title</h5>
+                            <p class="card-text text-danger fw-bold fs-5">@room.Price.ToString("N0") VNĐ</p>
+                        </div>
+                        <div class="card-footer bg-white border-top-0 pb-3">
+                            <a href="/Accommodation/Details/@room.Id" class="btn btn-outline-primary w-100 rounded-pill">Xem chi tiết</a>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="text-center py-5">
+            <h4 class="text-muted">Không tìm thấy phòng trọ nào phù hợp với yêu cầu của bạn.</h4>
+            <a href="/" class="btn btn-primary mt-3">Thử tìm kiếm lại</a>
+        </div>
+    }
+</div>
