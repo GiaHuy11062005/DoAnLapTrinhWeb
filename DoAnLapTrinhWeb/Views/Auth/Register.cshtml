@@ -22,6 +22,12 @@
                         </div>
 
                         <div class="mb-3">
+                            <label class="form-label">Tên đăng nhập <span class="text-danger">*</span></label>
+                            <input type="text" name="UserName" class="form-control" required minlength="4" maxlength="40" autocomplete="username" />
+                            <small class="text-muted">Tên đăng nhập không được trùng với tài khoản khác.</small>
+                        </div>
+
+                        <div class="mb-3">
                             <label class="form-label">Email <span class="text-danger">*</span></label>
                             <input type="email" name="Email" class="form-control" required />
                         </div>
@@ -32,9 +38,18 @@
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label">Bạn là? (Không bắt buộc)</label>
-                            <select name="UserIdentity" class="form-select">
-                                <option value="">-- Bỏ qua --</option>
+                            <label class="form-label">Vai trò sử dụng <span class="text-danger">*</span></label>
+                            <select id="registerRole" name="Role" class="form-select" required>
+                                <option value="" selected disabled>-- Chọn vai trò --</option>
+                                <option value="User">Người tìm thuê</option>
+                                <option value="Landlord">Người cho thuê</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3" id="registerIdentityWrap" hidden>
+                            <label class="form-label">Bạn đang là? <span class="text-danger">*</span></label>
+                            <select id="registerIdentity" name="UserIdentity" class="form-select">
+                                <option value="">-- Chọn --</option>
                                 <option value="Student">Sinh viên</option>
                                 <option value="Worker">Người đi làm</option>
                             </select>
@@ -63,3 +78,17 @@
         </div>
     </div>
 </div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const role = document.getElementById("registerRole");
+        const identityWrap = document.getElementById("registerIdentityWrap");
+        const identity = document.getElementById("registerIdentity");
+        role.addEventListener("change", function () {
+            const isRenter = this.value === "User";
+            identityWrap.hidden = !isRenter;
+            identity.required = isRenter;
+            if (!isRenter) identity.value = "";
+        });
+    });
+</script>

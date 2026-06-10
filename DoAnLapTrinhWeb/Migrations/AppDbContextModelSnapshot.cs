@@ -54,6 +54,30 @@ namespace DoAnLapTrinhWeb.Migrations
                     b.Property<bool>("HasParking")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("Has24HourSecurity")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("HasBalcony")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("HasBasementParking")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("HasElevator")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("HasHighSpeedWifi")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("HasInverterAirConditioner")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("HasRefrigerator")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("HasWasherDryer")
+                        .HasColumnType("bit");
+
                     b.Property<bool>("IsApproved")
                         .HasColumnType("bit");
 
@@ -70,6 +94,10 @@ namespace DoAnLapTrinhWeb.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CityId");
+
+                    b.HasIndex("DistrictId");
 
                     b.HasIndex("OwnerId");
 
@@ -95,6 +123,36 @@ namespace DoAnLapTrinhWeb.Migrations
                     b.HasIndex("AccommodationId");
 
                     b.ToTable("AccommodationImages");
+                });
+
+            modelBuilder.Entity("DoAnLapTrinhWeb.Models.AccommodationDocument", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AccommodationId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ContentType")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<long>("FileSize")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("OriginalFileName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("StoredFileName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AccommodationId");
+
+                    b.ToTable("AccommodationDocuments");
                 });
 
             modelBuilder.Entity("DoAnLapTrinhWeb.Models.AppUser", b =>
@@ -138,9 +196,54 @@ namespace DoAnLapTrinhWeb.Migrations
                     b.Property<string>("UserIdentity")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("UserName")
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
                     b.HasKey("Id");
 
+                    b.HasIndex("UserName")
+                        .IsUnique()
+                        .HasFilter("[UserName] IS NOT NULL");
+
                     b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("DoAnLapTrinhWeb.Models.ApprovalHistory", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Action")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("AccommodationId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("AccommodationTitle")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("OwnerEmail")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("OwnerName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("Price")
+                        .HasColumnType("decimal(18,0)");
+
+                    b.Property<DateTime>("ProcessedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ProcessedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ApprovalHistories");
                 });
 
             modelBuilder.Entity("DoAnLapTrinhWeb.Models.City", b =>
@@ -236,11 +339,27 @@ namespace DoAnLapTrinhWeb.Migrations
 
             modelBuilder.Entity("DoAnLapTrinhWeb.Models.Accommodation", b =>
                 {
+                    b.HasOne("DoAnLapTrinhWeb.Models.City", "City")
+                        .WithMany()
+                        .HasForeignKey("CityId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("DoAnLapTrinhWeb.Models.District", "District")
+                        .WithMany()
+                        .HasForeignKey("DistrictId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
                     b.HasOne("DoAnLapTrinhWeb.Models.AppUser", "Owner")
                         .WithMany("Accommodations")
                         .HasForeignKey("OwnerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("City");
+
+                    b.Navigation("District");
 
                     b.Navigation("Owner");
                 });
@@ -249,6 +368,17 @@ namespace DoAnLapTrinhWeb.Migrations
                 {
                     b.HasOne("DoAnLapTrinhWeb.Models.Accommodation", "Accommodation")
                         .WithMany("Images")
+                        .HasForeignKey("AccommodationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Accommodation");
+                });
+
+            modelBuilder.Entity("DoAnLapTrinhWeb.Models.AccommodationDocument", b =>
+                {
+                    b.HasOne("DoAnLapTrinhWeb.Models.Accommodation", "Accommodation")
+                        .WithMany("Documents")
                         .HasForeignKey("AccommodationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -288,6 +418,8 @@ namespace DoAnLapTrinhWeb.Migrations
 
             modelBuilder.Entity("DoAnLapTrinhWeb.Models.Accommodation", b =>
                 {
+                    b.Navigation("Documents");
+
                     b.Navigation("Images");
                 });
 

@@ -31,7 +31,7 @@ namespace DoAnLapTrinhWeb.Controllers
 
             // Truy vấn lấy danh sách các phòng trọ mà User này đã nhấn yêu thích
             var favoriteRooms = await _context.Favorites
-                .Where(f => f.UserId == userId)
+                .Where(f => f.UserId == userId && f.Accommodation != null && f.Accommodation.IsApproved)
                 .Include(f => f.Accommodation)
                     .ThenInclude(a => a!.Images) // Lấy kèm hình ảnh
                 .Select(f => f.Accommodation)
@@ -49,6 +49,14 @@ namespace DoAnLapTrinhWeb.Controllers
             {
                 // Trả về mã lỗi 401 (Unauthorized) nếu chưa đăng nhập
                 return Unauthorized(new { message = "Vui lòng đăng nhập để thực hiện chức năng này." });
+            }
+
+            var roomIsApproved = await _context.Accommodations
+                .AnyAsync(a => a.Id == accommodationId && a.IsApproved);
+
+            if (!roomIsApproved)
+            {
+                return NotFound(new { message = "Phòng không tồn tại hoặc chưa được duyệt." });
             }
 
             // Kiểm tra xem phòng này đã có trong danh sách yêu thích chưa

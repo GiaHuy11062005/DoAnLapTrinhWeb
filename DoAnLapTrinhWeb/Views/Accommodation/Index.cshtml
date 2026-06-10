@@ -55,7 +55,7 @@
                             }
                             @foreach (var item in Model)
                             {
-                                <tr>
+                                <tr id="landlord-room-@item.Id">
                                     <td class="text-center fw-bold">@stt</td>
                                     <td>
                                         @{
@@ -78,7 +78,7 @@
                                     <td class="text-danger fw-bold fs-6">
                                         @item.Price.ToString("N0") VNĐ
                                     </td>
-                                    <td class="text-center">
+                                    <td class="text-center" data-room-status="@item.Id">
                                         @if (item.IsApproved)
                                         {
                                             <span class="badge bg-success rounded-pill px-3 py-2"><i class="fas fa-check-circle me-1"></i> Đã duyệt</span>
@@ -134,3 +134,23 @@
         vertical-align: middle;
     }
 </style>
+
+@section Scripts {
+    <script>
+        document.addEventListener("accommodationStatusChanged", event => {
+            const update = event.detail;
+            const row = document.getElementById(`landlord-room-${update.id}`);
+            if (!row) return;
+
+            if (update.status === "Rejected") {
+                row.remove();
+                return;
+            }
+
+            const statusCell = row.querySelector(`[data-room-status="${update.id}"]`);
+            if (statusCell) {
+                statusCell.innerHTML = '<span class="badge bg-success rounded-pill px-3 py-2"><i class="fas fa-check-circle me-1"></i> Đã duyệt</span>';
+            }
+        });
+    </script>
+}

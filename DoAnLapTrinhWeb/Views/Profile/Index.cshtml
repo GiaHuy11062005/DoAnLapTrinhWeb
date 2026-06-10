@@ -1,0 +1,112 @@
+@model DoAnLapTrinhWeb.Models.AppUser
+@{
+    ViewData["Title"] = "Trang cá nhân";
+}
+
+<div class="profile-page">
+    <div class="profile-shell">
+        <aside class="profile-card profile-summary">
+            <div class="profile-avatar">@((Model.FullName ?? "U").Substring(0, 1).ToUpper())</div>
+            <h2>@Model.FullName</h2>
+            <p>@($"@{Model.UserName}")</p>
+            <p>@Model.Email</p>
+            <span class="profile-role">@(Model.Role == "Landlord" ? "Người cho thuê" : Model.Role == "Admin" ? "Quản trị viên" : "Người tìm thuê")</span>
+
+            <div class="profile-verification @(Model.IsEmailConfirmed ? "is-confirmed" : "")">
+                <i class="fas @(Model.IsEmailConfirmed ? "fa-circle-check" : "fa-circle-exclamation")"></i>
+                <div>
+                    <strong>@(Model.IsEmailConfirmed ? "Email đã xác thực" : "Email chưa xác thực")</strong>
+                    <span>@(Model.IsEmailConfirmed ? "Tài khoản của bạn đã được xác minh." : "Gửi liên kết xác thực khi bạn sẵn sàng.")</span>
+                </div>
+            </div>
+
+            @if (!Model.IsEmailConfirmed)
+            {
+                <form action="/Auth/SendVerificationEmail" method="post">
+                    <button class="btn btn-primary w-100"><i class="fas fa-envelope me-2"></i>Gửi email xác thực</button>
+                </form>
+            }
+        </aside>
+
+        <section class="profile-card profile-form">
+            <div class="profile-form__heading">
+                <div>
+                    <h1>Thông tin cá nhân</h1>
+                    <p>Cập nhật thông tin để hệ thống đề xuất chỗ ở phù hợp hơn.</p>
+                </div>
+                <a href="/Home/SearchHistory">Lịch sử tìm phòng</a>
+            </div>
+
+            @if (TempData["ProfileSuccess"] != null)
+            {
+                <div class="alert alert-success">@TempData["ProfileSuccess"]</div>
+            }
+            @if (TempData["ProfileError"] != null)
+            {
+                <div class="alert alert-danger">@TempData["ProfileError"]</div>
+            }
+
+            <form action="/Profile/Update" method="post" class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Họ và tên</label>
+                    <input name="fullName" value="@Model.FullName" class="form-control" required />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Số điện thoại</label>
+                    <input name="phone" value="@Model.Phone" class="form-control" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Tỉnh / Thành phố</label>
+                    <select name="cityId" id="profileCitySelect" class="form-select">
+                        <option value="">Chưa chọn</option>
+                        @foreach (var city in ViewBag.Cities)
+                        {
+                            <option value="@city.Id" selected="@(Model.CityId == city.Id)">@city.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Khu vực</label>
+                    <select name="districtId" id="profileDistrictSelect" class="form-select">
+                        <option value="">Chưa chọn</option>
+                        @foreach (var district in ViewBag.Districts)
+                        {
+                            <option value="@district.Id" selected="@(Model.DistrictId == district.Id)">@district.Name</option>
+                        }
+                    </select>
+                </div>
+                @if (Model.Role == "User")
+                {
+                    <div class="col-md-6">
+                        <label class="form-label">Bạn đang là</label>
+                        <select name="userIdentity" class="form-select">
+                            <option value="">Chưa chọn</option>
+                            <option value="Student" selected="@(Model.UserIdentity == "Student")">Sinh viên</option>
+                            <option value="Worker" selected="@(Model.UserIdentity == "Worker")">Người đi làm</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Địa chỉ trường học / nơi làm việc</label>
+                        <input name="destinationAddress" value="@Model.DestinationAddress" class="form-control" />
+                    </div>
+                }
+                <div class="col-12 mt-4">
+                    <button class="btn btn-primary px-4">Lưu thay đổi</button>
+                </div>
+            </form>
+        </section>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.getElementById("profileCitySelect")?.addEventListener("change", async function () {
+            const district = document.getElementById("profileDistrictSelect");
+            district.innerHTML = '<option value="">Đang tải...</option>';
+            const response = await fetch(`/Home/GetDistrictsWithRooms?cityId=${this.value}`);
+            const data = response.ok ? await response.json() : [];
+            district.innerHTML = '<option value="">Chưa chọn</option>';
+            data.forEach(item => district.add(new Option(item.name, item.id)));
+        });
+    </script>
+}

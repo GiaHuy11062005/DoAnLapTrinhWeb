@@ -1,0 +1,35 @@
+@model DoAnLapTrinhWeb.Models.Accommodation
+@{
+    ViewData["Title"] = "Kiểm tra giấy tờ";
+}
+
+<div class="admin-approval-page">
+    <div class="admin-approval-shell">
+        <div class="admin-approval-heading">
+            <div>
+                <span class="admin-approval-label"><i class="fas fa-file-shield"></i> Giấy tờ xác minh</span>
+                <h1>@Model.Title</h1>
+                <p>Người cho thuê: @Model.Owner?.FullName · Chỉ Admin được phép xem các tệp này.</p>
+            </div>
+            <a href="/Admin" class="btn btn-outline-primary">Quay lại duyệt bài</a>
+        </div>
+
+        @if (Model.Documents?.Any() == true)
+        {
+            <div class="admin-document-grid">
+                @foreach (var document in Model.Documents)
+                {
+                    <a class="admin-document-card" href="/Admin/ViewDocument/@document.Id" target="_blank" rel="noopener">
+                        <i class="fas @(document.ContentType == "application/pdf" ? "fa-file-pdf" : "fa-file-image")"></i>
+                        <strong>@document.OriginalFileName</strong>
+                        <span>@((document.FileSize / 1024d / 1024d).ToString("0.##")) MB · Mở để kiểm tra</span>
+                    </a>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="admin-empty-row">Bài đăng này chưa có giấy tờ xác minh.</div>
+        }
+    </div>
+</div>

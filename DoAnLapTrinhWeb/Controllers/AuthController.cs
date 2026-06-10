@@ -3,6 +3,7 @@ using DoAnLapTrinhWeb.Models;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -39,32 +40,45 @@ namespace DoAnLapTrinhWeb.Controllers
         [HttpPost]
         public async Task<IActionResult> Register(AppUser user)
         {
+            user.Role = user.Role == "Landlord" ? "Landlord" : "User";
+            user.UserName = user.UserName?.Trim().ToLowerInvariant();
+
+            if (user.Role == "User" && string.IsNullOrWhiteSpace(user.UserIdentity))
+            {
+                ViewBag.Error = "Người tìm thuê cần chọn Sinh viên hoặc Người đi làm.";
+                ViewBag.Cities = _context.Cities.ToList();
+                return View(user);
+            }
+
+            if (string.IsNullOrWhiteSpace(user.UserName))
+            {
+                ViewBag.Error = "Vui lòng nhập tên đăng nhập.";
+                ViewBag.Cities = _context.Cities.ToList();
+                return View(user);
+            }
+
             if (ModelState.IsValid)
             {
-                var checkEmail = await _context.Users.FirstOrDefaultAsync(u => u.Email == user.Email);
-                if (checkEmail != null)
+                var existingAccount = await _context.Users.FirstOrDefaultAsync(u =>
+                    u.Email == user.Email || u.UserName == user.UserName);
+                if (existingAccount != null)
                 {
-                    ViewBag.Error = "Email này đã được sử dụng!";
+                    ViewBag.Error = existingAccount.UserName == user.UserName
+                        ? "Tên đăng nhập này đã được sử dụng!"
+                        : "Email này đã được sử dụng!";
                     ViewBag.Cities = _context.Cities.ToList();
                     return View(user);
                 }
 
                 user.PasswordHash = HashPassword(user.PasswordHash ?? "");
-                user.EmailConfirmationToken = Guid.NewGuid().ToString();
-
-                // Set IsEmailConfirmed = false nhưng KHÔNG cấm đăng nhập
+                user.UserIdentity = user.Role == "User" ? user.UserIdentity : null;
                 user.IsEmailConfirmed = false;
+                user.EmailConfirmationToken = null;
 
                 _context.Users.Add(user);
                 await _context.SaveChangesAsync();
 
-                string? confirmationLink = Url.Action("ConfirmEmail", "Auth", new { token = user.EmailConfirmationToken }, Request.Scheme);
-
-                // Gửi email xác thực chạy ngầm
-                await SendEmailAsync(user.Email!, "Xác nhận tài khoản Tiện Ích Trọ", $"Vui lòng click vào link sau để xác thực email của bạn: {confirmationLink}");
-
-                // Đổi câu thông báo để hướng dẫn người dùng có thể đăng nhập ngay
-                TempData["Success"] = "Đăng ký thành công! Bạn có thể đăng nhập ngay bây giờ. (Vui lòng kiểm tra hộp thư Email để xác thực tài khoản sau).";
+                TempData["Success"] = "Đăng ký thành công! Bạn có thể xác thực email sau trong trang cá nhân.";
                 return RedirectToAction("Login");
             }
 
@@ -76,21 +90,42 @@ namespace DoAnLapTrinhWeb.Controllers
         // PHẦN 2: GIAO DIỆN VÀ XỬ LÝ ĐĂNG NHẬP
         // ==========================================
         [HttpGet]
-        public IActionResult Login()
+        public IActionResult Login(string? returnUrl = null)
         {
             if (User.Identity != null && User.Identity.IsAuthenticated)
             {
                 return RedirectToAction("Index", "Home");
             }
+            ViewBag.ReturnUrl = returnUrl;
             return View();
         }
 
         [HttpPost]
-        public async Task<IActionResult> Login(string email, string password)
+        public async Task<IActionResult> Login(string userName, string password, string? returnUrl = null)
         {
-            var hashedPassword = HashPassword(password ?? "");
+            if (string.IsNullOrWhiteSpace(userName) || string.IsNullOrWhiteSpace(password))
+            {
+                ViewBag.Error = "Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu.";
+                ViewBag.ReturnUrl = returnUrl;
+                return View();
+            }
 
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email && u.PasswordHash == hashedPassword);
+            var hashedPassword = HashPassword(password ?? "");
+            var normalizedLogin = userName.Trim().ToLowerInvariant();
+            AppUser? user;
+
+            try
+            {
+                user = await _context.Users.FirstOrDefaultAsync(u =>
+                    (u.UserName == normalizedLogin || (u.Email != null && u.Email.ToLower() == normalizedLogin)) &&
+                    u.PasswordHash == hashedPassword);
+            }
+            catch (Exception ex) when (ex.ToString().Contains("UserName", StringComparison.OrdinalIgnoreCase))
+            {
+                ViewBag.Error = "Database chưa có cột tên đăng nhập. Hãy chạy Update-Database rồi đăng nhập lại.";
+                ViewBag.ReturnUrl = returnUrl;
+                return View();
+            }
 
             if (user != null)
             {
@@ -113,10 +148,21 @@ namespace DoAnLapTrinhWeb.Controllers
 
                 await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, claimsPrincipal);
 
+                if (!string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl))
+                {
+                    return LocalRedirect(returnUrl);
+                }
+
+                if (user.Role == "Admin")
+                {
+                    return RedirectToAction("Index", "Admin");
+                }
+
                 return RedirectToAction("Index", "Home");
             }
 
-            ViewBag.Error = "Email hoặc mật khẩu không chính xác!";
+            ViewBag.Error = "Tên đăng nhập hoặc mật khẩu không chính xác!";
+            ViewBag.ReturnUrl = returnUrl;
             return View();
         }
 
@@ -138,16 +184,62 @@ namespace DoAnLapTrinhWeb.Controllers
                 user.EmailConfirmationToken = null;
                 await _context.SaveChangesAsync();
 
-                TempData["Success"] = "Xác thực email thành công! Huy hiệu bảo mật của bạn đã được kích hoạt.";
-                return RedirectToAction("Login");
+                TempData["ProfileSuccess"] = "Xác thực email thành công! Tài khoản của bạn đã được xác minh.";
+                return User.Identity?.IsAuthenticated == true
+                    ? RedirectToAction("Index", "Profile")
+                    : RedirectToAction("Login");
             }
             return Content("Mã xác thực không hợp lệ hoặc đã hết hạn.");
+        }
+
+        [HttpPost]
+        [Authorize]
+        public async Task<IActionResult> SendVerificationEmail()
+        {
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userIdString, out int userId))
+            {
+                return RedirectToAction("Login");
+            }
+
+            var user = await _context.Users.FindAsync(userId);
+            if (user == null) return NotFound();
+
+            if (user.IsEmailConfirmed)
+            {
+                TempData["ProfileSuccess"] = "Email của bạn đã được xác thực.";
+                return RedirectToAction("Index", "Profile");
+            }
+
+            user.EmailConfirmationToken = Guid.NewGuid().ToString();
+            await _context.SaveChangesAsync();
+
+            var confirmationLink = Url.Action(
+                "ConfirmEmail",
+                "Auth",
+                new { token = user.EmailConfirmationToken },
+                Request.Scheme);
+
+            var emailSent = await SendEmailAsync(
+                user.Email!,
+                "Xác nhận tài khoản Chỗ Ở Tiện Ích",
+                $"Vui lòng nhấn vào liên kết sau để xác thực email: <a href=\"{confirmationLink}\">Xác thực email</a>");
+
+            if (emailSent)
+            {
+                TempData["ProfileSuccess"] = "Đã gửi liên kết xác thực. Vui lòng kiểm tra hộp thư email.";
+            }
+            else
+            {
+                TempData["ProfileError"] = "Không thể gửi email xác thực lúc này. Vui lòng thử lại sau.";
+            }
+            return RedirectToAction("Index", "Profile");
         }
 
         // ==========================================
         // PHẦN 4: CÁC HÀM TIỆN ÍCH (HELPER METHODS)
         // ==========================================
-        private async Task SendEmailAsync(string toEmail, string subject, string body)
+        private async Task<bool> SendEmailAsync(string toEmail, string subject, string body)
         {
             try
             {
@@ -172,10 +264,12 @@ namespace DoAnLapTrinhWeb.Controllers
 
                 mailMessage.To.Add(toEmail);
                 await smtpClient.SendMailAsync(mailMessage);
+                return true;
             }
             catch (Exception ex)
             {
                 Console.WriteLine("LỖI GỬI EMAIL THẤT BẠI: " + ex.Message);
+                return false;
             }
         }
 
@@ -191,6 +285,18 @@ namespace DoAnLapTrinhWeb.Controllers
                 }
                 return builder.ToString();
             }
+        }
+
+        private string CreateGoogleUserName(string? email)
+        {
+            var prefix = email?.Split('@').FirstOrDefault() ?? "user";
+            var safePrefix = new string(prefix
+                .ToLowerInvariant()
+                .Where(character => char.IsLetterOrDigit(character) || character == '_')
+                .ToArray());
+
+            if (string.IsNullOrWhiteSpace(safePrefix)) safePrefix = "user";
+            return $"{safePrefix}_{Guid.NewGuid().ToString("N")[..6]}";
         }
 
         // ==========================================
@@ -219,9 +325,15 @@ namespace DoAnLapTrinhWeb.Controllers
 
             if (user != null)
             {
+                if (string.IsNullOrWhiteSpace(user.UserName))
+                {
+                    user.UserName = CreateGoogleUserName(email);
+                    await _context.SaveChangesAsync();
+                }
+
                 // TÍNH NĂNG ÉP CHỌN ROLE:
                 // Nếu tài khoản cũ chưa có Định danh V2 (Sinh viên/Đi làm) hoặc chưa có Role rõ ràng
-                if (string.IsNullOrEmpty(user.UserIdentity) || string.IsNullOrEmpty(user.Role))
+                if (string.IsNullOrEmpty(user.Role) || (user.Role == "User" && string.IsNullOrEmpty(user.UserIdentity)))
                 {
                     // Ép chuyển hướng sang trang Hoàn thiện hồ sơ
                     TempData["GoogleEmail"] = email;
@@ -232,6 +344,7 @@ namespace DoAnLapTrinhWeb.Controllers
                 // Nếu đã đầy đủ thông tin thì cho đăng nhập bình thường
                 var claims = new List<Claim>
                 {
+                    new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
                     new Claim(ClaimTypes.Name, user.FullName ?? ""),
                     new Claim(ClaimTypes.Email, user.Email ?? ""),
                     new Claim(ClaimTypes.Role, user.Role ?? ""),
@@ -288,6 +401,7 @@ namespace DoAnLapTrinhWeb.Controllers
                 // NẾU TÀI KHOẢN MỚI -> TẠO MỚI
                 var newUser = new AppUser
                 {
+                    UserName = CreateGoogleUserName(email),
                     Email = email,
                     FullName = fullName,
                     Role = role,

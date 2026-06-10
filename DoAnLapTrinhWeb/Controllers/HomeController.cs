@@ -7,6 +7,8 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Security.Claims; // Để lấy thông tin đăng nhập
 
+using Microsoft.AspNetCore.Authorization;
+
 namespace DoAnLapTrinhWeb.Controllers
 {
     public class HomeController : Controller
@@ -52,6 +54,29 @@ namespace DoAnLapTrinhWeb.Controllers
                 }
             }
 
+            // Khách chưa đăng nhập hoặc chưa có địa chỉ vẫn thấy phòng nổi bật mới nhất.
+            if (suggestedRooms.Count == 0)
+            {
+                suggestedRooms = await _context.Accommodations
+                    .Include(a => a.Images)
+                    .Include(a => a.City)
+                    .Include(a => a.District)
+                    .Where(a => a.IsApproved)
+                    .OrderByDescending(a => a.CreatedAt)
+                    .Take(6)
+                    .ToListAsync();
+            }
+            else
+            {
+                var suggestedIds = suggestedRooms.Select(room => room.Id).ToList();
+                suggestedRooms = await _context.Accommodations
+                    .Include(a => a.Images)
+                    .Include(a => a.City)
+                    .Include(a => a.District)
+                    .Where(a => suggestedIds.Contains(a.Id))
+                    .ToListAsync();
+            }
+
             // Truyền danh sách đề xuất ra View
             ViewBag.SuggestedRooms = suggestedRooms;
 
@@ -59,15 +84,37 @@ namespace DoAnLapTrinhWeb.Controllers
         }
 
         [HttpGet]
-        public IActionResult GetDistrictsWithRooms(int cityId)
+        public async Task<IActionResult> GetDistrictsWithRooms(int cityId)
         {
-            var districts = _context.Districts
-                .Where(d => d.CityId == cityId &&
-                            _context.Accommodations.Any(a => a.DistrictId == d.Id && a.IsApproved == true))
+            // Luôn trả toàn bộ khu vực thuộc thành phố đã chọn.
+            // Việc lọc phòng được thực hiện sau khi người dùng gửi form tìm kiếm.
+            var districts = await _context.Districts
+                .Where(d => d.CityId == cityId)
+                .OrderBy(d => d.Name)
                 .Select(d => new { id = d.Id, name = d.Name })
-                .ToList();
+                .ToListAsync();
 
             return Json(districts);
+        }
+
+        [Authorize]
+        public async Task<IActionResult> SearchHistory()
+        {
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userIdString, out int userId))
+            {
+                return RedirectToAction("Login", "Auth");
+            }
+
+            var logs = await _context.SearchLogs
+                .Where(log => log.UserId == userId)
+                .OrderByDescending(log => log.CreatedAt)
+                .Take(50)
+                .ToListAsync();
+
+            ViewBag.Cities = await _context.Cities.ToDictionaryAsync(city => city.Id, city => city.Name ?? "");
+            ViewBag.Districts = await _context.Districts.ToDictionaryAsync(district => district.Id, district => district.Name ?? "");
+            return View(logs);
         }
     }
 }

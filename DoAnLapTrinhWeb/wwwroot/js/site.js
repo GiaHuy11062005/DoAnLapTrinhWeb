@@ -18,7 +18,8 @@ async function toggleGlobalFavorite(roomId, buttonElement) {
 
         // Nếu chưa đăng nhập, chuyển hướng sang trang Login
         if (response.status === 401) {
-            window.location.href = "/Auth/Login";
+            const returnUrl = encodeURIComponent(window.location.pathname + window.location.search);
+            window.location.href = `/Auth/Login?returnUrl=${returnUrl}`;
             return;
         }
 
@@ -99,5 +100,107 @@ $(document).ready(function () {
                 }
             });
         }
+    });
+
+    const setupAccumulatingFileInput = ({ inputId, previewId, maxFiles, allowedTypes, maxSize, errorMessage }) => {
+        const input = document.getElementById(inputId);
+        const preview = document.getElementById(previewId);
+        if (!input || !preview) return;
+
+        let selectedFiles = [];
+        const fileKey = file => `${file.name}-${file.size}-${file.lastModified}`;
+
+        const syncInputFiles = () => {
+            const transfer = new DataTransfer();
+            selectedFiles.forEach(file => transfer.items.add(file));
+            input.files = transfer.files;
+        };
+
+        const renderPreview = (error = '') => {
+            preview.innerHTML = '';
+            selectedFiles.forEach((file, index) => {
+                const item = document.createElement('div');
+                item.className = 'listing-image-preview__item';
+
+                if (file.type === 'application/pdf') {
+                    item.innerHTML = '<div class="listing-document-preview__pdf"><i class="fas fa-file-pdf"></i><span>PDF</span></div>';
+                } else {
+                    const image = document.createElement('img');
+                    image.alt = file.name;
+                    image.src = URL.createObjectURL(file);
+                    image.onload = () => URL.revokeObjectURL(image.src);
+                    item.appendChild(image);
+                }
+
+                const removeButton = document.createElement('button');
+                removeButton.type = 'button';
+                removeButton.className = 'listing-image-preview__remove';
+                removeButton.innerHTML = '<i class="fas fa-xmark"></i>';
+                removeButton.setAttribute('aria-label', `Xóa ${file.name}`);
+                removeButton.addEventListener('click', () => {
+                    selectedFiles.splice(index, 1);
+                    syncInputFiles();
+                    renderPreview();
+                });
+
+                const name = document.createElement('span');
+                name.textContent = file.name;
+                item.append(removeButton, name);
+                preview.appendChild(item);
+            });
+
+            if (error) {
+                const errorElement = document.createElement('div');
+                errorElement.className = 'listing-image-preview__error';
+                errorElement.textContent = error;
+                preview.appendChild(errorElement);
+            }
+        };
+
+        input.addEventListener('change', function () {
+            const newFiles = Array.from(this.files);
+            const invalidFile = newFiles.find(file =>
+                (allowedTypes && !allowedTypes.includes(file.type)) ||
+                (maxSize && file.size > maxSize));
+
+            if (invalidFile) {
+                syncInputFiles();
+                renderPreview(errorMessage);
+                return;
+            }
+
+            const existingKeys = new Set(selectedFiles.map(fileKey));
+            let exceededLimit = false;
+            newFiles.forEach(file => {
+                if (!existingKeys.has(fileKey(file))) {
+                    if (selectedFiles.length < maxFiles) {
+                        selectedFiles.push(file);
+                        existingKeys.add(fileKey(file));
+                    } else {
+                        exceededLimit = true;
+                    }
+                }
+            });
+
+            syncInputFiles();
+            renderPreview(exceededLimit ? errorMessage : '');
+        });
+    };
+
+    setupAccumulatingFileInput({
+        inputId: 'accommodationImageInput',
+        previewId: 'accommodationImagePreview',
+        maxFiles: 5,
+        allowedTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
+        errorMessage: 'Bạn chỉ được chọn tối đa 5 ảnh hợp lệ.'
+    });
+
+    setupAccumulatingFileInput({
+        inputId: 'landDocumentInput',
+        previewId: 'landDocumentPreview',
+        maxFiles: 3,
+        allowedTypes: ['image/jpeg', 'image/png', 'application/pdf'],
+        maxSize: 10 * 1024 * 1024,
+        errorMessage: 'Chỉ chọn tối đa 3 tệp JPG, PNG hoặc PDF; tối đa 10MB mỗi tệp.'
     });
 });

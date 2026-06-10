@@ -11,6 +11,7 @@ namespace DoAnLapTrinhWeb.Data
         public DbSet<AppUser> Users { get; set; }
         public DbSet<Accommodation> Accommodations { get; set; }
         public DbSet<AccommodationImage> AccommodationImages { get; set; }
+        public DbSet<AccommodationDocument> AccommodationDocuments { get; set; }
         public DbSet<City> Cities { get; set; }
         public DbSet<District> Districts { get; set; }
 
@@ -18,12 +19,25 @@ namespace DoAnLapTrinhWeb.Data
         public DbSet<Favorite> Favorites { get; set; }
 
         public DbSet<SearchLog> SearchLogs { get; set; }
+        public DbSet<ApprovalHistory> ApprovalHistories { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            modelBuilder.Entity<AppUser>()
+                .Property(user => user.UserName)
+                .HasMaxLength(40);
+
+            modelBuilder.Entity<AppUser>()
+                .HasIndex(user => user.UserName)
+                .IsUnique();
+
             // Khắc phục cảnh báo vàng: Định dạng kích thước cho cột Price (18 chữ số, 0 số thập phân)
             modelBuilder.Entity<Accommodation>()
                 .Property(a => a.Price)
+                .HasColumnType("decimal(18,0)");
+
+            modelBuilder.Entity<ApprovalHistory>()
+                .Property(history => history.Price)
                 .HasColumnType("decimal(18,0)");
 
             // Thiết lập quan hệ 1-N giữa User và Accommodation
@@ -31,6 +45,20 @@ namespace DoAnLapTrinhWeb.Data
                 .HasOne(a => a.Owner)
                 .WithMany(u => u.Accommodations)
                 .HasForeignKey(a => a.OwnerId);
+
+            // Accommodation lưu cả CityId và DistrictId, trong khi District cũng thuộc City.
+            // Tắt cascade để tránh nhiều đường xóa City -> Accommodation trên SQL Server.
+            modelBuilder.Entity<Accommodation>()
+                .HasOne(a => a.City)
+                .WithMany()
+                .HasForeignKey(a => a.CityId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<Accommodation>()
+                .HasOne(a => a.District)
+                .WithMany()
+                .HasForeignKey(a => a.DistrictId)
+                .OnDelete(DeleteBehavior.NoAction);
 
             // KHẮC PHỤC LỖI CASCADE BẢNG FAVORITE (Yêu Thích)
             modelBuilder.Entity<Favorite>()

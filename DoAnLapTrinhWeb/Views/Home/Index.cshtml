@@ -1,49 +1,26 @@
-﻿@{
+@using DoAnLapTrinhWeb.Models
+@{
     ViewData["Title"] = "Trang chủ";
+    var featuredRooms = ViewBag.SuggestedRooms as List<Accommodation> ?? new List<Accommodation>();
 }
 
-@if (User.Identity != null && User.Identity.IsAuthenticated && User.IsInRole("Admin"))
-{
-    <div class="container mt-5 text-center mb-5">
-        <div class="p-5 bg-light rounded shadow-sm border border-primary border-opacity-25">
-            <h2 class="text-primary fw-bold mb-3"><i class="fas fa-user-shield"></i> Xin chào Quản Trị Viên</h2>
-            <p class="fs-5 text-muted">Bạn đang ở trang chủ dành cho Admin. Vui lòng truy cập trang quản trị để duyệt bài đăng mới và quản lý hệ thống.</p>
-            <a href="/Admin" class="btn btn-primary btn-lg mt-4 px-5 rounded-pill shadow">
-                Đi đến Dashboard Quản Trị <i class="fas fa-arrow-right ms-2"></i>
-            </a>
-        </div>
-    </div>
-}
-else if (User.Identity != null && User.Identity.IsAuthenticated && User.IsInRole("Landlord"))
-{
-    <div class="container mt-5 text-center mb-5">
-        <div class="p-5 bg-light rounded shadow-sm border border-success border-opacity-25">
-            <h2 class="text-success fw-bold mb-3"><i class="fas fa-house-user"></i> Xin chào Chủ Trọ</h2>
-            <p class="fs-5 text-muted">Chào mừng bạn quay trở lại. Hãy quản lý các phòng trọ của bạn hoặc đăng tin mới ngay hôm nay để tiếp cận hàng ngàn người thuê.</p>
-            <div class="mt-4">
-                <button class="btn btn-success btn-lg px-4 me-3 rounded-pill shadow" data-bs-toggle="modal" data-bs-target="#postAccommodationModal">
-                    <i class="fas fa-plus-circle me-2"></i> Đăng tin cho thuê mới
-                </button>
-                <!-- ĐÃ SỬA ĐƯỜNG DẪN Ở ĐÂY TỪ "#" THÀNH "/Accommodation/Index" -->
-                <a href="/Accommodation/Index" class="btn btn-outline-success btn-lg px-4 rounded-pill shadow">
-                    <i class="fas fa-list-ul me-2"></i> Quản lý phòng đã đăng
-                </a>
-            </div>
-        </div>
-    </div>
-}
-else
-{
-    <div class="bg-light py-5" style="background: url('/images/hero-bg.jpg') center/cover; min-height: 500px; display: flex; align-items: center;">
-        <div class="container">
-            <div class="row justify-content-center">
-                <div class="col-md-10 text-center bg-white p-5 rounded shadow-lg" style="opacity: 0.95;">
-                    <h1 class="fw-bold text-dark mb-4">Tìm kiếm chỗ ở lý tưởng của bạn</h1>
-                    
-                    <form action="/Accommodation/Search" method="GET" class="row g-3">
-                        <div class="col-md-3">
-                            <select class="form-select form-select-lg" id="citySelect" name="cityId" required>
-                                <option value="" selected disabled>-- Chọn Tỉnh/Thành --</option>
+<div class="home-page">
+    <section class="home-hero">
+        <div class="home-hero__overlay"></div>
+        <div class="home-hero__content">
+            <h1>Tìm kiếm tổ ấm hoàn hảo của bạn</h1>
+            <div class="home-search">
+                <div class="home-search__tabs">
+                    <button type="button" class="home-search__tab active">Nhà trọ</button>
+                    <button type="button" class="home-search__tab">Nhà nguyên căn</button>
+                </div>
+                <form action="/Accommodation/Search" method="get" class="home-search__form">
+                    <div class="home-field">
+                        <label for="citySelect">Địa điểm</label>
+                        <div class="home-field__control">
+                            <i class="fas fa-location-dot"></i>
+                            <select id="citySelect" name="cityId" required>
+                                <option value="" selected disabled>Chọn tỉnh/thành</option>
                                 @if (ViewBag.Cities != null)
                                 {
                                     foreach (var city in ViewBag.Cities)
@@ -53,133 +30,234 @@ else
                                 }
                             </select>
                         </div>
-                        <div class="col-md-3">
-                            <select class="form-select form-select-lg" id="districtSelect" name="districtId" disabled required>
-                                <option value="" selected disabled>-- Chọn Quận/Huyện --</option>
+                    </div>
+                    <div class="home-field">
+                        <label for="districtSelect">Khu vực</label>
+                        <div class="home-field__control">
+                            <i class="fas fa-map"></i>
+                            <select id="districtSelect" name="districtId" disabled>
+                                <option value="" selected>Tất cả khu vực</option>
                             </select>
                         </div>
-                        <div class="col-md-3">
-                            <select class="form-select form-select-lg" name="priceRange">
-                                <option value="" selected disabled>-- Mức giá --</option>
+                    </div>
+                    <div class="home-field">
+                        <label for="priceRange">Mức giá</label>
+                        <div class="home-field__control">
+                            <i class="fas fa-money-bill-wave"></i>
+                            <select id="priceRange" name="priceRange">
+                                <option value="" selected>Tất cả mức giá</option>
                                 <option value="1">Dưới 2 triệu</option>
                                 <option value="2">2 - 4 triệu</option>
                                 <option value="3">Trên 4 triệu</option>
                             </select>
                         </div>
-                        <div class="col-md-3 d-grid">
-                            <button type="submit" class="btn btn-primary btn-lg">
-                                <i class="fas fa-search"></i> Tìm kiếm
-                            </button>
-                        </div>
-                    </form>
-                </div>
+                    </div>
+                    <button type="submit" name="recordHistory" value="true" class="home-search__button">
+                        <i class="fas fa-magnifying-glass"></i> Tìm kiếm
+                    </button>
+                </form>
             </div>
         </div>
-    </div>
+    </section>
 
-    @if (ViewBag.SuggestedRooms != null && ViewBag.SuggestedRooms.Count > 0)
-    {
-        <div class="container mt-5 mb-5">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h3 class="fw-bold"><i class="fas fa-map-marker-alt text-danger"></i> Đề xuất trọ gần bạn nhất</h3>
-                <a href="#" class="text-decoration-none">Xem tất cả <i class="fas fa-angle-right"></i></a>
+    <section class="home-section home-featured">
+        <div class="home-section__heading">
+            <div>
+                <h2>Phòng trọ &amp; Nhà ở nổi bật</h2>
+                <p>Khám phá những lựa chọn tốt nhất được xác thực bởi Chỗ Ở Tiện Ích.</p>
             </div>
-            
-            <div class="row">
-                @foreach (DoAnLapTrinhWeb.Models.Accommodation room in ViewBag.SuggestedRooms)
+            <a href="/Accommodation/Search">Xem tất cả <i class="fas fa-arrow-right"></i></a>
+        </div>
+
+        <form action="/Accommodation/Search" method="get" class="featured-quick-search">
+            <div class="featured-quick-search__input">
+                <i class="fas fa-magnifying-glass"></i>
+                <input type="text" name="keyword" aria-label="Tìm kiếm phòng" placeholder="Tìm kiếm vị trí hoặc từ khóa..." />
+            </div>
+            <div class="featured-quick-search__radius">
+                <i class="fas fa-location-crosshairs"></i>
+                <select name="radius" aria-label="Bán kính tìm kiếm">
+                    <option value="">Bán kính</option>
+                    <option value="1">Trong 1 km</option>
+                    <option value="3">Trong 3 km</option>
+                    <option value="5">Trong 5 km</option>
+                    <option value="10">Trong 10 km</option>
+                </select>
+            </div>
+            <button type="submit">Tìm kiếm</button>
+        </form>
+
+        @if (featuredRooms.Any())
+        {
+            <div class="listing-grid">
+                @{
+                    var fallbackImages = new[]
+                    {
+                        "/images/accommodations/5007c941-3c42-4e59-8723-0e6c6a85373d_nhatro.jpg",
+                        "/images/accommodations/da3b6c60-91a7-43e6-a237-055b3af7a96c_anh1.png"
+                    };
+                    var roomIndex = 0;
+                }
+                @foreach (var room in featuredRooms.Take(3))
                 {
-                    <div class="col-md-4 mb-4">
-                        <div class="card h-100 shadow-sm border-0 transition-hover">
-                            @{
-                                var firstImage = (room.Images != null && room.Images.Any())
-                                    ? room.Images.First().ImageUrl
-                                    : "/images/default-room.jpg";
-                            }
-                            <img src="@firstImage" class="card-img-top" alt="@room.Title" style="height: 220px; object-fit: cover; border-radius: 8px 8px 0 0;">
-                            
-                            <div class="card-body">
-                                <h5 class="card-title text-truncate fw-bold" title="@room.Title">@room.Title</h5>
-                                <p class="card-text text-danger fw-bold fs-5 mb-2">@room.Price.ToString("N0") VNĐ/tháng</p>
-                                
-                                <p class="card-text text-muted small mb-1">
-                                    <i class="fas fa-expand-arrows-alt"></i> Diện tích: @room.Area m²
-                                </p>
-                                <p class="card-text text-muted small text-truncate" title="@room.SpecificAddress">
-                                    <i class="fas fa-map-pin"></i> @room.SpecificAddress
-                                </p>
-                            </div>
-                            
-                            <div class="card-footer bg-white border-top-0 pb-3">
-                                <a href="/Accommodation/Details/@room.Id" class="btn btn-outline-primary w-100 rounded-pill">
-                                    Xem chi tiết
-                                </a>
+                    var savedImage = room.Images?.FirstOrDefault()?.ImageUrl;
+                    var fallbackImage = fallbackImages[roomIndex % fallbackImages.Length];
+                    var firstImage = !string.IsNullOrWhiteSpace(savedImage)
+                        ? savedImage
+                        : fallbackImage;
+                    <article class="listing-card">
+                        <a class="listing-card__image" href="/Accommodation/Details/@room.Id">
+                            <img src="@firstImage" alt="@room.Title" onerror="this.onerror=null;this.src='@fallbackImage';" />
+                            <span class="listing-card__badge"><i class="fas fa-circle-check"></i> Xác thực</span>
+                        </a>
+                        <button type="button" class="listing-card__favorite" onclick="toggleGlobalFavorite(@room.Id, this)" aria-label="Thêm vào yêu thích">
+                            <i class="far fa-heart"></i>
+                        </button>
+                        <div class="listing-card__body">
+                            <div class="listing-card__price">@room.Price.ToString("N0") <small>VNĐ/tháng</small></div>
+                            <a href="/Accommodation/Details/@room.Id" class="listing-card__title">@room.Title</a>
+                            <p class="listing-card__location"><i class="fas fa-location-dot"></i> @room.District?.Name, @room.City?.Name</p>
+                            <div class="listing-card__tags">
+                                @if (room.HasParking) { <span><i class="fas fa-square-parking"></i> Chỗ để xe</span> }
+                                @if (room.AllowsPets) { <span><i class="fas fa-paw"></i> Cho thú cưng</span> }
+                                <span><i class="fas fa-ruler-combined"></i> @room.Area m²</span>
                             </div>
                         </div>
-                    </div>
+                    </article>
+                    roomIndex++;
                 }
             </div>
-        </div>
-    }
-}
-
-<style>
-    .transition-hover {
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
-    }
-
-        .transition-hover:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
         }
-</style>
+        else
+        {
+            <div class="home-empty">
+                <i class="fas fa-house-circle-check"></i>
+                <h3>Phòng trọ nổi bật đang được cập nhật</h3>
+                <p>Các bài đăng đã duyệt sẽ xuất hiện tại đây.</p>
+            </div>
+        }
+    </section>
+
+    <section class="home-benefits">
+        <div class="home-section">
+            <div class="home-benefits__heading">
+                <h2>Tại sao chọn Chỗ Ở Tiện Ích?</h2>
+                <p>Chúng tôi mang đến giải pháp tìm kiếm chỗ ở đơn giản, minh bạch và an toàn nhất cho sinh viên và người đi làm.</p>
+            </div>
+            <div class="benefit-grid">
+                <article class="benefit-card">
+                    <div class="benefit-card__icon benefit-card__icon--blue"><i class="fas fa-shield-halved"></i></div>
+                    <h3>Tin đăng xác thực</h3>
+                    <p>Tất cả tin đăng đều được kiểm duyệt trực tiếp, đảm bảo thông tin chính xác và hình ảnh thực tế.</p>
+                </article>
+                <article class="benefit-card">
+                    <div class="benefit-card__icon benefit-card__icon--orange"><i class="fas fa-hand-holding-dollar"></i></div>
+                    <h3>Không phí môi giới</h3>
+                    <p>Bạn làm việc trực tiếp với chủ nhà, không mất bất kỳ khoản phí trung gian nào.</p>
+                </article>
+                <article class="benefit-card">
+                    <div class="benefit-card__icon benefit-card__icon--peach"><i class="fas fa-magnifying-glass-location"></i></div>
+                    <h3>Tìm kiếm dễ dàng</h3>
+                    <p>Bộ lọc thông minh giúp bạn tìm được căn phòng ưng ý chỉ trong vài cú click chuột.</p>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    <section class="home-reviews">
+        <div class="home-section">
+            <div class="home-reviews__heading">
+                <span class="home-reviews__eyebrow"><i class="fas fa-circle-check"></i> Đánh giá đã xác minh</span>
+                <h2>Đánh giá từ khách hàng</h2>
+                <p>Chia sẻ từ những thành viên đã tìm và thuê phòng thành công qua Chỗ Ở Tiện Ích.</p>
+                <span class="home-reviews__demo">Dữ liệu minh họa giao diện</span>
+            </div>
+
+            <div class="review-grid">
+                <article class="review-card">
+                    <div class="review-card__top">
+                        <div class="review-card__stars" aria-label="5 trên 5 sao">
+                            <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                        </div>
+                        <span class="review-card__verified"><i class="fas fa-circle-check"></i> Đã thuê phòng</span>
+                    </div>
+                    <blockquote>“Mình tìm được phòng trọ ưng ý chỉ sau hai ngày tìm kiếm. Tin đăng có hình ảnh thực tế và thông tin rất rõ ràng.”</blockquote>
+                    <div class="review-card__author">
+                        <div class="review-card__avatar review-card__avatar--blue">MA</div>
+                        <div>
+                            <strong>Nguyễn Minh Anh</strong>
+                            <span>Sinh viên ĐHQG</span>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="review-card">
+                    <div class="review-card__top">
+                        <div class="review-card__stars" aria-label="5 trên 5 sao">
+                            <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                        </div>
+                        <span class="review-card__verified"><i class="fas fa-circle-check"></i> Đã thuê phòng</span>
+                    </div>
+                    <blockquote>“Dịch vụ hỗ trợ rất nhiệt tình. Mình yên tâm vì chủ nhà và bài đăng đều được xác thực rõ ràng.”</blockquote>
+                    <div class="review-card__author">
+                        <div class="review-card__avatar review-card__avatar--orange">HN</div>
+                        <div>
+                            <strong>Trần Hoàng Nam</strong>
+                            <span>Nhân viên văn phòng</span>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="review-card">
+                    <div class="review-card__top">
+                        <div class="review-card__stars" aria-label="5 trên 5 sao">
+                            <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                        </div>
+                        <span class="review-card__verified"><i class="fas fa-circle-check"></i> Đã thuê phòng</span>
+                    </div>
+                    <blockquote>“Giao diện dễ sử dụng, bộ lọc khu vực rất tiện. Mình tìm được phòng gần công ty với mức giá phù hợp.”</blockquote>
+                    <div class="review-card__author">
+                        <div class="review-card__avatar review-card__avatar--peach">TT</div>
+                        <div>
+                            <strong>Lê Thị Thu Thảo</strong>
+                            <span>Sinh viên năm cuối</span>
+                        </div>
+                    </div>
+                </article>
+            </div>
+
+            <p class="home-reviews__notice">
+                <i class="fas fa-shield-halved"></i>
+                Khi chức năng đặt phòng được kích hoạt, chỉ tài khoản hoàn tất thuê phòng mới có quyền gửi đánh giá.
+            </p>
+        </div>
+    </section>
+</div>
 
 @section Scripts {
     <script>
         document.addEventListener("DOMContentLoaded", function () {
             const citySelect = document.getElementById("citySelect");
             const districtSelect = document.getElementById("districtSelect");
-
-            // Bắt sự kiện khi người dùng thay đổi Thành phố ở Form tìm kiếm
-            if (citySelect && districtSelect) {
-                citySelect.addEventListener("change", async function () {
-                    const cityId = this.value;
-
-                    // Reset lại dropdown Quận/Huyện
-                    districtSelect.innerHTML = '<option value="" selected disabled>-- Đang tải... --</option>';
-                    districtSelect.disabled = true;
-
-                    if (!cityId) return;
-
-                    try {
-                        // Gọi API bất đồng bộ để lấy danh sách Quận/Huyện có phòng
-                        const response = await fetch(`/Home/GetDistrictsWithRooms?cityId=${cityId}`);
-                        
-                        if (!response.ok) throw new Error("Lỗi mạng khi tải dữ liệu");
-                        
-                        const districts = await response.json();
-
-                        // Xóa option "Đang tải..."
-                        districtSelect.innerHTML = '<option value="" selected disabled>-- Chọn Quận/Huyện --</option>';
-
-                        if (districts.length > 0) {
-                            // Mở khóa dropdown và đổ dữ liệu vào
-                            districts.forEach(d => {
-                                const option = document.createElement("option");
-                                option.value = d.id;
-                                option.textContent = d.name;
-                                districtSelect.appendChild(option);
-                            });
-                            districtSelect.disabled = false;
-                        } else {
-                            // Nếu không có quận huyện nào có phòng
-                            districtSelect.innerHTML = '<option value="" selected disabled>Hiện chưa có phòng tại khu vực này</option>';
-                        }
-                    } catch (error) {
-                        console.error("Lỗi:", error);
-                        districtSelect.innerHTML = '<option value="" selected disabled>Lỗi tải dữ liệu</option>';
-                    }
-                });
-            }
+            citySelect?.addEventListener("change", async function () {
+                districtSelect.innerHTML = '<option value="" selected>Đang tải...</option>';
+                districtSelect.disabled = true;
+                try {
+                    const response = await fetch(`/Home/GetDistrictsWithRooms?cityId=${this.value}`);
+                    if (!response.ok) throw new Error();
+                    const districts = await response.json();
+                    districtSelect.innerHTML = '<option value="" selected>Tất cả khu vực</option>';
+                    districts.forEach(district => {
+                        const option = document.createElement("option");
+                        option.value = district.id;
+                        option.textContent = district.name;
+                        districtSelect.appendChild(option);
+                    });
+                    districtSelect.disabled = false;
+                } catch {
+                    districtSelect.innerHTML = '<option value="" selected>Lỗi tải dữ liệu</option>';
+                }
+            });
         });
     </script>
 }

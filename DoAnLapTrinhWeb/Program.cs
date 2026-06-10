@@ -1,11 +1,13 @@
 using Microsoft.EntityFrameworkCore;
 using DoAnLapTrinhWeb.Data;
+using DoAnLapTrinhWeb.Hubs;
 using Microsoft.AspNetCore.Authentication.Cookies;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
+builder.Services.AddSignalR();
 
 // Đăng ký AppDbContext kết nối với SQL Server
 builder.Services.AddDbContext<AppDbContext>(options =>
@@ -54,6 +56,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapStaticAssets();
+app.MapHub<AccommodationHub>("/hubs/accommodations");
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}")
@@ -92,6 +95,7 @@ using (var scope = app.Services.CreateScope())
             context.Users.Add(new DoAnLapTrinhWeb.Models.AppUser
             {
                 FullName = "Quản Trị Viên",
+                UserName = "admin",
                 Email = "admin@tienichtro.com",
                 PasswordHash = adminPasswordHash,
                 Role = "Admin",
