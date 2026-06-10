@@ -1,0 +1,58 @@
+﻿@model IEnumerable<DoAnLapTrinhWeb.Models.Accommodation>
+@{
+    ViewData["Title"] = "Quản lý bài đăng";
+}
+
+<div class="container mt-5">
+    <h3 class="fw-bold text-danger border-bottom pb-2"><i class="fas fa-shield-alt"></i> Khu Vực Admin: Duyệt Bài Đăng</h3>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success mt-3">@TempData["Success"]</div>
+    }
+
+    <div class="table-responsive mt-4">
+        <table class="table table-bordered table-hover align-middle">
+            <thead class="table-dark">
+                <tr>
+                    <th>Ngày đăng</th>
+                    <th>Chủ trọ</th>
+                    <th>Tiêu đề</th>
+                    <th>Giá (VNĐ)</th>
+                    <th class="text-center">Hành động</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model != null && Model.Any())
+                {
+                    @foreach (var item in Model)
+                    {
+                        <tr>
+                            <td>@item.CreatedAt.ToString("dd/MM/yyyy HH:mm")</td>
+                            <td>@item.Owner?.FullName</td>
+                            <td class="text-truncate" style="max-width: 250px;">@item.Title</td>
+                            <td>@item.Price.ToString("N0")</td>
+                            <td class="text-center">
+                                <a href="/Accommodation/Details/@item.Id" class="btn btn-sm btn-info text-white" target="_blank"><i class="fas fa-eye"></i> Xem trước</a>
+                                
+                                <form action="/Admin/Approve" method="post" class="d-inline">
+                                    <input type="hidden" name="id" value="@item.Id" />
+                                    <button type="submit" class="btn btn-sm btn-success"><i class="fas fa-check"></i> Duyệt</button>
+                                </form>
+
+                                <form action="/Admin/Delete" method="post" class="d-inline" onsubmit="return confirm('Bạn có chắc chắn muốn xóa bài đăng này không?');">
+                                    <input type="hidden" name="id" value="@item.Id" />
+                                    <button type="submit" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i> Từ chối</button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr><td colspan="5" class="text-center py-4">Hiện không có bài đăng nào cần duyệt.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

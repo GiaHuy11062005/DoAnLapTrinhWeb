@@ -1,0 +1,93 @@
+﻿@model IEnumerable<DoAnLapTrinhWeb.Models.Accommodation>
+@{
+    ViewData["Title"] = "Phòng trọ yêu thích";
+}
+
+<div class="container mt-5 mb-5" style="min-height: 60vh;">
+    <div class="d-flex justify-content-between align-items-center border-bottom pb-3 mb-4">
+        <h2 class="fw-bold text-primary"><i class="fas fa-heart text-danger"></i> Mục Ưa Thích Của Bạn</h2>
+    </div>
+
+    @if (Model != null && Model.Any())
+    {
+        <div class="row">
+            @foreach (var room in Model)
+            {
+                <div class="col-md-4 mb-4" id="room-card-@room.Id">
+                    <div class="card h-100 shadow-sm border-0 transition-hover">
+                        <button onclick="toggleFavorite(@room.Id)" class="btn btn-light position-absolute top-0 end-0 m-2 rounded-circle shadow-sm" title="Bỏ thích" style="z-index: 10;">
+                            <i class="fas fa-heart text-danger" id="heart-icon-@room.Id"></i>
+                        </button>
+
+                        @{
+                            var firstImage = (room.Images != null && room.Images.Any())
+                                ? room.Images.First().ImageUrl
+                                : "/images/default-room.jpg";
+                        }
+                        <img src="@firstImage" class="card-img-top" alt="@room.Title" style="height: 220px; object-fit: cover; border-radius: 8px 8px 0 0;">
+                        
+                        <div class="card-body">
+                            <h5 class="card-title text-truncate fw-bold" title="@room.Title">@room.Title</h5>
+                            <p class="card-text text-danger fw-bold fs-5 mb-2">@room.Price.ToString("N0") VNĐ/tháng</p>
+                            
+                            <p class="card-text text-muted small mb-1">
+                                <i class="fas fa-expand-arrows-alt"></i> Diện tích: @room.Area m²
+                            </p>
+                            <p class="card-text text-muted small text-truncate" title="@room.SpecificAddress">
+                                <i class="fas fa-map-pin"></i> @room.SpecificAddress
+                            </p>
+                        </div>
+                        
+                        <div class="card-footer bg-white border-top-0 pb-3">
+                            <a href="/Accommodation/Details/@room.Id" class="btn btn-outline-primary w-100 rounded-pill">
+                                Xem chi tiết
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="text-center py-5">
+            <img src="/images/empty-wishlist.png" alt="Trống" style="width: 200px; opacity: 0.5" class="mb-3">
+            <h4 class="text-muted">Bạn chưa lưu phòng trọ nào.</h4>
+            <a href="/" class="btn btn-primary mt-3"><i class="fas fa-search"></i> Khám phá ngay</a>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        // Hàm AJAX gọi API để xóa phòng khỏi yêu thích ngay trên trang này
+        async function toggleFavorite(roomId) {
+            try {
+                const response = await fetch('/Favorite/ToggleFavorite', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `accommodationId=${roomId}`
+                });
+
+                if (response.status === 401) {
+                    window.location.href = "/Auth/Login";
+                    return;
+                }
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    // [Inference] Giả định bạn muốn ẩn luôn thẻ card khi người dùng bỏ thích trong trang danh sách này
+                    if (!data.isFavorited) {
+                        document.getElementById(`room-card-${roomId}`).style.display = 'none';
+                    }
+                }
+            } catch (error) {
+                console.error("Lỗi xử lý yêu thích:", error);
+                alert("Có lỗi xảy ra, vui lòng thử lại sau.");
+            }
+        }
+    </script>
+}

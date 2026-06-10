@@ -1,0 +1,65 @@
+﻿@{
+    ViewData["Title"] = "Đăng ký tài khoản";
+}
+
+<div class="container mt-5 mb-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white text-center">
+                    <h4>Đăng Ký Tài Khoản</h4>
+                </div>
+                <div class="card-body p-4">
+                    @if (ViewBag.Error != null)
+                    {
+                        <div class="alert alert-danger">@ViewBag.Error</div>
+                    }
+
+                    <form asp-action="Register" method="post">
+                        <div class="mb-3">
+                            <label class="form-label">Họ và tên <span class="text-danger">*</span></label>
+                            <input type="text" name="FullName" class="form-control" required />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Email <span class="text-danger">*</span></label>
+                            <input type="email" name="Email" class="form-control" required />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Mật khẩu <span class="text-danger">*</span></label>
+                            <input type="password" name="PasswordHash" class="form-control" required />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Bạn là? (Không bắt buộc)</label>
+                            <select name="UserIdentity" class="form-select">
+                                <option value="">-- Bỏ qua --</option>
+                                <option value="Student">Sinh viên</option>
+                                <option value="Worker">Người đi làm</option>
+                            </select>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <label class="form-label">Tỉnh / Thành phố <span class="text-danger">*</span></label>
+                                <select name="CityId" class="form-select" required>
+                                    <option value="" selected disabled>-- Chọn --</option>
+                                    @if (ViewBag.Cities != null)
+                                    {
+                                        foreach (var city in ViewBag.Cities)
+                                        {
+                                            <option value="@city.Id">@city.Name</option>
+                                        }
+                                    }
+                                </select>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100">Đăng Ký</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

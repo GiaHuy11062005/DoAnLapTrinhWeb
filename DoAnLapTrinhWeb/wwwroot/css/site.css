@@ -1,0 +1,80 @@
+/* Nhúng Font chữ Be Vietnam Pro dành riêng cho tiếng Việt */
+@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700&display=swap');
+
+:root {
+    /* Đổi tông màu chủ đạo sang Cam Trendy (Giống Nhà Tốt) hoặc Xanh Tím Hiện Đại */
+    --primary-color: #FF6B00; /* Màu cam nổi bật, kích thích hành động */
+    --primary-hover: #E56000;
+    --bg-color: #F8F9FA;
+    --text-main: #2C3E50;
+    --card-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+    --hover-shadow: 0 15px 35px rgba(255, 107, 0, 0.15);
+    --radius-lg: 16px;
+    --radius-md: 12px;
+}
+
+body {
+    font-family: 'Be Vietnam Pro', sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-main);
+    letter-spacing: 0.2px;
+}
+
+/* Nâng cấp các thẻ Card (Khung chứa) */
+.card {
+    border: none !important;
+    border-radius: var(--radius-lg) !important;
+    box-shadow: var(--card-shadow);
+    transition: all 0.3s ease;
+    background: #ffffff;
+}
+
+    .card:hover {
+        box-shadow: var(--hover-shadow);
+        transform: translateY(-4px);
+    }
+
+/* Nâng cấp toàn bộ Nút bấm (Button) */
+.btn {
+    border-radius: 50rem !important; /* Bo tròn hoàn toàn */
+    padding: 10px 24px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-primary {
+    background-color: var(--primary-color) !important;
+    border-color: var(--primary-color) !important;
+    color: white !important;
+}
+
+    .btn-primary:hover {
+        background-color: var(--primary-hover) !important;
+        box-shadow: 0 8px 20px rgba(255, 107, 0, 0.3);
+        transform: translateY(-2px);
+    }
+
+/* Hiệu ứng kính (Glassmorphism) cho Navbar */
+.navbar-glass {
+    background: rgba(255, 255, 255, 0.9) !important;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+}
+
+/* Các Input Form (Ô nhập liệu) */
+.form-control, .form-select {
+    border-radius: var(--radius-md);
+    padding: 12px 16px;
+    border: 1px solid #E2E8F0;
+    background-color: #F8FAFC;
+    box-shadow: none !important;
+    transition: all 0.3s;
+}
+
+    .form-control:focus, .form-select:focus {
+        background-color: #FFFFFF;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 4px rgba(255, 107, 0, 0.1) !important;
+    }
