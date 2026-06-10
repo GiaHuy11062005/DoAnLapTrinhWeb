@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
@@ -18,7 +18,8 @@ namespace DoAnLapTrinhWeb.Data
 
         public static async Task SeedLocationsAsync(AppDbContext context)
         {
-            // Nếu đã có City rồi thì chỉ backfill link Google Maps cho bản ghi cũ.
+            // Nếu đã có City rồi thì chỉ backfill link Google Maps cho bản ghi cũ,
+            // và kiểm tra xem có cần seed Ward không.
             if (await context.Cities.AnyAsync())
             {
                 var existingCities = await context.Cities.ToListAsync();
@@ -38,6 +39,8 @@ namespace DoAnLapTrinhWeb.Data
                     await context.SaveChangesAsync();
                 }
 
+                // Seed Ward nếu chưa có
+                await SeedWardsAsync(context);
                 return;
             }
 
@@ -52,7 +55,7 @@ namespace DoAnLapTrinhWeb.Data
                 // Đọc nội dung JSON bất đồng bộ
                 var jsonString = await response.Content.ReadAsStringAsync();
 
-                // Parse JSON (Sử dụng using để giải phóng bộ nhớ sau khi parse xong)
+                // Parse JSON
                 using var document = JsonDocument.Parse(jsonString);
                 var root = document.RootElement;
 
@@ -63,7 +66,6 @@ namespace DoAnLapTrinhWeb.Data
                 {
                     int cityCode = cityElement.GetProperty("code").GetInt32();
 
-                    // LỌC THÔNG MINH: Chỉ lấy dữ liệu nếu thuộc 3 thành phố yêu cầu
                     if (targetCityCodes.Contains(cityCode))
                     {
                         var city = new City
@@ -74,7 +76,6 @@ namespace DoAnLapTrinhWeb.Data
                             Districts = new List<District>()
                         };
 
-                        // Duyệt mảng Quận/Huyện của riêng thành phố đó
                         if (cityElement.TryGetProperty("districts", out var districtsElement) && districtsElement.ValueKind == JsonValueKind.Array)
                         {
                             foreach (var distElement in districtsElement.EnumerateArray())
@@ -87,18 +88,99 @@ namespace DoAnLapTrinhWeb.Data
                             }
                         }
 
-                        // THÊM VÀO DATABASE BẤT ĐỒNG BỘ
                         await context.Cities.AddAsync(city);
                     }
                 }
 
-                // LƯU THAY ĐỔI XUỐNG SQL SERVER
                 await context.SaveChangesAsync();
                 Console.WriteLine("Đã đồng bộ thành công dữ liệu các quận/huyện thuộc Hà Nội, Đà Nẵng và TP.HCM từ API!");
+
+                // Sau khi seed City+District xong thì seed Ward
+                await SeedWardsAsync(context);
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Lỗi khi lấy dữ liệu API: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Seed Phường/Xã từ API provinces.open-api.vn.
+        /// Chỉ seed nếu bảng Wards chưa có dữ liệu.
+        /// </summary>
+        private static async Task SeedWardsAsync(AppDbContext context)
+        {
+            // Kiểm tra nếu Wards đã có dữ liệu thì bỏ qua
+            try
+            {
+                if (await context.Wards.AnyAsync())
+                {
+                    return;
+                }
+            }
+            catch
+            {
+                // Bảng chưa tồn tại (chưa migrate) → bỏ qua
+                return;
+            }
+
+            var districts = await context.Districts.ToListAsync();
+            if (!districts.Any()) return;
+
+            using HttpClient client = new HttpClient();
+            client.Timeout = TimeSpan.FromSeconds(60);
+
+            int seededCount = 0;
+            int batchSize = 0;
+
+            foreach (var district in districts)
+            {
+                try
+                {
+                    // Gọi API lấy danh sách Phường/Xã theo mã quận/huyện
+                    var response = await client.GetAsync($"https://provinces.open-api.vn/api/d/{district.ApiCode}?depth=2");
+                    if (!response.IsSuccessStatusCode) continue;
+
+                    var jsonString = await response.Content.ReadAsStringAsync();
+                    using var doc = JsonDocument.Parse(jsonString);
+                    var root = doc.RootElement;
+
+                    if (!root.TryGetProperty("wards", out var wardsElement) || wardsElement.ValueKind != JsonValueKind.Array)
+                        continue;
+
+                    foreach (var wardElement in wardsElement.EnumerateArray())
+                    {
+                        context.Wards.Add(new Ward
+                        {
+                            Name = wardElement.GetProperty("name").GetString() ?? "",
+                            ApiCode = wardElement.GetProperty("code").GetInt32(),
+                            DistrictId = district.Id
+                        });
+                        seededCount++;
+                    }
+
+                    batchSize++;
+
+                    // Lưu mỗi 5 quận để tránh timeout
+                    if (batchSize % 5 == 0)
+                    {
+                        await context.SaveChangesAsync();
+                    }
+
+                    // Delay nhỏ để không spam API
+                    await Task.Delay(150);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Lỗi seed Ward cho quận {district.Name}: {ex.Message}");
+                }
+            }
+
+            // Lưu phần còn lại
+            if (seededCount > 0)
+            {
+                await context.SaveChangesAsync();
+                Console.WriteLine($"Đã seed {seededCount} Phường/Xã thành công!");
             }
         }
     }

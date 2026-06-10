@@ -1,4 +1,4 @@
-﻿using DoAnLapTrinhWeb.Data;
+using DoAnLapTrinhWeb.Data;
 using DoAnLapTrinhWeb.Models;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -219,23 +219,21 @@ namespace DoAnLapTrinhWeb.Controllers
 
             if (user != null)
             {
-                // TÍNH NĂNG ÉP CHỌN ROLE:
-                // Nếu tài khoản cũ chưa có Định danh V2 (Sinh viên/Đi làm) hoặc chưa có Role rõ ràng
-                if (string.IsNullOrEmpty(user.UserIdentity) || string.IsNullOrEmpty(user.Role))
+                // Tài khoản đã tồn tại → đăng nhập thẳng, không yêu cầu chọn vai trò
+                // Nếu Role chưa có thì mặc định là "User"
+                if (string.IsNullOrEmpty(user.Role))
                 {
-                    // Ép chuyển hướng sang trang Hoàn thiện hồ sơ
-                    TempData["GoogleEmail"] = email;
-                    TempData["GoogleName"] = user.FullName ?? fullName;
-                    return RedirectToAction("CompleteProfile");
+                    user.Role = "User";
+                    _context.Users.Update(user);
+                    await _context.SaveChangesAsync();
                 }
 
-                // Nếu đã đầy đủ thông tin thì cho đăng nhập bình thường
                 var claims = new List<Claim>
                 {
                     new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
                     new Claim(ClaimTypes.Name, user.FullName ?? ""),
                     new Claim(ClaimTypes.Email, user.Email ?? ""),
-                    new Claim(ClaimTypes.Role, user.Role ?? ""),
+                    new Claim(ClaimTypes.Role, user.Role ?? "User"),
                     new Claim("UserIdentity", user.UserIdentity ?? "")
                 };
 
@@ -247,7 +245,7 @@ namespace DoAnLapTrinhWeb.Controllers
             }
             else
             {
-                // Người mới tinh
+                // Người dùng hoàn toàn mới → yêu cầu chọn định danh
                 TempData["GoogleEmail"] = email;
                 TempData["GoogleName"] = fullName;
                 return RedirectToAction("CompleteProfile");
@@ -269,30 +267,34 @@ namespace DoAnLapTrinhWeb.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> CompleteProfile(string email, string fullName, string role, string userIdentity)
+        public async Task<IActionResult> CompleteProfile(string email, string fullName, string userIdentity)
         {
-            // Kiểm tra xem user này đã tồn tại trong DB chưa
+            // Trang CompleteProfile chỉ dành cho người dùng MỚI chưa có tài khoản
+            // Role luôn là "User" - muốn trở thành Chủ trọ thì đăng ký trong trang Profile
             var existingUser = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
             AppUser userToLogin;
 
             if (existingUser != null)
             {
-                // NẾU TÀI KHOẢN ĐÃ TỒN TẠI -> CẬP NHẬT DỮ LIỆU (KHÔNG CẦN SQL)
-                existingUser.Role = role;
-                existingUser.UserIdentity = userIdentity;
+                // Trường hợp tài khoản đã tồn tại (không nên xảy ra nữa sau khi fix)
+                // Chỉ cập nhật định danh nếu chưa có
+                if (string.IsNullOrEmpty(existingUser.UserIdentity))
+                    existingUser.UserIdentity = userIdentity;
+                if (string.IsNullOrEmpty(existingUser.Role))
+                    existingUser.Role = "User";
 
                 _context.Users.Update(existingUser);
                 userToLogin = existingUser;
             }
             else
             {
-                // NẾU TÀI KHOẢN MỚI -> TẠO MỚI
+                // Tạo tài khoản mới với Role mặc định là "User"
                 var newUser = new AppUser
                 {
                     Email = email,
                     FullName = fullName,
-                    Role = role,
-                    UserIdentity = userIdentity, // Lưu định danh Sinh viên/Người đi làm
+                    Role = "User",
+                    UserIdentity = userIdentity,
                     IsEmailConfirmed = true,
                     PasswordHash = "Google_No_Password"
                 };
@@ -303,50 +305,21 @@ namespace DoAnLapTrinhWeb.Controllers
 
             await _context.SaveChangesAsync();
 
-            // Cấp Cookie đăng nhập với quyền vừa chọn
+            // Cấp Cookie đăng nhập
             var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.NameIdentifier, userToLogin.Id.ToString()),
                 new Claim(ClaimTypes.Name, userToLogin.FullName ?? ""),
                 new Claim(ClaimTypes.Email, userToLogin.Email ?? ""),
-                new Claim(ClaimTypes.Role, userToLogin.Role ?? ""),
+                new Claim(ClaimTypes.Role, userToLogin.Role ?? "User"),
                 new Claim("UserIdentity", userToLogin.UserIdentity ?? "")
             };
 
             var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
             await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(claimsIdentity));
 
-            if (userToLogin.Role == "Admin") return RedirectToAction("Index", "Admin");
             return RedirectToAction("Index", "Home");
         }
 
-        // ==========================================
-        // CÔNG CỤ RESET QUYỀN (Không cần mở SQL)
-        // ==========================================
-        [HttpGet]
-        public async Task<IActionResult> ResetMyRole()
-        {
-            // Lấy email của tài khoản đang đăng nhập hiện tại
-            var email = User.FindFirstValue(ClaimTypes.Email);
-
-            if (string.IsNullOrEmpty(email))
-                return Content("Bạn chưa đăng nhập! Hãy đăng nhập trước.");
-
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
-            if (user != null)
-            {
-                // Xóa sạch Role và Định danh cũ trong Database
-                user.Role = null;
-                user.UserIdentity = null;
-                await _context.SaveChangesAsync();
-
-                // Đăng xuất để xóa luôn Cookie cũ
-                await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-
-                return Content("Đã xóa quyền cũ thành công! Bây giờ bạn hãy quay lại Trang chủ, bấm Đăng nhập bằng Google, Form chọn Chủ trọ sẽ hiện ra.");
-            }
-
-            return Content("Không tìm thấy tài khoản trong hệ thống.");
-        }
     }
 }

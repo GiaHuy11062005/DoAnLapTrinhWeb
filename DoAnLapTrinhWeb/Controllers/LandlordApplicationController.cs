@@ -34,6 +34,12 @@ namespace DoAnLapTrinhWeb.Controllers
                 return RedirectToAction("Login", "Auth");
             }
 
+            if (string.Equals(user.Role, "Admin", StringComparison.OrdinalIgnoreCase))
+            {
+                TempData["Info"] = "Tài khoản Admin không cần đăng ký làm chủ trọ.";
+                return RedirectToAction("Index", "Admin");
+            }
+
             if (string.Equals(user.Role, "Landlord", StringComparison.OrdinalIgnoreCase))
             {
                 TempData["Info"] = "Tài khoản của bạn đã là chủ trọ rồi.";
@@ -59,6 +65,12 @@ namespace DoAnLapTrinhWeb.Controllers
             if (user == null)
             {
                 return RedirectToAction("Login", "Auth");
+            }
+
+            if (string.Equals(user.Role, "Admin", StringComparison.OrdinalIgnoreCase))
+            {
+                TempData["Info"] = "Tài khoản Admin không cần đăng ký làm chủ trọ.";
+                return RedirectToAction("Index", "Admin");
             }
 
             if (string.Equals(user.Role, "Landlord", StringComparison.OrdinalIgnoreCase))

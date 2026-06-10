@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Admin Dashboard</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: '#3b82f6',
+                        secondary: '#64748b',
+                        darkBg: '#0f172a',
+                        darkCard: '#1e293b'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        /* Custom Scrollbar for a modern look */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        .dark ::-webkit-scrollbar-thumb { background: #475569; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 dark:bg-darkBg dark:text-gray-200 transition-colors duration-200 flex h-screen overflow-hidden">
+
+    <!-- Sidebar -->
+    <aside id="sidebar" class="w-64 bg-white dark:bg-darkCard border-r border-gray-200 dark:border-gray-800 flex-shrink-0 hidden md:flex flex-col transition-all duration-300">
+        <!-- Logo -->
+        <div class="h-16 flex items-center px-6 border-b border-gray-100 dark:border-gray-800">
+            <i class="fas fa-home text-blue-600 text-2xl mr-3"></i>
+            <span class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">TiệnÍchTrọ</span>
+        </div>
+
+        <!-- Navigation -->
+        <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1">
+            <a href="/Admin/Index" class="flex items-center px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-gray-800 dark:hover:text-blue-400 group transition-colors @(Context.Request.Path == "/Admin/Index" ? "bg-blue-50 text-blue-600 dark:bg-gray-800 dark:text-blue-400" : "text-gray-700 dark:text-gray-300")">
+                <i class="fas fa-chart-pie w-6 text-center text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 @(Context.Request.Path == "/Admin/Index" ? "text-blue-600 dark:text-blue-400" : "")"></i>
+                <span class="ml-3">Dashboard</span>
+            </a>
+            
+            <a href="/Admin/Accommodations" class="flex items-center px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-gray-800 dark:hover:text-blue-400 group transition-colors @(Context.Request.Path.Value != null && Context.Request.Path.Value.Contains("Accommodations") ? "bg-blue-50 text-blue-600 dark:bg-gray-800 dark:text-blue-400" : "text-gray-700 dark:text-gray-300")">
+                <i class="fas fa-building w-6 text-center text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 @(Context.Request.Path.Value != null && Context.Request.Path.Value.Contains("Accommodations") ? "text-blue-600 dark:text-blue-400" : "")"></i>
+                <span class="ml-3">Quản lý Phòng Trọ</span>
+            </a>
+
+            <a href="/Admin/Users" class="flex items-center px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-gray-800 dark:hover:text-blue-400 group transition-colors @(Context.Request.Path.Value != null && Context.Request.Path.Value.Contains("Users") ? "bg-blue-50 text-blue-600 dark:bg-gray-800 dark:text-blue-400" : "text-gray-700 dark:text-gray-300")">
+                <i class="fas fa-users w-6 text-center text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 @(Context.Request.Path.Value != null && Context.Request.Path.Value.Contains("Users") ? "text-blue-600 dark:text-blue-400" : "")"></i>
+                <span class="ml-3">Quản lý Người Dùng</span>
+            </a>
+
+            <div class="pt-4 mt-4 border-t border-gray-100 dark:border-gray-800">
+                <p class="px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Phê Duyệt</p>
+                <a href="/Admin/PendingLandlords" class="flex items-center px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-purple-50 hover:text-purple-600 dark:hover:bg-gray-800 dark:hover:text-purple-400 transition-colors @(Context.Request.Path.Value != null && Context.Request.Path.Value.Contains("PendingLandlords") ? "bg-purple-50 text-purple-600 dark:bg-gray-800 dark:text-purple-400" : "text-gray-700 dark:text-gray-300")">
+                    <i class="fas fa-id-card w-6 text-center text-gray-400 @(Context.Request.Path.Value != null && Context.Request.Path.Value.Contains("PendingLandlords") ? "text-purple-600 dark:text-purple-400" : "")"></i>
+                    <span class="ml-3">Đăng ký Chủ trọ</span>
+                </a>
+                <a href="/Admin/PendingAccommodations" class="flex items-center px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-gray-800 dark:hover:text-blue-400 transition-colors @(Context.Request.Path.Value != null && Context.Request.Path.Value.Contains("PendingAccommodations") ? "bg-blue-50 text-blue-600 dark:bg-gray-800 dark:text-blue-400" : "text-gray-700 dark:text-gray-300")">
+                    <i class="fas fa-file-signature w-6 text-center text-gray-400 @(Context.Request.Path.Value != null && Context.Request.Path.Value.Contains("PendingAccommodations") ? "text-blue-600 dark:text-blue-400" : "")"></i>
+                    <span class="ml-3">Bài đăng chờ duyệt</span>
+                </a>
+            </div>
+        </nav>
+
+        <!-- Bottom User info -->
+        <div class="p-4 border-t border-gray-100 dark:border-gray-800">
+            <a href="/Home/Index" class="flex items-center justify-center w-full px-4 py-2 text-sm font-medium text-white bg-gray-800 dark:bg-gray-700 rounded-lg hover:bg-gray-900 transition-colors">
+                <i class="fas fa-external-link-alt mr-2"></i> Ra trang chủ
+            </a>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="flex-1 flex flex-col overflow-hidden">
+        <!-- Top Header -->
+        <header class="h-16 bg-white dark:bg-darkCard border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-4 sm:px-6 z-10">
+            <!-- Mobile Menu Button -->
+            <button id="mobileMenuBtn" class="md:hidden text-gray-500 hover:text-gray-700 focus:outline-none">
+                <i class="fas fa-bars text-xl"></i>
+            </button>
+
+            <!-- Search Bar -->
+            <div class="hidden sm:flex flex-1 max-w-md ml-4 md:ml-0 relative">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <i class="fas fa-search text-gray-400"></i>
+                </div>
+                <input type="text" class="block w-full pl-10 pr-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg leading-5 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-500 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 sm:text-sm transition-colors" placeholder="Tìm kiếm phòng trọ, mã đơn...">
+            </div>
+
+            <!-- Right Actions -->
+            <div class="flex items-center space-x-4 ml-auto">
+                <!-- Dark Mode Toggle -->
+                <button id="darkModeToggle" class="text-gray-400 hover:text-yellow-500 transition-colors focus:outline-none">
+                    <i class="fas fa-moon text-lg" id="darkModeIcon"></i>
+                </button>
+
+                <!-- Notifications -->
+                <div class="relative">
+                    <button id="notificationBtn" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 relative focus:outline-none">
+                        <i class="far fa-bell text-xl"></i>
+                        <span class="absolute top-0 right-0 -mt-1 -mr-1 flex h-3 w-3">
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                            <span class="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                        </span>
+                    </button>
+                    <!-- Notification Dropdown -->
+                    <div id="notificationDropdown" class="hidden origin-top-right absolute right-0 mt-2 w-80 rounded-md shadow-lg bg-white dark:bg-darkCard ring-1 ring-black ring-opacity-5 focus:outline-none z-50">
+                        <div class="px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center">
+                            <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Thông báo mới</h3>
+                            <span class="text-xs text-blue-600 dark:text-blue-400 cursor-pointer hover:underline">Đánh dấu đã đọc</span>
+                        </div>
+                        <div class="max-h-64 overflow-y-auto">
+                            <a href="/Admin/Index" class="block px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 border-b border-gray-100 dark:border-gray-800 last:border-0 transition-colors">
+                                <div class="flex items-start">
+                                    <div class="flex-shrink-0 bg-blue-100 dark:bg-blue-900/30 rounded-full p-2">
+                                        <i class="fas fa-file-signature text-blue-600 dark:text-blue-400"></i>
+                                    </div>
+                                    <div class="ml-3 w-0 flex-1">
+                                        <p class="text-sm font-medium text-gray-900 dark:text-white">Có đơn đăng ký chủ trọ mới</p>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Nguyễn Văn A vừa gửi yêu cầu làm chủ trọ.</p>
+                                        <p class="text-xs text-gray-400 mt-1">10 phút trước</p>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                        <div class="px-4 py-2 border-t border-gray-100 dark:border-gray-800 text-center">
+                            <a href="#" class="text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-500">Xem tất cả thông báo</a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- User Dropdown -->
+                <div class="relative">
+                    <button class="flex items-center focus:outline-none" id="userMenuBtn">
+                        <img class="h-8 w-8 rounded-full object-cover border border-gray-200 dark:border-gray-700" src="https://ui-avatars.com/api/?name=Admin&background=0D8ABC&color=fff" alt="Avatar">
+                        <span class="ml-2 text-sm font-medium hidden sm:block">phamquynhkik2k5@gmail.com</span>
+                        <i class="fas fa-chevron-down ml-2 text-xs text-gray-400"></i>
+                    </button>
+                    <!-- Dropdown Content (Hidden by default) -->
+                    <div id="userDropdown" class="hidden origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white dark:bg-darkCard ring-1 ring-black ring-opacity-5 py-1 focus:outline-none">
+                        <a href="/Profile/Update" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">Hồ sơ của tôi</a>
+                        <a href="#" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">Cài đặt</a>
+                        <form action="/Auth/Logout" method="post" class="border-t border-gray-100 dark:border-gray-800 mt-1 pt-1">
+                            <button type="submit" class="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20">Đăng xuất</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Workspace -->
+        <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 dark:bg-darkBg p-4 sm:p-6 lg:p-8 relative">
+            
+            <!-- Hiển thị thông báo (Toast) -->
+            @if (TempData["Success"] != null)
+            {
+                <div id="toast-success" class="fixed top-20 right-5 z-50 flex items-center w-full max-w-xs p-4 mb-4 text-gray-500 bg-white rounded-lg shadow-lg dark:text-gray-400 dark:bg-gray-800 border-l-4 border-green-500 transition-all duration-300 transform translate-x-0" role="alert">
+                    <div class="inline-flex items-center justify-center flex-shrink-0 w-8 h-8 text-green-500 bg-green-100 rounded-lg dark:bg-green-800 dark:text-green-200">
+                        <i class="fas fa-check"></i>
+                    </div>
+                    <div class="ml-3 text-sm font-medium text-gray-800 dark:text-gray-100">@TempData["Success"]</div>
+                    <button type="button" class="ml-auto -mx-1.5 -my-1.5 bg-white text-gray-400 hover:text-gray-900 rounded-lg focus:ring-2 focus:ring-gray-300 p-1.5 hover:bg-gray-100 inline-flex h-8 w-8 dark:text-gray-500 dark:hover:text-white dark:bg-gray-800 dark:hover:bg-gray-700" onclick="document.getElementById('toast-success').remove()" aria-label="Close">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <script>setTimeout(() => { const el = document.getElementById('toast-success'); if(el) el.remove(); }, 5000);</script>
+            }
+
+            @if (TempData["Error"] != null)
+            {
+                <div id="toast-error" class="fixed top-20 right-5 z-50 flex items-center w-full max-w-xs p-4 mb-4 text-gray-500 bg-white rounded-lg shadow-lg dark:text-gray-400 dark:bg-gray-800 border-l-4 border-red-500 transition-all duration-300 transform translate-x-0" role="alert">
+                    <div class="inline-flex items-center justify-center flex-shrink-0 w-8 h-8 text-red-500 bg-red-100 rounded-lg dark:bg-red-800 dark:text-red-200">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <div class="ml-3 text-sm font-medium text-gray-800 dark:text-gray-100">@TempData["Error"]</div>
+                    <button type="button" class="ml-auto -mx-1.5 -my-1.5 bg-white text-gray-400 hover:text-gray-900 rounded-lg focus:ring-2 focus:ring-gray-300 p-1.5 hover:bg-gray-100 inline-flex h-8 w-8 dark:text-gray-500 dark:hover:text-white dark:bg-gray-800 dark:hover:bg-gray-700" onclick="document.getElementById('toast-error').remove()" aria-label="Close">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <script>setTimeout(() => { const el = document.getElementById('toast-error'); if(el) el.remove(); }, 5000);</script>
+            }
+
+            @RenderBody()
+        </main>
+    </div>
+
+    <!-- Mobile Sidebar Overlay -->
+    <div id="sidebarOverlay" class="fixed inset-0 bg-gray-900 bg-opacity-50 z-20 hidden md:hidden"></div>
+
+    <script>
+        // Dark Mode Logic
+        const html = document.documentElement;
+        const darkModeToggle = document.getElementById('darkModeToggle');
+        const darkModeIcon = document.getElementById('darkModeIcon');
+
+        // Check local storage or system preference
+        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            html.classList.add('dark');
+            darkModeIcon.classList.replace('fa-moon', 'fa-sun');
+        }
+
+        darkModeToggle.addEventListener('click', () => {
+            html.classList.toggle('dark');
+            if (html.classList.contains('dark')) {
+                localStorage.setItem('theme', 'dark');
+                darkModeIcon.classList.replace('fa-moon', 'fa-sun');
+            } else {
+                localStorage.setItem('theme', 'light');
+                darkModeIcon.classList.replace('fa-sun', 'fa-moon');
+            }
+        });
+
+        // User Dropdown Logic
+        const userMenuBtn = document.getElementById('userMenuBtn');
+        const userDropdown = document.getElementById('userDropdown');
+        
+        userMenuBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            userDropdown.classList.toggle('hidden');
+        });
+
+        // Notification Dropdown Logic
+        const notificationBtn = document.getElementById('notificationBtn');
+        const notificationDropdown = document.getElementById('notificationDropdown');
+
+        notificationBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            notificationDropdown.classList.toggle('hidden');
+            if (!userDropdown.classList.contains('hidden')) {
+                userDropdown.classList.add('hidden');
+            }
+        });
+
+        window.addEventListener('click', () => {
+            if (!userDropdown.classList.contains('hidden')) {
+                userDropdown.classList.add('hidden');
+            }
+            if (!notificationDropdown.classList.contains('hidden')) {
+                notificationDropdown.classList.add('hidden');
+            }
+        });
+
+        // Mobile Sidebar Logic
+        const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarOverlay = document.getElementById('sidebarOverlay');
+
+        mobileMenuBtn.addEventListener('click', () => {
+            sidebar.classList.toggle('hidden');
+            sidebar.classList.add('fixed', 'z-30', 'h-full');
+            sidebarOverlay.classList.remove('hidden');
+        });
+
+        sidebarOverlay.addEventListener('click', () => {
+            sidebar.classList.add('hidden');
+            sidebar.classList.remove('fixed', 'z-30', 'h-full');
+            sidebarOverlay.classList.add('hidden');
+        });
+    </script>
+
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

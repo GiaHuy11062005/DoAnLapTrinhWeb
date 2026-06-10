@@ -1,0 +1,226 @@
+@model IEnumerable<DoAnLapTrinhWeb.Models.Accommodation>
+@{
+    ViewData["Title"] = "Quản lý Bài Đăng Phòng";
+}
+
+<div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Quản lý Bài Đăng</h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Quản lý toàn bộ danh sách phòng trọ trên hệ thống.</p>
+    </div>
+    
+    <div class="flex items-center space-x-3">
+        <a href="/Admin/Index" class="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 shadow-sm transition-colors">
+            <i class="fas fa-arrow-left mr-2"></i> Trở về Dashboard
+        </a>
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="mb-6 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg p-4 flex items-start">
+        <div class="flex-shrink-0">
+            <i class="fas fa-check-circle text-green-500 mt-0.5"></i>
+        </div>
+        <div class="ml-3 text-sm text-green-800 dark:text-green-300">@TempData["Success"]</div>
+    </div>
+}
+
+<div class="bg-white dark:bg-darkCard border border-gray-100 dark:border-gray-800 rounded-xl shadow-sm overflow-hidden mb-8">
+    <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+        <div class="relative max-w-sm w-full">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <i class="fas fa-search text-gray-400"></i>
+            </div>
+            <input type="text" id="searchInput" class="block w-full pl-10 pr-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg leading-5 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-500 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 sm:text-sm transition-colors" placeholder="Tìm theo tiêu đề, chủ trọ...">
+        </div>
+        <div class="flex items-center space-x-2">
+            <select id="statusFilter" class="px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors">
+                <option value="all">Tất cả trạng thái</option>
+                <option value="Đã duyệt">Đã duyệt</option>
+                <option value="Chờ duyệt">Chờ duyệt</option>
+                <option value="Bị khóa">Bị khóa</option>
+            </select>
+            <button id="sortBtn" class="px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 hover:text-blue-600 transition-colors">
+                <i class="fas fa-sort-amount-down mr-1"></i> Mới nhất
+            </button>
+        </div>
+    </div>
+
+    <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
+            <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-800/50 dark:text-gray-400">
+                <tr>
+                    <th scope="col" class="px-6 py-4 font-semibold">Ngày đăng</th>
+                    <th scope="col" class="px-6 py-4 font-semibold">Chủ Trọ</th>
+                    <th scope="col" class="px-6 py-4 font-semibold">Mã / Tiêu Đề</th>
+                    <th scope="col" class="px-6 py-4 font-semibold">Khu vực</th>
+                    <th scope="col" class="px-6 py-4 font-semibold">Giá Thuê</th>
+                    <th scope="col" class="px-6 py-4 font-semibold">Trạng Thái</th>
+                    <th scope="col" class="px-6 py-4 font-semibold text-right">Thao Tác</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+                @if (Model != null && Model.Any())
+                {
+                    foreach (var item in Model)
+                    {
+                        <tr class="accommodation-row bg-white dark:bg-darkCard hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group">
+                            <td class="px-6 py-4 whitespace-nowrap text-xs text-gray-500">
+                                @item.CreatedAt.ToString("dd/MM/yyyy") <br /> @item.CreatedAt.ToString("HH:mm")
+                            </td>
+                            <td class="px-6 py-4 font-medium text-gray-900 dark:text-white">@item.Owner?.FullName</td>
+                            <td class="px-6 py-4">
+                                <div class="flex flex-col">
+                                    <span class="text-xs text-gray-400 font-mono">#@item.Id.ToString("D4")</span>
+                                    <span class="acc-title truncate max-w-[200px] text-gray-900 dark:text-gray-300 font-medium" title="@item.Title">@item.Title</span>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="flex items-center text-gray-500 dark:text-gray-400 text-xs">
+                                    <i class="fas fa-map-marker-alt text-gray-400 mr-1.5"></i>
+                                    <span class="truncate max-w-[120px]">@(item.District?.Name), @(item.City?.Name)</span>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 font-semibold text-blue-600 dark:text-blue-400">@item.Price.ToString("N0")đ</td>
+                            <td class="px-6 py-4 acc-status">
+                                @if (item.IsApproved)
+                                {
+                                    <span class="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-1 rounded-full dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800/50 flex items-center w-max">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-green-500 mr-1.5"></span> Đã duyệt
+                                    </span>
+                                }
+                                else if (!string.IsNullOrEmpty(item.RejectionReason))
+                                {
+                                    <span class="bg-red-100 text-red-800 text-xs font-medium px-2.5 py-1 rounded-full dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800/50 flex items-center w-max cursor-help" title="@item.RejectionReason">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-red-500 mr-1.5"></span> Bị khóa
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="bg-amber-100 text-amber-800 text-xs font-medium px-2.5 py-1 rounded-full dark:bg-amber-900/30 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50 flex items-center w-max">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-amber-500 mr-1.5"></span> Chờ duyệt
+                                    </span>
+                                }
+                            </td>
+                            <td class="px-6 py-4 text-right">
+                                <div class="flex items-center justify-end space-x-2">
+                                    <a href="/Accommodation/Details/@item.Id" target="_blank" class="p-2 text-gray-400 hover:text-blue-600 bg-gray-50 hover:bg-blue-50 rounded-lg dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors" title="Xem chi tiết">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    
+                                    <form action="/Admin/Delete" method="post" class="inline" onsubmit="return confirm('Bạn có chắc chắn muốn XÓA bài đăng này không? Hành động này không thể hoàn tác!');">
+                                        <input type="hidden" name="id" value="@item.Id" />
+                                        <button type="submit" class="p-2 text-gray-400 hover:text-red-600 bg-gray-50 hover:bg-red-50 rounded-lg dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors" title="Xóa bài đăng">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="7" class="px-6 py-12 text-center">
+                            <div class="flex flex-col items-center justify-center">
+                                <div class="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
+                                    <i class="fas fa-inbox text-2xl text-gray-400"></i>
+                                </div>
+                                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-1">Không tìm thấy bài đăng</h3>
+                                <p class="text-sm text-gray-500 dark:text-gray-400">Hệ thống hiện tại chưa có dữ liệu phòng trọ nào.</p>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- Pagination (Static for UI) -->
+    <div class="px-6 py-4 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
+        <span class="text-sm text-gray-500 dark:text-gray-400">Đang hiển thị <span id="visibleCount" class="font-medium text-gray-900 dark:text-white">@Model?.Count()</span> kết quả</span>
+    </div>
+</div>
+
+<!-- Modal Nhập Lý Do Khóa (Tailwind) -->
+<div id="rejectModal" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <!-- Background overlay -->
+        <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity backdrop-blur-sm" aria-hidden="true" onclick="closeRejectModal()"></div>
+
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+        
+        <div class="inline-block align-bottom bg-white dark:bg-darkCard rounded-xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full border border-gray-200 dark:border-gray-700">
+            <form action="/Admin/RejectAccommodation" method="post">
+                <div class="px-6 py-5 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center">
+                    <h3 class="text-lg leading-6 font-semibold text-gray-900 dark:text-white" id="modal-title">Từ chối / Khóa bài đăng</h3>
+                    <button type="button" class="text-gray-400 hover:text-gray-500 focus:outline-none" onclick="closeRejectModal()">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                <div class="px-6 py-5">
+                    <input type="hidden" name="id" id="rejectAccommodationId" value="" />
+                    <div class="mt-2">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Chi tiết lý do (hiển thị cho chủ trọ):</label>
+                        <textarea name="reason" rows="3" class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-800 dark:text-white p-3 border" placeholder="Ví dụ: Hình ảnh không rõ ràng, thông tin sai lệch..." required></textarea>
+                    </div>
+                </div>
+                <div class="px-6 py-4 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-100 dark:border-gray-800 flex justify-end space-x-3">
+                    <button type="button" class="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none" onclick="closeRejectModal()">Hủy bỏ</button>
+                    <button type="submit" class="px-4 py-2 bg-red-600 border border-transparent rounded-lg text-sm font-medium text-white hover:bg-red-700 focus:outline-none shadow-sm shadow-red-500/30">Xác nhận khóa</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const modal = document.getElementById('rejectModal');
+        
+        function setRejectId(id) {
+            document.getElementById('rejectAccommodationId').value = id;
+            modal.classList.remove('hidden');
+        }
+
+        function closeRejectModal() {
+            modal.classList.add('hidden');
+        }
+
+        // JS Logic for Search and Filter
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInput = document.getElementById('searchInput');
+            const statusFilter = document.getElementById('statusFilter');
+            const rows = document.querySelectorAll('.accommodation-row');
+            const visibleCountSpan = document.getElementById('visibleCount');
+
+            function filterTable() {
+                const searchTerm = searchInput.value.toLowerCase();
+                const filterValue = statusFilter.value;
+                let visibleCount = 0;
+
+                rows.forEach(row => {
+                    const textContent = row.textContent.toLowerCase();
+                    const statusText = row.querySelector('.acc-status').textContent.trim();
+                    
+                    const matchesSearch = textContent.includes(searchTerm);
+                    const matchesStatus = filterValue === 'all' || statusText.includes(filterValue);
+
+                    if (matchesSearch && matchesStatus) {
+                        row.style.display = '';
+                        visibleCount++;
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+
+                visibleCountSpan.textContent = visibleCount;
+            }
+
+            searchInput.addEventListener('input', filterTable);
+            statusFilter.addEventListener('change', filterTable);
+        });
+    </script>
+}

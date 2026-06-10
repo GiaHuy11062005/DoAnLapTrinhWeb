@@ -1,10 +1,11 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
 using DoAnLapTrinhWeb.Data;
 using DoAnLapTrinhWeb.Models;
+using DoAnLapTrinhWeb.Services;
 using System.Security.Claims;
 using System.IO;
 using System.Linq;
@@ -17,12 +18,14 @@ namespace DoAnLapTrinhWeb.Controllers
     public class AccommodationController : Controller
     {
         private readonly AppDbContext _context;
-        private readonly IWebHostEnvironment _webHostEnvironment; // Dùng để lấy đường dẫn lưu ảnh
+        private readonly IWebHostEnvironment _webHostEnvironment;
+        private readonly GoogleMapsService _googleMapsService;
 
-        public AccommodationController(AppDbContext context, IWebHostEnvironment webHostEnvironment)
+        public AccommodationController(AppDbContext context, IWebHostEnvironment webHostEnvironment, GoogleMapsService googleMapsService)
         {
             _context = context;
             _webHostEnvironment = webHostEnvironment;
+            _googleMapsService = googleMapsService;
         }
 
         // =======================================================
@@ -47,6 +50,50 @@ namespace DoAnLapTrinhWeb.Controllers
 
             // 3. Trả dữ liệu về giao diện View
             return View(myRooms);
+        }
+
+        // --- API LOAD PHƯỜNG/XÃ CẤP 3 ---
+        [HttpGet]
+        public async Task<IActionResult> GetAllWards(int districtId)
+        {
+            try
+            {
+                var wards = await _context.Wards
+                    .Where(w => w.DistrictId == districtId)
+                    .Select(w => new { id = w.Id, name = w.Name })
+                    .ToListAsync();
+                return Json(wards);
+            }
+            catch
+            {
+                return Json(new object[0]);
+            }
+        }
+
+        // --- API TÍNH KHOẢNG CÁCH GOOGLE MAPS (BACKEND) ---
+        [HttpGet]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetDistance(string origin, string destination)
+        {
+            if (string.IsNullOrWhiteSpace(origin) || string.IsNullOrWhiteSpace(destination))
+            {
+                return Json(new { success = false, error = "Thiếu địa điểm xuất phát hoặc đích đến." });
+            }
+
+            var result = await _googleMapsService.GetDistanceAsync(origin, destination);
+
+            if (!result.Success)
+            {
+                return Json(new { success = false, error = result.ErrorMessage });
+            }
+
+            return Json(new
+            {
+                success = true,
+                distanceText = result.DistanceText,
+                distanceKm = result.DistanceKm,
+                durationText = result.DurationText
+            });
         }
 
         // --- API LOAD DANH SÁCH THÀNH PHỐ CHO POPUP ---
@@ -261,6 +308,94 @@ namespace DoAnLapTrinhWeb.Controllers
 
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
             return user?.Id;
+        }
+
+        // --- HÀM CHỈNH SỬA BÀI ĐĂNG (TASK 3) ---
+        [HttpGet]
+        [Authorize(Roles = "Landlord")]
+        public async Task<IActionResult> Edit(int id)
+        {
+            var currentUserId = await ResolveCurrentUserIdAsync();
+            if (!currentUserId.HasValue) return Unauthorized();
+
+            var room = await _context.Accommodations
+                .Include(a => a.Images)
+                .FirstOrDefaultAsync(a => a.Id == id && a.OwnerId == currentUserId.Value);
+
+            if (room == null) return NotFound();
+
+            // Load Cities for dropdown
+            ViewBag.Cities = await _context.Cities.ToListAsync();
+            // Load Districts for the specific city
+            ViewBag.Districts = await _context.Districts.Where(d => d.CityId == room.CityId).ToListAsync();
+
+            return View(room);
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "Landlord")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit(int id, Accommodation model, List<IFormFile> uploadImages)
+        {
+            var currentUserId = await ResolveCurrentUserIdAsync();
+            if (!currentUserId.HasValue) return Unauthorized();
+
+            var room = await _context.Accommodations
+                .Include(a => a.Images)
+                .FirstOrDefaultAsync(a => a.Id == id && a.OwnerId == currentUserId.Value);
+
+            if (room == null) return NotFound();
+
+            // Cập nhật thông tin
+            room.Title = model.Title;
+            room.Description = model.Description;
+            room.Price = model.Price;
+            room.Area = model.Area;
+            room.SpecificAddress = model.SpecificAddress;
+            room.CityId = model.CityId;
+            room.DistrictId = model.DistrictId;
+            room.AllowsPets = model.AllowsPets;
+            room.HasParking = model.HasParking;
+            room.ContactPhone = model.ContactPhone;
+
+            // Xử lý ảnh mới nếu có
+            if (uploadImages != null && uploadImages.Count > 0)
+            {
+                string uploadsFolder = Path.Combine(_webHostEnvironment.WebRootPath, "images", "accommodations");
+                if (!Directory.Exists(uploadsFolder))
+                {
+                    Directory.CreateDirectory(uploadsFolder);
+                }
+
+                foreach (var file in uploadImages)
+                {
+                    if (file.Length > 0)
+                    {
+                        string uniqueFileName = Guid.NewGuid().ToString() + "_" + file.FileName;
+                        string filePath = Path.Combine(uploadsFolder, uniqueFileName);
+
+                        using (var fileStream = new FileStream(filePath, FileMode.Create))
+                        {
+                            await file.CopyToAsync(fileStream);
+                        }
+
+                        if (room.Images == null)
+                        {
+                            room.Images = new List<AccommodationImage>();
+                        }
+                        room.Images.Add(new AccommodationImage { ImageUrl = "/images/accommodations/" + uniqueFileName });
+                    }
+                }
+            }
+
+            // Gửi lại cho Admin duyệt (đặt IsApproved = false và xóa RejectionReason cũ)
+            room.IsApproved = false;
+            room.RejectionReason = null;
+
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = "Cập nhật thành công! Bài đăng đã được gửi lại cho Admin để xét duyệt.";
+            return RedirectToAction(nameof(Index));
         }
     }
 }

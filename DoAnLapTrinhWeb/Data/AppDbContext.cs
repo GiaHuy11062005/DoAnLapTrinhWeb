@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using DoAnLapTrinhWeb.Models;
 
 namespace DoAnLapTrinhWeb.Data
@@ -13,12 +13,15 @@ namespace DoAnLapTrinhWeb.Data
         public DbSet<AccommodationImage> AccommodationImages { get; set; }
         public DbSet<City> Cities { get; set; }
         public DbSet<District> Districts { get; set; }
+        public DbSet<Ward> Wards { get; set; }
         public DbSet<LandlordApplication> LandlordApplications { get; set; }
 
         // Dòng này được thêm vào để sửa lỗi đỏ CS1061
         public DbSet<Favorite> Favorites { get; set; }
 
         public DbSet<SearchLog> SearchLogs { get; set; }
+        public DbSet<Notification> Notifications { get; set; }
+        public DbSet<BookingRequest> BookingRequests { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -63,6 +66,36 @@ namespace DoAnLapTrinhWeb.Data
                 .WithMany()
                 .HasForeignKey(a => a.ReviewedByAdminId)
                 .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<Ward>()
+                .HasOne(w => w.District)
+                .WithMany()
+                .HasForeignKey(w => w.DistrictId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<BookingRequest>()
+                .HasOne(b => b.Student)
+                .WithMany()
+                .HasForeignKey(b => b.StudentId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<BookingRequest>()
+                .HasOne(b => b.Landlord)
+                .WithMany()
+                .HasForeignKey(b => b.LandlordId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<BookingRequest>()
+                .HasOne(b => b.Accommodation)
+                .WithMany()
+                .HasForeignKey(b => b.AccommodationId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<Notification>()
+                .HasOne(n => n.User)
+                .WithMany()
+                .HasForeignKey(n => n.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

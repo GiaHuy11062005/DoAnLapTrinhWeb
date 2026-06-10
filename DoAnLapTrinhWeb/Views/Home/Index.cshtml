@@ -87,8 +87,8 @@ else
 
                     <form action="/Accommodation/Search" method="GET" class="hero-search shadow-sm">
                         <div class="row g-3">
-                            <div class="col-12 col-lg-6">
-                                <label class="form-label fw-semibold text-muted small mb-2">Địa điểm</label>
+                            <div class="col-12 col-lg-4">
+                                <label class="form-label fw-semibold text-muted small mb-2">Tỉnh / Thành phố</label>
                                 <select class="form-select form-select-lg" id="citySelect" name="cityId" required>
                                     <option value="" selected disabled>-- Chọn Tỉnh/Thành phố --</option>
                                     @foreach (var city in cities)
@@ -97,10 +97,16 @@ else
                                     }
                                 </select>
                             </div>
-                            <div class="col-12 col-lg-6">
+                            <div class="col-12 col-lg-4">
                                 <label class="form-label fw-semibold text-muted small mb-2">Quận / Huyện</label>
-                                <select class="form-select form-select-lg" id="districtSelect" name="districtId" disabled required>
+                                <select class="form-select form-select-lg" id="districtSelect" name="districtId" disabled>
                                     <option value="" selected disabled>-- Chọn Quận/Huyện --</option>
+                                </select>
+                            </div>
+                            <div class="col-12 col-lg-4">
+                                <label class="form-label fw-semibold text-muted small mb-2">Phường / Xã</label>
+                                <select class="form-select form-select-lg" id="wardSelect" name="wardId" disabled>
+                                    <option value="" selected>-- Chọn Phường/Xã --</option>
                                 </select>
                             </div>
                             <div class="col-12 col-md-4 col-lg-3">
@@ -694,22 +700,30 @@ else
         document.addEventListener("DOMContentLoaded", function () {
             const citySelect = document.getElementById("citySelect");
             const districtSelect = document.getElementById("districtSelect");
+            const wardSelect = document.getElementById("wardSelect");
 
+            // =============================================
+            // Load Quận/Huyện khi chọn Tỉnh/Thành phố
+            // =============================================
             if (citySelect && districtSelect) {
                 citySelect.addEventListener("change", async function () {
                     const cityId = this.value;
 
+                    // Reset District
                     districtSelect.innerHTML = '<option value="" selected disabled>-- Đang tải... --</option>';
                     districtSelect.disabled = true;
+
+                    // Reset Ward
+                    if (wardSelect) {
+                        wardSelect.innerHTML = '<option value="" selected>-- Chọn Phường/Xã --</option>';
+                        wardSelect.disabled = true;
+                    }
 
                     if (!cityId) return;
 
                     try {
                         const response = await fetch(`/Home/GetDistrictsWithRooms?cityId=${cityId}`);
-
-                        if (!response.ok) {
-                            throw new Error("Lỗi mạng khi tải dữ liệu");
-                        }
+                        if (!response.ok) throw new Error("Lỗi mạng khi tải dữ liệu");
 
                         const districts = await response.json();
                         districtSelect.innerHTML = '<option value="" selected disabled>-- Chọn Quận/Huyện --</option>';
@@ -728,6 +742,43 @@ else
                     } catch (error) {
                         console.error("Lỗi:", error);
                         districtSelect.innerHTML = '<option value="" selected disabled>Lỗi tải dữ liệu</option>';
+                    }
+                });
+            }
+
+            // =============================================
+            // Load Phường/Xã khi chọn Quận/Huyện
+            // =============================================
+            if (districtSelect && wardSelect) {
+                districtSelect.addEventListener("change", async function () {
+                    const districtId = this.value;
+
+                    wardSelect.innerHTML = '<option value="" selected>-- Đang tải... --</option>';
+                    wardSelect.disabled = true;
+
+                    if (!districtId) return;
+
+                    try {
+                        const response = await fetch(`/Accommodation/GetAllWards?districtId=${districtId}`);
+                        if (!response.ok) throw new Error("Lỗi mạng");
+
+                        const wards = await response.json();
+                        wardSelect.innerHTML = '<option value="" selected>-- Chọn Phường/Xã (tùy chọn) --</option>';
+
+                        if (wards.length > 0) {
+                            wards.forEach(w => {
+                                const option = document.createElement("option");
+                                option.value = w.id;
+                                option.textContent = w.name;
+                                wardSelect.appendChild(option);
+                            });
+                            wardSelect.disabled = false;
+                        } else {
+                            wardSelect.innerHTML = '<option value="" selected>-- Chưa có dữ liệu Phường/Xã --</option>';
+                        }
+                    } catch (error) {
+                        console.error("Lỗi tải Phường/Xã:", error);
+                        wardSelect.innerHTML = '<option value="" selected>Lỗi tải dữ liệu</option>';
                     }
                 });
             }

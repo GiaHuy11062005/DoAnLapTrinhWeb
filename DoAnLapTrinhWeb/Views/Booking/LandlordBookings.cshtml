@@ -1,0 +1,141 @@
+@model IEnumerable<DoAnLapTrinhWeb.Models.BookingRequest>
+@{
+    ViewData["Title"] = "Yêu cầu Đặt phòng";
+    Layout = "_Layout";
+}
+
+<div class="container py-5">
+    <div class="row mb-4 align-items-center">
+        <div class="col-md-6">
+            <h2 class="fw-bold mb-1"><i class="fas fa-calendar-check text-primary me-2"></i>Quản lý Đặt phòng</h2>
+            <p class="text-muted mb-0">Xem và phản hồi các yêu cầu đặt phòng từ sinh viên.</p>
+        </div>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show border-0 shadow-sm rounded-4" role="alert">
+            <i class="fas fa-check-circle me-2"></i>@TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="px-4 py-3">Người đặt</th>
+                        <th class="px-4 py-3">Phòng trọ</th>
+                        <th class="px-4 py-3">Lời nhắn</th>
+                        <th class="px-4 py-3 text-center">Trạng thái</th>
+                        <th class="px-4 py-3 text-end">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model != null && Model.Any())
+                    {
+                        foreach (var b in Model)
+                        {
+                            <tr>
+                                <td class="px-4 py-3">
+                                    <div class="d-flex align-items-center">
+                                        <div class="bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center fw-bold me-3" style="width: 40px; height: 40px;">
+                                            @(b.Student?.FullName?.Substring(0, 1).ToUpper() ?? "U")
+                                        </div>
+                                        <div>
+                                            <h6 class="mb-0 fw-bold">@b.Student?.FullName</h6>
+                                            <small class="text-muted">@b.CreatedAt.ToString("dd/MM/yyyy HH:mm")</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <a href="/Accommodation/Details/@b.AccommodationId" class="text-decoration-none fw-medium text-dark hover-primary" target="_blank">
+                                        @(b.Accommodation?.Title.Length > 30 ? b.Accommodation?.Title.Substring(0,30) + "..." : b.Accommodation?.Title)
+                                    </a>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <p class="mb-0 small text-muted text-wrap" style="max-width: 200px;">
+                                        @(string.IsNullOrEmpty(b.Message) ? "Không có lời nhắn" : b.Message)
+                                    </p>
+                                </td>
+                                <td class="px-4 py-3 text-center">
+                                    @if (b.Status == "Pending")
+                                    {
+                                        <span class="badge bg-warning text-dark rounded-pill px-3 py-2"><i class="fas fa-clock me-1"></i>Chờ phản hồi</span>
+                                    }
+                                    else if (b.Status == "Accepted")
+                                    {
+                                        <span class="badge bg-success rounded-pill px-3 py-2"><i class="fas fa-check me-1"></i>Đã chấp nhận</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-danger rounded-pill px-3 py-2"><i class="fas fa-times me-1"></i>Đã từ chối</span>
+                                    }
+                                </td>
+                                <td class="px-4 py-3 text-end">
+                                    @if (b.Status == "Pending")
+                                    {
+                                        <div class="d-flex justify-content-end gap-2">
+                                            <form action="/Booking/Accept" method="post" onsubmit="return confirm('Bạn chắc chắn muốn CHẤP NHẬN yêu cầu này? Sinh viên sẽ nhận được số điện thoại của bạn.');">
+                                                <input type="hidden" name="id" value="@b.Id" />
+                                                <button type="submit" class="btn btn-sm btn-success rounded-pill shadow-sm"><i class="fas fa-check"></i> Chấp nhận</button>
+                                            </form>
+                                            <button type="button" class="btn btn-sm btn-outline-danger rounded-pill shadow-sm" onclick="showRejectModal(@b.Id)">
+                                                <i class="fas fa-times"></i> Từ chối
+                                            </button>
+                                        </div>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="5" class="text-center py-5">
+                                <i class="fas fa-calendar-times text-muted opacity-50 display-4 mb-3"></i>
+                                <h5 class="text-muted">Chưa có yêu cầu đặt phòng nào.</h5>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Từ Chối -->
+<div class="modal fade" id="rejectBookingModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header bg-danger text-white border-0 py-3">
+                <h5 class="modal-title fw-bold"><i class="fas fa-ban me-2"></i>Từ chối Đặt phòng</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="/Booking/Reject" method="post">
+                <div class="modal-body p-4 bg-light">
+                    <input type="hidden" name="id" id="rejectBookingId" value="" />
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Lý do từ chối (Sinh viên sẽ đọc được)</label>
+                        <textarea class="form-control rounded-3 border-0 shadow-sm" name="reason" rows="3" placeholder="Ví dụ: Xin lỗi, phòng này vừa có người cọc xong..." required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 p-3 bg-white">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-danger rounded-pill px-4 shadow-sm"><i class="fas fa-ban me-2"></i>Từ chối</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const rejectModal = new bootstrap.Modal(document.getElementById('rejectBookingModal'));
+        function showRejectModal(id) {
+            document.getElementById('rejectBookingId').value = id;
+            rejectModal.show();
+        }
+    </script>
+}

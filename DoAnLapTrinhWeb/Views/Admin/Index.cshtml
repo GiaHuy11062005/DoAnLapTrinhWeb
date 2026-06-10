@@ -1,65 +1,158 @@
 @model DoAnLapTrinhWeb.Models.ViewModels.AdminDashboardViewModel
 @{
-    ViewData["Title"] = "Dashboard Admin";
+    ViewData["Title"] = "Tổng Quan Quản Trị";
 }
 
-<div class="container py-5">
-    <div class="admin-hero mb-4">
-        <div>
-            <span class="section-kicker">Admin</span>
-            <h1 class="section-title mb-2">Dashboard quản trị</h1>
-            <p class="text-muted mb-0">Duyệt bài đăng phòng trọ và xét duyệt hồ sơ đăng ký làm chủ trọ.</p>
+<div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Dashboard Tổng Quan</h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Giám sát hoạt động hệ thống phòng trọ và dữ liệu tìm kiếm.</p>
+    </div>
+    
+    <div class="flex items-center space-x-3">
+        <button class="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 shadow-sm transition-colors">
+            <i class="fas fa-download mr-2"></i> Xuất Báo Cáo
+        </button>
+        <button class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium shadow-sm shadow-blue-500/30 transition-colors">
+            <i class="fas fa-plus mr-2"></i> Thêm Bài Đăng
+        </button>
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="mb-6 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg p-4 flex items-start">
+        <div class="flex-shrink-0">
+            <i class="fas fa-check-circle text-green-500 mt-0.5"></i>
+        </div>
+        <div class="ml-3 text-sm text-green-800 dark:text-green-300">@TempData["Success"]</div>
+    </div>
+}
+
+<!-- 4 Thẻ Thống Kê -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <!-- Card 1 -->
+    <div class="bg-white dark:bg-darkCard rounded-xl border border-gray-100 dark:border-gray-800 p-6 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+        <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+            <i class="fas fa-home text-5xl text-blue-500"></i>
+        </div>
+        <p class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Tổng Phòng Trọ</p>
+        <h3 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">@Model.TotalAccommodations</h3>
+        <div class="flex items-center text-sm">
+            <span class="text-green-500 font-medium flex items-center"><i class="fas fa-arrow-up mr-1 text-xs"></i> 12%</span>
+            <span class="text-gray-400 ml-2">so với tháng trước</span>
         </div>
     </div>
 
-    @if (TempData["Success"] != null)
-    {
-        <div class="alert alert-success">@TempData["Success"]</div>
-    }
-
-    <div class="admin-section mb-4">
-        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-            <h2 class="h4 fw-bold mb-0">Bài đăng chờ duyệt</h2>
-            <span class="badge text-bg-primary">@Model.PendingRooms.Count() bài</span>
+    <!-- Card 2 -->
+    <div class="bg-white dark:bg-darkCard rounded-xl border border-gray-100 dark:border-gray-800 p-6 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+        <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+            <i class="fas fa-clock text-5xl text-amber-500"></i>
         </div>
+        <p class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Bài Đăng Chờ Duyệt</p>
+        <h3 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">@Model.PendingAccommodationsCount</h3>
+        <div class="flex items-center text-sm">
+            <span class="text-amber-500 font-medium flex items-center">Cần xử lý ngay</span>
+        </div>
+    </div>
 
-        <div class="table-responsive">
-            <table class="table align-middle">
-                <thead class="table-light">
+    <!-- Card 3 -->
+    <div class="bg-white dark:bg-darkCard rounded-xl border border-gray-100 dark:border-gray-800 p-6 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+        <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+            <i class="fas fa-users text-5xl text-purple-500"></i>
+        </div>
+        <p class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Người Dùng Hoạt Động</p>
+        <h3 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">@Model.TotalUsers</h3>
+        <div class="flex items-center text-sm">
+            <span class="text-green-500 font-medium flex items-center"><i class="fas fa-arrow-up mr-1 text-xs"></i> 8.5%</span>
+            <span class="text-gray-400 ml-2">so với tuần trước</span>
+        </div>
+    </div>
+
+    <!-- Card 4 -->
+    <div class="bg-white dark:bg-darkCard rounded-xl border border-gray-100 dark:border-gray-800 p-6 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+        <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+            <i class="fas fa-map-marker-alt text-5xl text-red-500"></i>
+        </div>
+        <p class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Top Khu Vực (Lượt tìm kiếm)</p>
+        <h3 class="text-3xl font-bold text-gray-900 dark:text-white mb-2 truncate">@(Model.TopSearchedCities.FirstOrDefault()?.Name ?? "N/A")</h3>
+        <div class="flex items-center text-sm">
+            <span class="text-gray-500 font-medium">@(Model.TopSearchedCities.FirstOrDefault()?.Count ?? 0) lượt tìm kiếm</span>
+        </div>
+    </div>
+</div>
+
+<!-- Biểu đồ -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+    <div class="bg-white dark:bg-darkCard border border-gray-100 dark:border-gray-800 rounded-xl shadow-sm p-5">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-base font-bold text-gray-900 dark:text-white">Thống Kê Tìm Kiếm Theo Khu Vực</h3>
+            <button class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"><i class="fas fa-ellipsis-v"></i></button>
+        </div>
+        <div class="relative h-64 w-full">
+            <canvas id="searchChart"></canvas>
+        </div>
+    </div>
+
+    <div class="bg-white dark:bg-darkCard border border-gray-100 dark:border-gray-800 rounded-xl shadow-sm p-5">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-base font-bold text-gray-900 dark:text-white">Tỷ Lệ Phòng Trọ Theo Tỉnh/Thành</h3>
+            <button class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"><i class="fas fa-ellipsis-v"></i></button>
+        </div>
+        <div class="relative h-64 w-full flex justify-center">
+            <canvas id="roomsChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Bảng Danh Sách Phòng Trọ Mới Nhất -->
+<div class="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-8">
+    <!-- Cột 1: Duyệt Bài Đăng -->
+    <div id="pending-rooms" class="bg-white dark:bg-darkCard border border-gray-100 dark:border-gray-800 rounded-xl shadow-sm overflow-hidden scroll-mt-24">
+        <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-blue-50/50 dark:bg-blue-900/10">
+            <h3 class="text-base font-bold text-gray-900 dark:text-white flex items-center">
+                <i class="fas fa-home text-blue-500 mr-2"></i>Duyệt Bài Đăng Phòng Trọ
+            </h3>
+            <a href="/Admin/PendingAccommodations" class="text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">Xem tất cả &rarr;</a>
+        </div>
+        
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
+                <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-800/50 dark:text-gray-400">
                     <tr>
-                        <th>Ngày đăng</th>
-                        <th>Chủ trọ</th>
-                        <th>Tiêu đề</th>
-                        <th>Giá</th>
-                        <th class="text-center">Hành động</th>
+                        <th scope="col" class="px-6 py-4 font-semibold">Thông Tin Phòng</th>
+                        <th scope="col" class="px-6 py-4 font-semibold text-right">Thao Tác</th>
                     </tr>
                 </thead>
                 <tbody>
                     @if (Model.PendingRooms != null && Model.PendingRooms.Any())
                     {
-                        foreach (var item in Model.PendingRooms)
+                        foreach (var item in Model.PendingRooms.Take(5)) // Lấy 5 bài đăng mới nhất
                         {
-                            <tr>
-                                <td>@item.CreatedAt.ToString("dd/MM/yyyy HH:mm")</td>
-                                <td>@item.Owner?.FullName</td>
-                                <td class="text-truncate" style="max-width: 250px;">@item.Title</td>
-                                <td>@item.Price.ToString("N0") VNĐ</td>
-                                <td class="text-center">
-                                    <a href="/Accommodation/Details/@item.Id" class="btn btn-sm btn-info text-white" target="_blank">
-                                        <i class="fas fa-eye"></i> Xem trước
-                                    </a>
-                                    <form action="/Admin/Approve" method="post" class="d-inline">
-                                        <input type="hidden" name="id" value="@item.Id" />
-                                        <button type="submit" class="btn btn-sm btn-success">
-                                            <i class="fas fa-check"></i> Duyệt
+                            <tr class="bg-white dark:bg-darkCard border-b dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group">
+                                <td class="px-6 py-4">
+                                    <div class="flex flex-col">
+                                        <span class="font-medium text-gray-900 dark:text-white truncate max-w-[200px]" title="@item.Title">@item.Title</span>
+                                        <span class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                            <i class="fas fa-user text-gray-400 mr-1"></i> @item.Owner?.FullName • <span class="text-blue-600 dark:text-blue-400 font-semibold">@item.Price.ToString("N0")đ</span>
+                                        </span>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 text-right">
+                                    <div class="flex items-center justify-end space-x-2">
+                                        <a href="/Accommodation/Details/@item.Id" target="_blank" class="p-2 text-gray-400 hover:text-blue-600 bg-gray-50 hover:bg-blue-50 rounded-lg dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors" title="Xem trước">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <form action="/Admin/Approve" method="post" class="inline">
+                                            <input type="hidden" name="id" value="@item.Id" />
+                                            <button type="submit" class="p-2 text-gray-400 hover:text-green-600 bg-gray-50 hover:bg-green-50 rounded-lg dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors" title="Duyệt">
+                                                <i class="fas fa-check"></i>
+                                            </button>
+                                        </form>
+                                        <button type="button" class="p-2 text-gray-400 hover:text-red-600 bg-gray-50 hover:bg-red-50 rounded-lg dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors" onclick="setRejectId(@item.Id)" title="Từ chối">
+                                            <i class="fas fa-ban"></i>
                                         </button>
-                                    </form>
-                                    <form action="/Admin/Delete" method="post" class="d-inline" onsubmit="return confirm('Bạn có chắc muốn từ chối và xóa bài đăng này không?');">
-                                        <input type="hidden" name="id" value="@item.Id" />
-                                        <button type="submit" class="btn btn-sm btn-danger">
-                                            <i class="fas fa-times"></i> Từ chối
-                                        </button>
-                                    </form>
+                                    </div>
                                 </td>
                             </tr>
                         }
@@ -67,7 +160,9 @@
                     else
                     {
                         <tr>
-                            <td colspan="5" class="text-center py-4">Hiện không có bài đăng nào cần duyệt.</td>
+                            <td colspan="2" class="px-6 py-8 text-center">
+                                <p class="text-sm text-gray-500 dark:text-gray-400">Không có bài đăng mới chờ duyệt.</p>
+                            </td>
                         </tr>
                     }
                 </tbody>
@@ -75,37 +170,55 @@
         </div>
     </div>
 
-    <div class="admin-section">
-        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-            <h2 class="h4 fw-bold mb-0">Hồ sơ đăng ký làm chủ trọ chờ duyệt</h2>
-            <span class="badge text-bg-warning">@Model.PendingLandlordApplications.Count() hồ sơ</span>
+    <!-- Cột 2: Duyệt Chủ Trọ -->
+    <div id="pending-landlords" class="bg-white dark:bg-darkCard border border-gray-100 dark:border-gray-800 rounded-xl shadow-sm overflow-hidden scroll-mt-24">
+        <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-purple-50/50 dark:bg-purple-900/10">
+            <h3 class="text-base font-bold text-gray-900 dark:text-white flex items-center">
+                <i class="fas fa-id-card text-purple-500 mr-2"></i>Duyệt Hồ Sơ Chủ Trọ
+            </h3>
+            <a href="/Admin/PendingLandlords" class="text-sm font-medium text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300">Xem tất cả &rarr;</a>
         </div>
-
-        <div class="table-responsive">
-            <table class="table align-middle">
-                <thead class="table-light">
+        
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
+                <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-800/50 dark:text-gray-400">
                     <tr>
-                        <th>Ngày gửi</th>
-                        <th>Người đăng ký</th>
-                        <th>SĐT</th>
-                        <th>Trạng thái</th>
-                        <th class="text-center">Hành động</th>
+                        <th scope="col" class="px-6 py-4 font-semibold">Người Dùng</th>
+                        <th scope="col" class="px-6 py-4 font-semibold text-right">Thao Tác</th>
                     </tr>
                 </thead>
                 <tbody>
                     @if (Model.PendingLandlordApplications != null && Model.PendingLandlordApplications.Any())
                     {
-                        foreach (var item in Model.PendingLandlordApplications)
+                        foreach (var app in Model.PendingLandlordApplications.Take(5))
                         {
-                            <tr>
-                                <td>@item.CreatedAt.ToString("dd/MM/yyyy HH:mm")</td>
-                                <td>@item.User?.FullName</td>
-                                <td>@item.Phone</td>
-                                <td><span class="badge text-bg-warning">@item.Status</span></td>
-                                <td class="text-center">
-                                    <a href="/Admin/LandlordApplicationDetails/@item.Id" class="btn btn-sm btn-primary">
-                                        <i class="fas fa-eye"></i> Xem chi tiết
-                                    </a>
+                            <tr class="bg-white dark:bg-darkCard border-b dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group">
+                                <td class="px-6 py-4">
+                                    <div class="flex flex-col">
+                                        <span class="font-medium text-gray-900 dark:text-white">@app.User?.FullName</span>
+                                        <span class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                            <i class="fas fa-phone-alt text-gray-400 mr-1"></i> @app.Phone
+                                        </span>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 text-right">
+                                    <div class="flex items-center justify-end space-x-2">
+                                        <a href="/Admin/LandlordApplicationDetails/@app.Id" target="_blank" class="p-2 text-gray-400 hover:text-blue-600 bg-gray-50 hover:bg-blue-50 rounded-lg dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors" title="Xem chi tiết hồ sơ">
+                                            <i class="fas fa-file-invoice"></i>
+                                        </a>
+                                        <form action="/Admin/ApproveLandlordApplication" method="post" class="inline" onsubmit="return confirm('Bạn có chắc chắn muốn Duyệt yêu cầu này không? Tài khoản sẽ trở thành Chủ Trọ ngay lập tức.');">
+                                            <input type="hidden" name="id" value="@app.Id" />
+                                            <button type="submit" class="p-2 text-gray-400 hover:text-green-600 bg-gray-50 hover:bg-green-50 rounded-lg dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors" title="Duyệt">
+                                                <i class="fas fa-check"></i>
+                                            </button>
+                                        </form>
+                                        <form action="/Admin/RejectLandlordApplication" method="post" class="inline" onsubmit="return confirm('Bạn có chắc chắn muốn Từ chối yêu cầu này không?');">
+                                            <input type="hidden" name="id" value="@app.Id" />
+                                            <button type="submit" class="p-2 text-gray-400 hover:text-red-600 bg-gray-50 hover:bg-red-50 rounded-lg dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors" title="Từ chối">
+                                                <i class="fas fa-ban"></i>
+                                            </button>
+                                        </form>
+                                    </div>
                                 </td>
                             </tr>
                         }
@@ -113,7 +226,9 @@
                     else
                     {
                         <tr>
-                            <td colspan="5" class="text-center py-4">Hiện chưa có hồ sơ đăng ký nào.</td>
+                            <td colspan="2" class="px-6 py-8 text-center">
+                                <p class="text-sm text-gray-500 dark:text-gray-400">Không có hồ sơ chủ trọ chờ duyệt.</p>
+                            </td>
                         </tr>
                     }
                 </tbody>
@@ -122,13 +237,132 @@
     </div>
 </div>
 
-<style>
-    .admin-hero,
-    .admin-section {
-        background: rgba(255, 255, 255, 0.94);
-        border: 1px solid rgba(15, 23, 42, 0.08);
-        border-radius: 28px;
-        box-shadow: 0 16px 40px rgba(15, 23, 42, 0.06);
-        padding: 1.75rem;
-    }
-</style>
+<!-- Reject Modal Layout Tailwind (Thay vì Bootstrap Modal cũ) -->
+<div id="rejectModal" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <!-- Background overlay -->
+        <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity backdrop-blur-sm" aria-hidden="true" onclick="closeRejectModal()"></div>
+
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+        
+        <div class="inline-block align-bottom bg-white dark:bg-darkCard rounded-xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full border border-gray-200 dark:border-gray-700">
+            <form action="/Admin/RejectAccommodation" method="post">
+                <div class="px-6 py-5 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center">
+                    <h3 class="text-lg leading-6 font-semibold text-gray-900 dark:text-white" id="modal-title">Từ chối / Khóa bài đăng</h3>
+                    <button type="button" class="text-gray-400 hover:text-gray-500 focus:outline-none" onclick="closeRejectModal()">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                <div class="px-6 py-5">
+                    <input type="hidden" name="id" id="rejectAccommodationId" value="" />
+                    <div class="mt-2">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Chi tiết lý do (hiển thị cho chủ trọ):</label>
+                        <textarea name="reason" rows="3" class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-800 dark:text-white p-3 border" placeholder="Ví dụ: Hình ảnh không rõ ràng, thông tin sai lệch..." required></textarea>
+                    </div>
+                </div>
+                <div class="px-6 py-4 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-100 dark:border-gray-800 flex justify-end space-x-3">
+                    <button type="button" class="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none" onclick="closeRejectModal()">Hủy bỏ</button>
+                    <button type="submit" class="px-4 py-2 bg-red-600 border border-transparent rounded-lg text-sm font-medium text-white hover:bg-red-700 focus:outline-none shadow-sm shadow-red-500/30">Xác nhận khóa</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Modal Logic
+        const modal = document.getElementById('rejectModal');
+        
+        function setRejectId(id) {
+            document.getElementById('rejectAccommodationId').value = id;
+            modal.classList.remove('hidden');
+        }
+
+        function closeRejectModal() {
+            modal.classList.add('hidden');
+        }
+
+        // --- CHART.JS TÍCH HỢP TAILWIND ---
+        // Data injected from backend
+        const searchLabels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.TopSearchedCities.Select(c => c.Name)));
+        const searchData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.TopSearchedCities.Select(c => c.Count)));
+        const roomLabels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.AccommodationsByCity.Select(c => c.Name)));
+        const roomData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.AccommodationsByCity.Select(c => c.Count)));
+
+        // Xử lý Dark Mode cho biểu đồ
+        Chart.defaults.color = document.documentElement.classList.contains('dark') ? '#94a3b8' : '#64748b';
+        Chart.defaults.font.family = "'Inter', sans-serif";
+
+        const ctxSearch = document.getElementById('searchChart').getContext('2d');
+        // Sử dụng Line Chart cho bắt mắt hơn theo yêu cầu Prompt (thay vì Bar Chart)
+        new Chart(ctxSearch, {
+            type: 'line',
+            data: {
+                labels: searchLabels,
+                datasets: [{
+                    label: 'Số lượt tìm kiếm',
+                    data: searchData,
+                    borderColor: '#3b82f6', // Tailwind blue-500
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    borderWidth: 2,
+                    pointBackgroundColor: '#fff',
+                    pointBorderColor: '#3b82f6',
+                    pointBorderWidth: 2,
+                    pointRadius: 4,
+                    fill: true,
+                    tension: 0.4 // Làm cong đường thẳng
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { 
+                    y: { 
+                        beginAtZero: true, 
+                        grid: { color: document.documentElement.classList.contains('dark') ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }
+                    },
+                    x: {
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+
+        const ctxRooms = document.getElementById('roomsChart').getContext('2d');
+        new Chart(ctxRooms, {
+            type: 'doughnut',
+            data: {
+                labels: roomLabels,
+                datasets: [{
+                    label: 'Số phòng',
+                    data: roomData,
+                    backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'],
+                    borderWidth: 0,
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '70%',
+                plugins: {
+                    legend: { position: 'right' }
+                }
+            }
+        });
+
+        // Modal Logic
+        const rejectModal = document.getElementById('rejectModal');
+        
+        function setRejectId(id) {
+            document.getElementById('rejectAccommodationId').value = id;
+            rejectModal.classList.remove('hidden');
+        }
+
+        function closeRejectModal() {
+            rejectModal.classList.add('hidden');
+        }
+    </script>
+}

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace DoAnLapTrinhWeb.Models
@@ -28,6 +28,7 @@ namespace DoAnLapTrinhWeb.Models
         public string? ContactPhone { get; set; } // SĐT liên hệ riêng cho bài này
 
         public bool IsApproved { get; set; }
+        public string? RejectionReason { get; set; } // Lý do từ chối hoặc khóa bài
         public DateTime CreatedAt { get; set; }
 
         // --- THÔNG TIN CHỦ TRỌ ---

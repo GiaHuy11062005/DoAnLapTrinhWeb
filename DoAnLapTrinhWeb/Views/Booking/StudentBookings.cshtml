@@ -1,0 +1,83 @@
+@model IEnumerable<DoAnLapTrinhWeb.Models.BookingRequest>
+@{
+    ViewData["Title"] = "Phòng đã đặt";
+    Layout = "_Layout";
+}
+
+<div class="container py-5">
+    <div class="row mb-4 align-items-center">
+        <div class="col-md-6">
+            <h2 class="fw-bold mb-1"><i class="fas fa-list text-primary me-2"></i>Lịch sử Đặt phòng</h2>
+            <p class="text-muted mb-0">Theo dõi trạng thái các phòng trọ bạn đã gửi yêu cầu.</p>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="px-4 py-3">Phòng trọ</th>
+                        <th class="px-4 py-3">Chủ trọ</th>
+                        <th class="px-4 py-3 text-center">Trạng thái</th>
+                        <th class="px-4 py-3">Ngày đặt</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model != null && Model.Any())
+                    {
+                        foreach (var b in Model)
+                        {
+                            <tr>
+                                <td class="px-4 py-3">
+                                    <div class="d-flex align-items-center">
+                                        <div class="bg-light rounded p-2 me-3" style="width: 60px; height: 60px; display: flex; align-items: center; justify-content: center;">
+                                            <i class="fas fa-home text-primary fs-4"></i>
+                                        </div>
+                                        <div>
+                                            <a href="/Accommodation/Details/@b.AccommodationId" class="text-decoration-none fw-bold text-dark hover-primary mb-1 d-block" target="_blank">
+                                                @(b.Accommodation?.Title.Length > 40 ? b.Accommodation?.Title.Substring(0,40) + "..." : b.Accommodation?.Title)
+                                            </a>
+                                            <small class="text-primary fw-medium">@b.Accommodation?.Price.ToString("N0") VNĐ</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <div class="fw-medium">@b.Landlord?.FullName</div>
+                                    <small class="text-muted"><i class="fas fa-phone-alt me-1"></i>@(b.Status == "Accepted" ? b.Landlord?.Phone : "Bảo mật")</small>
+                                </td>
+                                <td class="px-4 py-3 text-center">
+                                    @if (b.Status == "Pending")
+                                    {
+                                        <span class="badge bg-warning text-dark rounded-pill px-3 py-2"><i class="fas fa-clock me-1"></i>Chờ phản hồi</span>
+                                    }
+                                    else if (b.Status == "Accepted")
+                                    {
+                                        <span class="badge bg-success rounded-pill px-3 py-2"><i class="fas fa-check me-1"></i>Đã chấp nhận</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-danger rounded-pill px-3 py-2"><i class="fas fa-times me-1"></i>Đã từ chối</span>
+                                    }
+                                </td>
+                                <td class="px-4 py-3 text-muted">
+                                    @b.CreatedAt.ToString("dd/MM/yyyy HH:mm")
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="4" class="text-center py-5">
+                                <i class="fas fa-box-open text-muted opacity-50 display-4 mb-3"></i>
+                                <h5 class="text-muted">Bạn chưa gửi yêu cầu đặt phòng nào.</h5>
+                                <a href="/Accommodation/Search" class="btn btn-primary rounded-pill mt-3 px-4">Tìm phòng ngay</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

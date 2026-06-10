@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using DoAnLapTrinhWeb.Data;
+using DoAnLapTrinhWeb.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using System.Security.Claims;
@@ -8,6 +9,9 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
+
+// Đăng ký HttpClient và GoogleMapsService
+builder.Services.AddHttpClient<GoogleMapsService>();
 
 // Đăng ký AppDbContext kết nối với SQL Server
 builder.Services.AddDbContext<AppDbContext>(options =>

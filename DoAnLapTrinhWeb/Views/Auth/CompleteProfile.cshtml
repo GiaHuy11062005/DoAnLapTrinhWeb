@@ -1,4 +1,4 @@
-﻿@{
+@{
     ViewData["Title"] = "Hoàn thiện hồ sơ";
 }
 
@@ -7,11 +7,12 @@
         <div class="col-md-6">
             <div class="card shadow-sm border-0 rounded-3">
                 <div class="card-header bg-danger text-white text-center py-3">
-                    <h4 class="mb-0 fw-bold"><i class="fab fa-google"></i> Xác Nhận Quyền Truy Cập</h4>
+                    <h4 class="mb-0 fw-bold"><i class="fab fa-google"></i> Chào Mừng Bạn!</h4>
                 </div>
                 <div class="card-body p-4">
                     <div class="alert alert-info text-center">
-                        Chào <strong>@ViewBag.Name</strong>! Để tối ưu hóa trải nghiệm, vui lòng xác nhận thông tin dưới đây trước khi vào hệ thống.
+                        Chào <strong>@ViewBag.Name</strong>! Để hệ thống gợi ý phòng trọ phù hợp,
+                        vui lòng cho chúng tôi biết thêm về bạn.
                     </div>
 
                     <form asp-action="CompleteProfile" method="post">
@@ -23,27 +24,24 @@
                             <input type="text" class="form-control" value="@ViewBag.Email" disabled />
                         </div>
 
-                        <div class="mb-3">
-                            <label class="form-label fw-bold text-primary">Mục đích sử dụng của bạn? <span class="text-danger">*</span></label>
-                            <select id="roleSelect" name="role" class="form-select border-primary" required>
-                                <option value="" selected disabled>-- Chọn vai trò --</option>
-                                <option value="User">Tôi đi tìm phòng trọ</option>
-                                <option value="Landlord">Tôi là chủ trọ (Cho thuê phòng)</option>
-                            </select>
-                        </div>
-
-                        <div class="mb-4" id="identitySection" style="display: none;">
-                            <label class="form-label fw-bold text-primary">Bạn đang là? <span class="text-danger">*</span></label>
-                            <select id="userIdentitySelect" name="userIdentity" class="form-select border-primary">
+                        <div class="mb-4">
+                            <label class="form-label fw-bold text-primary">
+                                Bạn đang là? <span class="text-danger">*</span>
+                            </label>
+                            <select name="userIdentity" class="form-select border-primary" required>
                                 <option value="" selected disabled>-- Chọn định danh --</option>
                                 <option value="Student">Sinh viên</option>
                                 <option value="Worker">Người đi làm</option>
                             </select>
-                            <small class="text-muted">Hệ thống sẽ dựa vào đây để đo khoảng cách từ phòng trọ đến Trường học / Chỗ làm của bạn.</small>
+                            <small class="text-muted mt-1 d-block">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Hệ thống sẽ gợi ý phòng trọ gần Trường học / Nơi làm việc của bạn.
+                                Bạn có thể thay đổi thông tin này trong trang Hồ sơ bất cứ lúc nào.
+                            </small>
                         </div>
 
                         <button type="submit" class="btn btn-danger w-100 fw-bold btn-lg rounded-pill">
-                            Xác Nhận & Vào Trang Chủ <i class="fas fa-arrow-right ms-2"></i>
+                            Vào Trang Chủ <i class="fas fa-arrow-right ms-2"></i>
                         </button>
                     </form>
                 </div>
@@ -51,30 +49,3 @@
         </div>
     </div>
 </div>
-
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const roleSelect = document.getElementById('roleSelect');
-        const identitySection = document.getElementById('identitySection');
-        const userIdentitySelect = document.getElementById('userIdentitySelect');
-
-        function toggleIdentitySection() {
-            if (roleSelect.value === 'User') {
-                // Nếu chọn "Người đi tìm trọ" -> Hiện mục định danh và bắt buộc phải chọn
-                identitySection.style.display = 'block';
-                userIdentitySelect.setAttribute('required', 'required');
-            } else {
-                // Nếu chọn "Chủ trọ" (hoặc chưa chọn) -> Ẩn mục định danh, xóa bắt buộc, reset giá trị
-                identitySection.style.display = 'none';
-                userIdentitySelect.removeAttribute('required');
-                userIdentitySelect.value = '';
-            }
-        }
-
-        // Gọi hàm kiểm tra ngay khi trang vừa tải xong
-        toggleIdentitySection();
-
-        // Lắng nghe mỗi khi người dùng thay đổi lựa chọn ở ô Vai trò
-        roleSelect.addEventListener('change', toggleIdentitySection);
-    });
-</script>
