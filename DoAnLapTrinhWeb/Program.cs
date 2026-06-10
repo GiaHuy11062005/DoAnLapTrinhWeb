@@ -73,6 +73,7 @@ using (var scope = app.Services.CreateScope())
         var context = services.GetRequiredService<AppDbContext>();
 
         // 1. Gọi hàm Seed Data kéo 3 Thành phố từ API
+        await context.Database.MigrateAsync();
         await LocationSeeder.SeedLocationsAsync(context);
 
         // 2. Tự động tạo tài khoản Admin (Nếu chưa tồn tại)
