@@ -19,12 +19,14 @@ namespace DoAnLapTrinhWeb.Controllers
             _context = context;
         }
 
+        // Lấy ID người dùng đang đăng nhập
         private int GetCurrentUserId()
         {
             var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
             return int.TryParse(userIdClaim, out var userId) ? userId : 0;
         }
 
+        // Trả về số lượng thông báo CHƯA ĐỌC (dùng cho AJAX để hiện số lên cái chuông)
         [HttpGet]
         public async Task<IActionResult> GetUnreadCount()
         {
@@ -38,6 +40,7 @@ namespace DoAnLapTrinhWeb.Controllers
             return Json(new { count });
         }
 
+        // Trả về danh sách 10 thông báo mới nhất (dùng cho AJAX đổ dữ liệu vào menu thả xuống của chuông)
         [HttpGet]
         public async Task<IActionResult> GetNotifications()
         {
@@ -61,6 +64,7 @@ namespace DoAnLapTrinhWeb.Controllers
             return Json(notifications);
         }
 
+        // Đánh dấu 1 thông báo là ĐÃ ĐỌC khi người dùng click vào nó, sau đó chuyển hướng đến trang liên quan
         [HttpPost]
         public async Task<IActionResult> MarkAsRead(int id)
         {
@@ -81,6 +85,7 @@ namespace DoAnLapTrinhWeb.Controllers
             return RedirectToAction("Index", "Home");
         }
         
+        // Nút "Đánh dấu tất cả đã đọc" trong menu thông báo
         [HttpPost]
         public async Task<IActionResult> MarkAllAsRead()
         {

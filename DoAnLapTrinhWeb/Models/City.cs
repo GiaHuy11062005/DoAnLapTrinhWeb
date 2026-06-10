@@ -1,15 +1,23 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 
 namespace DoAnLapTrinhWeb.Models
 {
+    // Lớp đại diện cho một Tỉnh/Thành phố
     public class City
     {
+        // Khóa chính
         public int Id { get; set; }
-        public string? Name { get; set; } // Tên thành phố
-        public int ApiCode { get; set; } // Mã code từ API để đối chiếu
-        public string? GoogleMapsUrl { get; set; } // Link tìm kiếm trên Google Maps
+        
+        // Tên Tỉnh/Thành phố (Ví dụ: "Hồ Chí Minh")
+        public string? Name { get; set; } 
+        
+        // Mã code từ API lấy dữ liệu hành chính để đối chiếu
+        public int ApiCode { get; set; } 
+        
+        // Link tìm kiếm mặc định trên Google Maps cho thành phố này
+        public string? GoogleMapsUrl { get; set; } 
 
-        // Relationship
+        // Quan hệ 1-N: Một Thành phố có nhiều Quận/Huyện
         public ICollection<District>? Districts { get; set; }
     }
 }

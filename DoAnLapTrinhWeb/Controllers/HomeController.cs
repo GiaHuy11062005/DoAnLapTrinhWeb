@@ -18,10 +18,10 @@ namespace DoAnLapTrinhWeb.Controllers
             _context = context;
         }
 
-        // Đổi thành async Task<IActionResult>
+        // Đổi thành async Task<IActionResult> để tận dụng xử lý bất đồng bộ
         public async Task<IActionResult> Index()
         {
-            // 1. Load danh sách thành phố cho thanh tìm kiếm
+            // 1. Load danh sách thành phố cho thanh tìm kiếm ở Banner trang chủ
             ViewBag.Cities = await _context.Cities.ToListAsync();
 
             // 1a. Tỉnh/thành nổi bật có phòng đang được duyệt
@@ -39,13 +39,13 @@ namespace DoAnLapTrinhWeb.Controllers
                 .Take(3)
                 .ToListAsync();
 
-            // 2. LOGIC ĐỀ XUẤT TRỌ GẦN NHẤT
+            // 2. LOGIC ĐỀ XUẤT TRỌ GẦN NHẤT DÀNH CHO USER ĐÃ ĐĂNG NHẬP
             List<Accommodation> suggestedRooms = new List<Accommodation>();
 
-            // Kiểm tra xem trình duyệt đã có session/cookie đăng nhập chưa
+            // Kiểm tra xem trình duyệt đã có session/cookie đăng nhập (người dùng đã Login) chưa
             if (User.Identity != null && User.Identity.IsAuthenticated)
             {
-                // Lấy ID của User đang đăng nhập (Từ Claims)
+                // Lấy ID của User đang đăng nhập (Từ cấu trúc Claims bảo mật của ASP.NET)
                 var userId = await ResolveCurrentUserIdAsync();
                 if (userId.HasValue)
                 {
@@ -67,10 +67,10 @@ namespace DoAnLapTrinhWeb.Controllers
                 }
             }
 
-            // Truyền danh sách đề xuất ra View
+            // Truyền danh sách đề xuất ra View (nếu chưa đăng nhập thì list này sẽ rỗng)
             ViewBag.SuggestedRooms = suggestedRooms;
 
-            // 3. Trọ nổi bật dùng cho user bình thường ngay cả khi chưa đăng nhập
+            // 3. Trọ nổi bật dùng cho user bình thường ngay cả khi chưa đăng nhập (Lấy 6 phòng mới nhất đã duyệt)
             ViewBag.FeaturedRooms = await _context.Accommodations
                 .Include(a => a.Images)
                 .Include(a => a.City)
@@ -96,6 +96,7 @@ namespace DoAnLapTrinhWeb.Controllers
             return View();
         }
 
+        // Hàm gọi qua API (AJAX) để lấy danh sách Quận/Huyện có phòng trọ (Lọc khi chọn Thành phố)
         [HttpGet]
         public IActionResult GetDistrictsWithRooms(int cityId)
         {
@@ -108,8 +109,10 @@ namespace DoAnLapTrinhWeb.Controllers
             return Json(districts);
         }
 
+        // Hàm phụ trợ giúp lấy ID của user đăng nhập
         private async Task<int?> ResolveCurrentUserIdAsync()
         {
+            // Thử lấy ID thẳng từ Claim (Nếu login bình thường)
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
             if (userIdClaim != null && int.TryParse(userIdClaim.Value, out int userId))
             {

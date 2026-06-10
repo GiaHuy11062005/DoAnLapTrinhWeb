@@ -20,12 +20,14 @@ namespace DoAnLapTrinhWeb.Controllers
             _context = context;
         }
 
+        // Hàm phụ trợ: Lấy ID của người dùng hiện tại đang đăng nhập từ Session/Cookie
         private int GetCurrentUserId()
         {
             var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
             return int.TryParse(userIdClaim, out var userId) ? userId : 0;
         }
 
+        // Xử lý khi Sinh viên nhấn nút "Gửi yêu cầu" đặt phòng
         [HttpPost]
         public async Task<IActionResult> Create(int accommodationId, string message)
         {
@@ -74,6 +76,7 @@ namespace DoAnLapTrinhWeb.Controllers
             return Redirect($"/Accommodation/Details/{accommodationId}");
         }
 
+        // Trang hiển thị danh sách các Đơn đặt phòng dành cho Chủ trọ (Chỉ Chủ trọ mới vào được)
         [Authorize(Roles = "Landlord")]
         [HttpGet]
         public async Task<IActionResult> LandlordBookings()
@@ -89,6 +92,7 @@ namespace DoAnLapTrinhWeb.Controllers
             return View(bookings);
         }
 
+        // Xử lý khi Chủ trọ nhấn nút "Chấp nhận" đơn đặt phòng
         [Authorize(Roles = "Landlord")]
         [HttpPost]
         public async Task<IActionResult> Accept(int id)
@@ -119,6 +123,7 @@ namespace DoAnLapTrinhWeb.Controllers
             return RedirectToAction(nameof(LandlordBookings));
         }
 
+        // Xử lý khi Chủ trọ nhấn nút "Từ chối" đơn đặt phòng và nhập lý do
         [Authorize(Roles = "Landlord")]
         [HttpPost]
         public async Task<IActionResult> Reject(int id, string reason)
@@ -149,6 +154,7 @@ namespace DoAnLapTrinhWeb.Controllers
             return RedirectToAction(nameof(LandlordBookings));
         }
 
+        // Trang hiển thị lịch sử đặt phòng dành cho Sinh viên tự theo dõi trạng thái
         [HttpGet]
         public async Task<IActionResult> StudentBookings()
         {

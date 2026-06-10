@@ -49,11 +49,6 @@
                     <div class="d-flex align-items-center gap-3 mt-3 mt-sm-0">
                         @if (User.Identity != null && User.Identity.IsAuthenticated)
                         {
-                            <!-- Nút Theme Toggle -->
-                            <button class="btn btn-light rounded-circle border-0 me-2" id="themeToggleBtn" type="button" title="Chuyển chế độ Sáng/Tối">
-                                <i class="fas fa-moon" id="themeToggleIcon"></i>
-                            </button>
-
                             <!-- Chuông thông báo -->
                             <div class="dropdown me-2 position-relative">
                                 <button class="btn btn-light rounded-circle border-0" type="button" id="notificationDropdownBtn" data-bs-toggle="dropdown" aria-expanded="false" onclick="markNotificationsRead()">
@@ -229,38 +224,6 @@
     <script src="~/js/site.js" asp-append-version="true"></script>
     
     <script>
-        // --- Dark/Light Mode Logic cho Bootstrap ---
-        const themeToggleBtn = document.getElementById('themeToggleBtn');
-        const themeToggleIcon = document.getElementById('themeToggleIcon');
-        const htmlElement = document.documentElement;
-        
-        // Kiểm tra theme lưu trữ hoặc hệ thống
-        const currentTheme = localStorage.getItem('bsTheme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-        htmlElement.setAttribute('data-bs-theme', currentTheme);
-        if(themeToggleIcon) {
-            if (currentTheme === 'dark') {
-                themeToggleIcon.classList.replace('fa-moon', 'fa-sun');
-                if(document.getElementById('bellIcon')) document.getElementById('bellIcon').classList.replace('text-dark', 'text-light');
-            }
-        }
-
-        if(themeToggleBtn) {
-            themeToggleBtn.addEventListener('click', () => {
-                const isDark = htmlElement.getAttribute('data-bs-theme') === 'dark';
-                const newTheme = isDark ? 'light' : 'dark';
-                htmlElement.setAttribute('data-bs-theme', newTheme);
-                localStorage.setItem('bsTheme', newTheme);
-                
-                if (newTheme === 'dark') {
-                    themeToggleIcon.classList.replace('fa-moon', 'fa-sun');
-                    if(document.getElementById('bellIcon')) document.getElementById('bellIcon').classList.replace('text-dark', 'text-light');
-                } else {
-                    themeToggleIcon.classList.replace('fa-sun', 'fa-moon');
-                    if(document.getElementById('bellIcon')) document.getElementById('bellIcon').classList.replace('text-light', 'text-dark');
-                }
-            });
-        }
-
         // --- Logic Thông Báo (Notifications) ---
         @if (User.Identity != null && User.Identity.IsAuthenticated)
         {

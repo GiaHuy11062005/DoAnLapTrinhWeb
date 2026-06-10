@@ -93,6 +93,7 @@ namespace DoAnLapTrinhWeb.Controllers
                 room.IsApproved = true;
                 room.RejectionReason = null;
                 
+                // Tự động tạo và lưu một Thông báo (Notification) gửi đến Chủ trọ khi bài đăng được Admin duyệt
                 var notification = new Notification
                 {
                     UserId = room.OwnerId,
@@ -143,7 +144,7 @@ namespace DoAnLapTrinhWeb.Controllers
                 accommodation.IsApproved = false;
                 accommodation.RejectionReason = string.IsNullOrWhiteSpace(reason) ? "Không đạt yêu cầu" : reason;
                 
-                // Gui thong bao cho chu tro
+                // Gửi thông báo từ chối bài đăng kèm lý do cụ thể để Chủ trọ biết
                 var notification = new Notification
                 {
                     UserId = accommodation.OwnerId,
@@ -247,6 +248,7 @@ namespace DoAnLapTrinhWeb.Controllers
             {
                 application.User.Role = "Landlord";
                 
+                // Gửi thông báo chúc mừng người dùng khi hồ sơ Chủ trọ của họ được xét duyệt thành công
                 var notification = new Notification
                 {
                     UserId = application.User.Id,
@@ -280,6 +282,7 @@ namespace DoAnLapTrinhWeb.Controllers
                 ? "Không đạt yêu cầu."
                 : rejectionReason.Trim();
 
+            // Gửi thông báo báo buồn cho người dùng khi hồ sơ Chủ trọ bị từ chối
             var notification = new Notification
             {
                 UserId = application.UserId,

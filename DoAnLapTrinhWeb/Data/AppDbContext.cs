@@ -5,9 +5,10 @@ namespace DoAnLapTrinhWeb.Data
 {
     public class AppDbContext : DbContext
     {
+        // Hàm khởi tạo, cấu hình chuỗi kết nối (truyền từ Program.cs)
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
-        // Khai báo các bảng trong Database
+        // MỤC DATA: Khai báo các bảng trong Database (DbSet đại diện cho bảng)
         public DbSet<AppUser> Users { get; set; }
         public DbSet<Accommodation> Accommodations { get; set; }
         public DbSet<AccommodationImage> AccommodationImages { get; set; }
@@ -23,6 +24,8 @@ namespace DoAnLapTrinhWeb.Data
         public DbSet<Notification> Notifications { get; set; }
         public DbSet<BookingRequest> BookingRequests { get; set; }
 
+        // Hàm này dùng để cấu hình thủ công các quan hệ giữa các bảng (Ví dụ: 1-Nhiều)
+        // và định nghĩa cách xóa dữ liệu (Cascade hoặc NoAction) để tránh lỗi vòng lặp
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             // Khắc phục cảnh báo vàng: Định dạng kích thước cho cột Price (18 chữ số, 0 số thập phân)
