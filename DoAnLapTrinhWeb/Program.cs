@@ -1,7 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using DoAnLapTrinhWeb.Data;
 using DoAnLapTrinhWeb.Hubs;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,9 +24,37 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.LoginPath = "/Auth/Login"; // Đường dẫn chuyển hướng khi chưa đăng nhập
         options.LogoutPath = "/Auth/Logout"; // Đường dẫn khi đăng xuất
         options.AccessDeniedPath = "/Auth/AccessDenied"; // Đường dẫn khi bị từ chối quyền truy cập (Role)
-        options.Cookie.Name = "TienIchTroCookie"; // Tên cookie lưu trên trình duyệt của người dùng
+        // Cookie không phân biệt port trên localhost, vì vậy mỗi web cần một tên cookie riêng.
+        options.Cookie.Name = builder.Configuration["Authentication:CookieName"]
+            ?? "DoAnLapTrinhWeb.Auth";
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SameSite = SameSiteMode.Lax;
+        options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
         options.ExpireTimeSpan = TimeSpan.FromDays(30); // Giữ trạng thái đăng nhập tối đa 30 ngày
         options.SlidingExpiration = true; // Tự động gia hạn thời gian đăng nhập nếu người dùng đang dùng web
+        options.Events.OnValidatePrincipal = async context =>
+        {
+            var userIdValue = context.Principal?.FindFirstValue(ClaimTypes.NameIdentifier);
+            var email = context.Principal?.FindFirstValue(ClaimTypes.Email);
+
+            if (!int.TryParse(userIdValue, out var userId))
+            {
+                context.RejectPrincipal();
+                await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+                return;
+            }
+
+            var dbContext = context.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
+            var accountExists = await dbContext.Users.AnyAsync(user =>
+                user.Id == userId && user.Email == email);
+
+            // Không chấp nhận cookie của web/database khác dù ID người dùng tình cờ giống nhau.
+            if (!accountExists)
+            {
+                context.RejectPrincipal();
+                await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            }
+        };
     })
     .AddGoogle(googleOptions =>
      {
