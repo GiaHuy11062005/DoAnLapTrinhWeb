@@ -182,15 +182,17 @@ namespace DoAnLapTrinhWeb.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> PendingLandlords()
+        public async Task<IActionResult> PendingLandlords(string status = "Pending")
         {
             try
             {
                 var applications = await _context.LandlordApplications
                     .Include(a => a.User)
-                    .Where(a => a.Status == "Pending")
+                    .Where(a => a.Status == status)
                     .OrderByDescending(a => a.CreatedAt)
                     .ToListAsync();
+
+                ViewBag.CurrentStatus = status;
 
                 return View(applications);
             }

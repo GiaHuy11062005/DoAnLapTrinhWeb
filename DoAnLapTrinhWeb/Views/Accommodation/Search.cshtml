@@ -5,6 +5,19 @@
     var school = Context.Request.Query["school"].ToString();
     var parking = Context.Request.Query["parking"].ToString();
     var pets = Context.Request.Query["pets"].ToString();
+    
+    // Xây dựng QueryString để giữ nguyên các bộ lọc khi chuyển trang
+    var baseQs = "";
+    foreach (var key in Context.Request.Query.Keys)
+    {
+        if (key.ToLower() != "page")
+        {
+            baseQs += $"&{key}={Context.Request.Query[key]}";
+        }
+    }
+
+    int totalPages = ViewBag.TotalPages ?? 1;
+    int currentPage = ViewBag.CurrentPage ?? 1;
 }
 
 <div class="container mt-5 mb-5" style="min-height: 60vh;">
@@ -41,8 +54,8 @@
             {
                 <div class="col-md-4 mb-4">
                     <div class="card h-100 shadow-sm border-0 transition-hover">
-                        <button onclick="toggleGlobalFavorite(@room.Id, this)" class="btn btn-light position-absolute top-0 end-0 m-2 rounded-circle shadow-sm" style="z-index: 10;">
-                            <i class="far fa-heart text-muted"></i>
+                        <button onclick="toggleGlobalFavorite(@room.Id, this)" class="btn btn-light position-absolute top-0 end-0 m-2 rounded-pill shadow-sm" style="z-index: 10; font-size: 0.85rem; font-weight: 500;">
+                            <i class="far fa-heart text-danger me-1"></i> Yêu thích
                         </button>
                         @{
                             var firstImage = (room.Images != null && room.Images.Any()) ? room.Images.First().ImageUrl : fallbackImage;
@@ -50,7 +63,12 @@
                         <img src="@firstImage" class="card-img-top" style="height: 220px; object-fit: cover;">
                         <div class="card-body">
                             <h5 class="card-title text-truncate fw-bold">@room.Title</h5>
-                            <p class="card-text text-danger fw-bold fs-5">@room.Price.ToString("N0") VNĐ</p>
+                            <p class="card-text text-danger fw-bold fs-5 mb-2">@room.Price.ToString("N0") VNĐ</p>
+                            <div class="text-muted small mb-2" style="display: grid; gap: 0.25rem;">
+                                <span><i class="fas fa-users me-2"></i>@room.MaxPeople người</span>
+                                <span><i class="fas fa-city me-2"></i>@room.City?.Name</span>
+                                <span><i class="fas fa-map-marker-alt me-2"></i>@room.SpecificAddress</span>
+                            </div>
                         </div>
                         <div class="card-footer bg-white border-top-0 pb-3">
                             <a href="/Accommodation/Details/@room.Id" class="btn btn-outline-primary w-100 rounded-pill">Xem chi tiết</a>
@@ -59,6 +77,29 @@
                 </div>
             }
         </div>
+
+        <!-- Phân trang -->
+        @if (totalPages > 1)
+        {
+            <nav aria-label="Page navigation" class="mt-5">
+                <ul class="pagination justify-content-center">
+                    <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                        <a class="page-link rounded-pill px-3 mx-1" href="?page=@(currentPage - 1)@baseQs" tabindex="-1">Trang trước</a>
+                    </li>
+                    
+                    @for (int i = 1; i <= totalPages; i++)
+                    {
+                        <li class="page-item @(i == currentPage ? "active" : "")">
+                            <a class="page-link rounded-circle mx-1" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;" href="?page=@i@baseQs">@i</a>
+                        </li>
+                    }
+
+                    <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                        <a class="page-link rounded-pill px-3 mx-1" href="?page=@(currentPage + 1)@baseQs">Trang sau</a>
+                    </li>
+                </ul>
+            </nav>
+        }
     }
     else
     {

@@ -37,13 +37,15 @@
                 </button>
                 
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between align-items-center">
-                    <ul class="navbar-nav flex-grow-1 justify-content-center gap-3 fw-medium">
+                    <ul class="navbar-nav flex-grow-1 justify-content-center gap-3 fw-medium position-relative" id="mainNavbar">
                         <li class="nav-item">
                             <a class="nav-link text-dark hover-primary" asp-area="" asp-controller="Home" asp-action="Index">Trang chủ</a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link text-dark hover-primary" asp-area="" asp-controller="Accommodation" asp-action="Search">Tìm phòng</a>
                         </li>
+                        <!-- Dynamic Slider -->
+                        <div id="navSlider" class="nav-slider"></div>
                     </ul>
 
                     <div class="d-flex align-items-center gap-3 mt-3 mt-sm-0">
@@ -127,13 +129,17 @@
                                 <input type="text" name="Title" class="form-control" required placeholder="VD: Phòng trọ khép kín, an ninh tốt...">
                             </div>
                             
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                                 <label class="form-label fw-bold">Giá cho thuê (VNĐ/Tháng) <span class="text-danger">*</span></label>
                                 <input type="number" name="Price" class="form-control" required>
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                                 <label class="form-label fw-bold">Diện tích (m²) <span class="text-danger">*</span></label>
                                 <input type="number" step="0.1" name="Area" class="form-control" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Số người tối đa <span class="text-danger">*</span></label>
+                                <input type="number" name="MaxPeople" class="form-control" required min="1" value="1">
                             </div>
 
                             <div class="col-md-6">
@@ -178,14 +184,61 @@
                                     </div>
                                 </div>
 
-                                <div class="small text-muted fw-semibold mb-2">Các tiện ích khác đang hiển thị trong hệ thống</div>
-                                <div class="amenity-tags">
-                                    @foreach (var amenity in extraAmenities)
-                                    {
-                                        <span class="amenity-tag">
-                                            <i class="fas @amenity.Icon me-2"></i>@amenity.Label
-                                        </span>
-                                    }
+                                <div class="row g-2 mb-3">
+                                    <div class="col-md-6">
+                                        <div class="amenity-option">
+                                            <input class="form-check-input" type="checkbox" id="HasWifi" name="HasWifi" value="true">
+                                            <label class="amenity-option__label" for="HasWifi">
+                                                <i class="fas fa-wifi"></i>
+                                                <span>Wifi tốc độ cao</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="amenity-option">
+                                            <input class="form-check-input" type="checkbox" id="HasAirConditioner" name="HasAirConditioner" value="true">
+                                            <label class="amenity-option__label" for="HasAirConditioner">
+                                                <i class="fas fa-snowflake"></i>
+                                                <span>Điều hòa</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="amenity-option">
+                                            <input class="form-check-input" type="checkbox" id="HasKitchen" name="HasKitchen" value="true">
+                                            <label class="amenity-option__label" for="HasKitchen">
+                                                <i class="fas fa-fire-burner"></i>
+                                                <span>Bếp nấu ăn</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="amenity-option">
+                                            <input class="form-check-input" type="checkbox" id="HasSecurity" name="HasSecurity" value="true">
+                                            <label class="amenity-option__label" for="HasSecurity">
+                                                <i class="fas fa-shield-halved"></i>
+                                                <span>An ninh 24/7</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="amenity-option">
+                                            <input class="form-check-input" type="checkbox" id="HasPrivateBathroom" name="HasPrivateBathroom" value="true">
+                                            <label class="amenity-option__label" for="HasPrivateBathroom">
+                                                <i class="fas fa-sink"></i>
+                                                <span>Khu vệ sinh riêng</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="amenity-option">
+                                            <input class="form-check-input" type="checkbox" id="HasLaundryArea" name="HasLaundryArea" value="true">
+                                            <label class="amenity-option__label" for="HasLaundryArea">
+                                                <i class="fas fa-shirt"></i>
+                                                <span>Chỗ phơi đồ</span>
+                                            </label>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
@@ -282,6 +335,61 @@
             setInterval(loadNotifications, 30000);
             </text>
         }
+
+        // --- Logic Dynamic Nav Slider ---
+        document.addEventListener("DOMContentLoaded", function() {
+            const navbar = document.getElementById('mainNavbar');
+            const slider = document.getElementById('navSlider');
+            if (!navbar || !slider) return;
+
+            const links = navbar.querySelectorAll('.nav-link');
+            let activeLink = null;
+
+            // Tìm link hiện tại (active) dựa vào URL
+            const currentUrl = window.location.pathname;
+            links.forEach(link => {
+                if (link.getAttribute('href') === currentUrl || 
+                   (currentUrl === '/' && link.getAttribute('href') === '/Home/Index')) {
+                    activeLink = link;
+                    link.classList.add('fw-bold', 'text-primary'); // Highlight current
+                }
+            });
+
+            // Hàm di chuyển slider
+            function moveSlider(targetElement) {
+                if (!targetElement) {
+                    slider.style.opacity = 0;
+                    return;
+                }
+                const rect = targetElement.getBoundingClientRect();
+                const navRect = navbar.getBoundingClientRect();
+                
+                // Tính khoảng cách tương đối so với container (ul)
+                const leftPos = rect.left - navRect.left;
+                
+                slider.style.width = `${rect.width}px`;
+                slider.style.transform = `translateX(${leftPos}px)`;
+                slider.style.opacity = 1;
+            }
+
+            // Khởi tạo vị trí ban đầu
+            if (activeLink) {
+                // Đợi layout render xong
+                setTimeout(() => moveSlider(activeLink), 100);
+            }
+
+            // Xử lý sự kiện hover
+            links.forEach(link => {
+                link.addEventListener('mouseenter', function() {
+                    moveSlider(this);
+                });
+            });
+
+            // Khi chuột rời khỏi navbar, trả slider về vị trí active link ban đầu
+            navbar.addEventListener('mouseleave', function() {
+                moveSlider(activeLink);
+            });
+        });
     </script>
 
     @await RenderSectionAsync("Scripts", required: false)
@@ -330,6 +438,19 @@
             color: #1e3a8a;
             font-weight: 600;
             font-size: 0.92rem;
+        }
+
+        /* --- Dynamic Nav Slider --- */
+        .nav-slider {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 3px;
+            background-color: var(--primary-color, #2563eb);
+            border-radius: 3px;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            width: 0;
+            opacity: 0;
         }
 
         /* --- Dark Mode Customizations to match Admin Dashboard --- */

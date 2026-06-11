@@ -181,7 +181,7 @@ namespace DoAnLapTrinhWeb.Controllers
         // --- HÀM XỬ LÝ TRANG KẾT QUẢ TÌM KIẾM (TASK 2) VÀ GHI LOG (TASK 4) ---
         [HttpGet]
         [AllowAnonymous] // Ai cũng có thể tìm kiếm
-        public async Task<IActionResult> Search(int? cityId, int? districtId, int? priceRange, string? school, bool? parking, bool? pets)
+        public async Task<IActionResult> Search(int? cityId, int? districtId, int? priceRange, string? school, bool? parking, bool? pets, int page = 1)
         {
             // Lấy danh sách phòng ĐÃ DUYỆT
             var query = _context.Accommodations.Include(a => a.Images).Where(a => a.IsApproved);
@@ -236,7 +236,24 @@ namespace DoAnLapTrinhWeb.Controllers
                 await _context.SaveChangesAsync(); // Lưu log trong background
             }
 
-            var results = await query.ToListAsync();
+            // --- LOGIC PHÂN TRANG ---
+            int pageSize = 6;
+            int totalItems = await query.CountAsync();
+            int totalPages = (int)Math.Ceiling(totalItems / (double)pageSize);
+
+            // Đảm bảo page hợp lệ
+            if (page < 1) page = 1;
+            if (page > totalPages && totalPages > 0) page = totalPages;
+
+            ViewBag.CurrentPage = page;
+            ViewBag.TotalPages = totalPages;
+            ViewBag.TotalItems = totalItems;
+
+            var results = await query
+                .OrderByDescending(a => a.Id)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
             return View(results);
         }
 
@@ -280,12 +297,14 @@ namespace DoAnLapTrinhWeb.Controllers
 
             if (User.Identity != null && User.Identity.IsAuthenticated)
             {
-                var userEmail = User.FindFirstValue(ClaimTypes.Email);
-                var currentUser = await _context.Users.FirstOrDefaultAsync(u => u.Email == userEmail);
-
-                if (currentUser != null)
+                var userId = await ResolveCurrentUserIdAsync();
+                if (userId.HasValue)
                 {
-                    ViewBag.UserDestination = currentUser.DestinationAddress;
+                    var currentUser = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId.Value);
+                    if (currentUser != null)
+                    {
+                        ViewBag.UserDestination = currentUser.DestinationAddress;
+                    }
                 }
             }
 
@@ -351,6 +370,7 @@ namespace DoAnLapTrinhWeb.Controllers
             room.Description = model.Description;
             room.Price = model.Price;
             room.Area = model.Area;
+            room.MaxPeople = model.MaxPeople;
             room.SpecificAddress = model.SpecificAddress;
             room.CityId = model.CityId;
             room.DistrictId = model.DistrictId;

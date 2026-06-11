@@ -64,8 +64,13 @@ namespace DoAnLapTrinhWeb.Services
                 var (originLon, originLat) = originCoords.Value;
                 var (destLon, destLat) = destCoords.Value;
 
+                var originLonStr = originLon.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                var originLatStr = originLat.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                var destLonStr = destLon.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                var destLatStr = destLat.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
                 // Format: lon,lat;lon,lat (OSRM dùng thứ tự lon trước lat)
-                var osrmUrl = $"https://router.project-osrm.org/route/v1/driving/{originLon},{originLat};{destLon},{destLat}?overview=false";
+                var osrmUrl = $"https://router.project-osrm.org/route/v1/driving/{originLonStr},{originLatStr};{destLonStr},{destLatStr}?overview=false";
 
                 var osrmResponse = await _httpClient.GetAsync(osrmUrl);
                 osrmResponse.EnsureSuccessStatusCode();
@@ -122,35 +127,49 @@ namespace DoAnLapTrinhWeb.Services
 
         /// <summary>
         /// Geocode địa chỉ tiếng Việt → (longitude, latitude) sử dụng Nominatim OpenStreetMap
+        /// Có cơ chế fallback: Nếu địa chỉ quá chi tiết không tìm thấy, sẽ tự động bỏ dần phần đầu (số nhà, tên đường).
         /// </summary>
         private async Task<(double Lon, double Lat)?> GeocodeAddressAsync(string address)
         {
             try
             {
-                // Thêm ", Việt Nam" để tăng độ chính xác geocoding
                 var fullAddress = address.Contains("Việt Nam") || address.Contains("Vietnam")
                     ? address
                     : address + ", Việt Nam";
 
-                var encoded = Uri.EscapeDataString(fullAddress);
-                var url = $"https://nominatim.openstreetmap.org/search?q={encoded}&format=json&limit=1&countrycodes=vn";
+                var parts = fullAddress.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-                var response = await _httpClient.GetAsync(url);
-                if (!response.IsSuccessStatusCode) return null;
+                for (int i = 0; i < parts.Length; i++)
+                {
+                    // Ghép các phần còn lại từ vị trí i
+                    var searchAddress = string.Join(", ", parts[i..]);
+                    var encoded = Uri.EscapeDataString(searchAddress);
+                    var url = $"https://nominatim.openstreetmap.org/search?q={encoded}&format=json&limit=1&countrycodes=vn";
 
-                var json = await response.Content.ReadAsStringAsync();
-                using var doc = JsonDocument.Parse(json);
-                var root = doc.RootElement;
+                    var response = await _httpClient.GetAsync(url);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var json = await response.Content.ReadAsStringAsync();
+                        using var doc = JsonDocument.Parse(json);
+                        var root = doc.RootElement;
 
-                if (root.GetArrayLength() == 0) return null;
+                        if (root.GetArrayLength() > 0)
+                        {
+                            var first = root[0];
+                            double lat = double.Parse(first.GetProperty("lat").GetString() ?? "0",
+                                System.Globalization.CultureInfo.InvariantCulture);
+                            double lon = double.Parse(first.GetProperty("lon").GetString() ?? "0",
+                                System.Globalization.CultureInfo.InvariantCulture);
 
-                var first = root[0];
-                double lat = double.Parse(first.GetProperty("lat").GetString() ?? "0",
-                    System.Globalization.CultureInfo.InvariantCulture);
-                double lon = double.Parse(first.GetProperty("lon").GetString() ?? "0",
-                    System.Globalization.CultureInfo.InvariantCulture);
+                            return (lon, lat);
+                        }
+                    }
 
-                return (lon, lat);
+                    // Nếu chỉ còn 1 phần cuối cùng (thường là "Việt Nam") thì dừng lại
+                    if (parts.Length - i <= 2) break;
+                }
+
+                return null;
             }
             catch
             {

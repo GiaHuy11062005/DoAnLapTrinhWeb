@@ -23,6 +23,7 @@ namespace DoAnLapTrinhWeb.Data
         public DbSet<SearchLog> SearchLogs { get; set; }
         public DbSet<Notification> Notifications { get; set; }
         public DbSet<BookingRequest> BookingRequests { get; set; }
+        public DbSet<Contact> Contacts { get; set; }
 
         // Hàm này dùng để cấu hình thủ công các quan hệ giữa các bảng (Ví dụ: 1-Nhiều)
         // và định nghĩa cách xóa dữ liệu (Cascade hoặc NoAction) để tránh lỗi vòng lặp
@@ -99,6 +100,18 @@ namespace DoAnLapTrinhWeb.Data
                 .WithMany()
                 .HasForeignKey(n => n.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<Contact>()
+                .HasOne(c => c.Sender)
+                .WithMany()
+                .HasForeignKey(c => c.SenderId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<Contact>()
+                .HasOne(c => c.Receiver)
+                .WithMany()
+                .HasForeignKey(c => c.ReceiverId)
+                .OnDelete(DeleteBehavior.NoAction);
         }
     }
 }

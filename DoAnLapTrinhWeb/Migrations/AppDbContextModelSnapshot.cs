@@ -51,11 +51,32 @@ namespace DoAnLapTrinhWeb.Migrations
                     b.Property<int>("DistrictId")
                         .HasColumnType("int");
 
+                    b.Property<bool>("HasAirConditioner")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("HasKitchen")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("HasLaundryArea")
+                        .HasColumnType("bit");
+
                     b.Property<bool>("HasParking")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("HasPrivateBathroom")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("HasSecurity")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("HasWifi")
                         .HasColumnType("bit");
 
                     b.Property<bool>("IsApproved")
                         .HasColumnType("bit");
+
+                    b.Property<int>("MaxPeople")
+                        .HasColumnType("int");
 
                     b.Property<int>("OwnerId")
                         .HasColumnType("int");
@@ -80,7 +101,7 @@ namespace DoAnLapTrinhWeb.Migrations
 
                     b.HasIndex("OwnerId");
 
-                    b.ToTable("Accommodations", (string)null);
+                    b.ToTable("Accommodations");
                 });
 
             modelBuilder.Entity("DoAnLapTrinhWeb.Models.AccommodationImage", b =>
@@ -101,7 +122,7 @@ namespace DoAnLapTrinhWeb.Migrations
 
                     b.HasIndex("AccommodationId");
 
-                    b.ToTable("AccommodationImages", (string)null);
+                    b.ToTable("AccommodationImages");
                 });
 
             modelBuilder.Entity("DoAnLapTrinhWeb.Models.AppUser", b =>
@@ -147,7 +168,7 @@ namespace DoAnLapTrinhWeb.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Users", (string)null);
+                    b.ToTable("Users");
                 });
 
             modelBuilder.Entity("DoAnLapTrinhWeb.Models.BookingRequest", b =>
@@ -187,7 +208,7 @@ namespace DoAnLapTrinhWeb.Migrations
 
                     b.HasIndex("StudentId");
 
-                    b.ToTable("BookingRequests", (string)null);
+                    b.ToTable("BookingRequests");
                 });
 
             modelBuilder.Entity("DoAnLapTrinhWeb.Models.City", b =>
@@ -209,7 +230,40 @@ namespace DoAnLapTrinhWeb.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Cities", (string)null);
+                    b.ToTable("Cities");
+                });
+
+            modelBuilder.Entity("DoAnLapTrinhWeb.Models.Contact", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("ReceiverId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SenderId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ReceiverId");
+
+                    b.HasIndex("SenderId");
+
+                    b.ToTable("Contacts");
                 });
 
             modelBuilder.Entity("DoAnLapTrinhWeb.Models.District", b =>
@@ -233,7 +287,7 @@ namespace DoAnLapTrinhWeb.Migrations
 
                     b.HasIndex("CityId");
 
-                    b.ToTable("Districts", (string)null);
+                    b.ToTable("Districts");
                 });
 
             modelBuilder.Entity("DoAnLapTrinhWeb.Models.Favorite", b =>
@@ -256,7 +310,7 @@ namespace DoAnLapTrinhWeb.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Favorites", (string)null);
+                    b.ToTable("Favorites");
                 });
 
             modelBuilder.Entity("DoAnLapTrinhWeb.Models.LandlordApplication", b =>
@@ -307,7 +361,7 @@ namespace DoAnLapTrinhWeb.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("LandlordApplications", (string)null);
+                    b.ToTable("LandlordApplications");
                 });
 
             modelBuilder.Entity("DoAnLapTrinhWeb.Models.Notification", b =>
@@ -343,7 +397,7 @@ namespace DoAnLapTrinhWeb.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Notifications", (string)null);
+                    b.ToTable("Notifications");
                 });
 
             modelBuilder.Entity("DoAnLapTrinhWeb.Models.SearchLog", b =>
@@ -368,7 +422,7 @@ namespace DoAnLapTrinhWeb.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("SearchLogs", (string)null);
+                    b.ToTable("SearchLogs");
                 });
 
             modelBuilder.Entity("DoAnLapTrinhWeb.Models.Ward", b =>
@@ -392,7 +446,7 @@ namespace DoAnLapTrinhWeb.Migrations
 
                     b.HasIndex("DistrictId");
 
-                    b.ToTable("Wards", (string)null);
+                    b.ToTable("Wards");
                 });
 
             modelBuilder.Entity("DoAnLapTrinhWeb.Models.Accommodation", b =>
@@ -458,6 +512,25 @@ namespace DoAnLapTrinhWeb.Migrations
                     b.Navigation("Landlord");
 
                     b.Navigation("Student");
+                });
+
+            modelBuilder.Entity("DoAnLapTrinhWeb.Models.Contact", b =>
+                {
+                    b.HasOne("DoAnLapTrinhWeb.Models.AppUser", "Receiver")
+                        .WithMany()
+                        .HasForeignKey("ReceiverId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("DoAnLapTrinhWeb.Models.AppUser", "Sender")
+                        .WithMany()
+                        .HasForeignKey("SenderId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Receiver");
+
+                    b.Navigation("Sender");
                 });
 
             modelBuilder.Entity("DoAnLapTrinhWeb.Models.District", b =>

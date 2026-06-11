@@ -21,6 +21,9 @@ namespace DoAnLapTrinhWeb.Models
         // Diện tích phòng (m2)
         public double Area { get; set; }
 
+        // Số lượng người tối đa
+        public int MaxPeople { get; set; } = 1;
+
         // --- CÁC TRƯỜNG ĐỊA CHỈ ---
         
         // Số nhà, tên đường cụ thể
@@ -45,6 +48,13 @@ namespace DoAnLapTrinhWeb.Models
         
         // Cờ cho biết phòng trọ có bãi giữ xe không
         public bool HasParking { get; set; }
+        
+        public bool HasWifi { get; set; }
+        public bool HasAirConditioner { get; set; }
+        public bool HasKitchen { get; set; }
+        public bool HasSecurity { get; set; }
+        public bool HasPrivateBathroom { get; set; }
+        public bool HasLaundryArea { get; set; }
         
         // Số điện thoại liên hệ riêng cho bài đăng này (có thể khác sđt đăng ký của chủ)
         public string? ContactPhone { get; set; }

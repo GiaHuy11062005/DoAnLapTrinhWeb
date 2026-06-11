@@ -136,60 +136,159 @@
     }
 </div>
 
-<!-- Lightbox xem ảnh toàn màn hình -->
-<div id="lightboxOverlay" onclick="closeLightbox()" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.92); z-index:9999; align-items:center; justify-content:center; flex-direction:column;">
-    <!-- Nút đóng -->
-    <button onclick="closeLightbox()" style="position:absolute; top:18px; right:22px; background:none; border:none; color:#fff; font-size:2.2rem; cursor:pointer; z-index:10001; line-height:1;">&times;</button>
+<!-- ============================================
+     LIGHTBOX XEM ẢNH TOÀN MÀN HÌNH
+     ============================================ -->
+<div id="lightboxOverlay" style="
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.93);
+    z-index: 99999;
+">
+    <!-- NÚT ĐÓNG (X) -->
+    <button id="lbClose" title="Đóng (ESC)" onclick="closeLightbox()" style="
+        position: absolute;
+        top: 16px;
+        right: 20px;
+        background: rgba(255,255,255,0.12);
+        border: none;
+        color: #fff;
+        font-size: 1.6rem;
+        line-height: 1;
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background .2s;
+        z-index: 100001;
+    ">&#10005;</button>
 
-    <!-- Khu vực ảnh chính -->
-    <div style="position:relative; display:flex; align-items:center; justify-content:center; width:100%; height:100%;" onclick="event.stopPropagation()">
-        <!-- Nút mũi tên trái -->
-        <button id="lbPrev" onclick="lbNavigate(-1)"
-                style="position:absolute; left:16px; background:rgba(255,255,255,0.18); border:none; color:#fff; font-size:2rem; border-radius:50%; width:52px; height:52px; cursor:pointer; backdrop-filter:blur(6px); transition:.2s; z-index:10001;"
-                title="Ảnh trước">&#8249;</button>
+    <!-- MŨI TÊN TRÁI -->
+    <button id="lbPrev" title="Ảnh trước (←)" onclick="lbNavigate(-1)" style="
+        position: absolute;
+        left: 16px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: rgba(255,255,255,0.15);
+        border: 2px solid rgba(255,255,255,0.3);
+        color: #fff;
+        font-size: 1.5rem;
+        line-height: 1;
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background .2s, transform .2s;
+        z-index: 100005;
+    "><i class="fas fa-chevron-left"></i></button>
 
-        <!-- Ảnh hiển thị -->
-        <img id="lightboxImg" src="" alt=""
-             style="max-width:90vw; max-height:85vh; object-fit:contain; border-radius:14px; box-shadow:0 32px 80px rgba(0,0,0,0.6); transition:opacity 0.2s ease;">
+    <!-- MŨI TÊN PHẢI -->
+    <button id="lbNext" title="Ảnh tiếp theo (→)" onclick="lbNavigate(1)" style="
+        position: absolute;
+        right: 16px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: rgba(255,255,255,0.15);
+        border: 2px solid rgba(255,255,255,0.3);
+        color: #fff;
+        font-size: 1.5rem;
+        line-height: 1;
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background .2s, transform .2s;
+        z-index: 100005;
+    "><i class="fas fa-chevron-right"></i></button>
 
-        <!-- Nút mũi tên phải -->
-        <button id="lbNext" onclick="lbNavigate(1)"
-                style="position:absolute; right:16px; background:rgba(255,255,255,0.18); border:none; color:#fff; font-size:2rem; border-radius:50%; width:52px; height:52px; cursor:pointer; backdrop-filter:blur(6px); transition:.2s; z-index:10001;"
-                title="Ảnh tiếp theo">&#8250;</button>
+    <!-- ẢNH CHÍNH (căn giữa) -->
+    <div style="
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 60px 90px;
+        pointer-events: none;
+    " onclick="event.stopPropagation()">
+        <img id="lightboxImg" src="" alt="" style="
+            max-width: 100%;
+            max-height: 75vh;
+            object-fit: contain;
+            border-radius: 12px;
+            box-shadow: 0 24px 80px rgba(0,0,0,0.7);
+            transition: opacity 0.18s ease;
+            pointer-events: auto;
+        ">
+
+        <!-- CHỈ SỐ ẢNH -->
+        <div id="lightboxCounter" style="
+            color: rgba(255,255,255,0.8);
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-top: 14px;
+            letter-spacing: 0.05em;
+        "></div>
+
+        <!-- THUMBNAILS -->
+        <div id="lightboxThumbs" style="
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+            overflow-x: auto;
+            max-width: 80vw;
+            padding-bottom: 4px;
+            pointer-events: auto;
+        "></div>
     </div>
-
-    <!-- Chỉ số ảnh -->
-    <div id="lightboxCounter" style="color:rgba(255,255,255,0.75); font-size:0.95rem; margin-top:12px; font-weight:600;"></div>
-
-    <!-- Thumbnails dưới -->
-    <div id="lightboxThumbs" style="display:flex; gap:8px; margin-top:10px; padding:0 16px; overflow-x:auto; max-width:95vw;"></div>
 </div>
 
 <style>
-    .table-hover tbody tr:hover {
-        background-color: rgba(25, 135, 84, 0.05);
-    }
+    .table-hover tbody tr:hover { background-color: rgba(25, 135, 84, 0.05); }
     .table td, .table th { vertical-align: middle; }
-    .room-thumb-preview:hover { opacity: 0.85; transform: scale(1.05); transition: .2s; }
-    #lbPrev:hover, #lbNext:hover { background: rgba(255,255,255,0.35) !important; }
+    .room-thumb-preview { transition: transform .2s, opacity .2s; cursor: zoom-in !important; }
+    .room-thumb-preview:hover { transform: scale(1.06); opacity: 0.88; }
+    #lbPrev:hover { background: rgba(255,255,255,0.3) !important; transform: translateY(-50%) scale(1.08) !important; }
+    #lbNext:hover { background: rgba(255,255,255,0.3) !important; transform: translateY(-50%) scale(1.08) !important; }
+    #lbClose:hover { background: rgba(239,68,68,0.6) !important; }
+    #lightboxThumbs img { border-radius: 7px; cursor: pointer; transition: .18s; }
+    #lightboxThumbs img:hover { transform: scale(1.05); }
 </style>
 
 <script>
     // --- LIGHTBOX XEM ẢNH ---
-    let lbImages = [];
-    let lbIndex = 0;
+    var _lbImages = [];
+    var _lbIndex = 0;
 
     // Mở lightbox với danh sách ảnh và chỉ số ảnh đầu tiên
     function openLightbox(images, startIndex) {
-        lbImages = images;
-        lbIndex = startIndex;
-        document.getElementById('lightboxOverlay').style.display = 'flex';
+        if (!images || images.length === 0) return;
+        
+        _lbImages = images;
+        _lbIndex = startIndex || 0;
+        
+        var overlay = document.getElementById('lightboxOverlay');
+        overlay.style.display = 'block';
         document.body.style.overflow = 'hidden';
-        renderLightbox();
 
         // Ẩn mũi tên nếu chỉ có 1 ảnh
-        document.getElementById('lbPrev').style.display = lbImages.length > 1 ? '' : 'none';
-        document.getElementById('lbNext').style.display = lbImages.length > 1 ? '' : 'none';
+        var hasMult = _lbImages.length > 1;
+        // Phải gán display là 'flex' vì CSS của button đang là flex
+        document.getElementById('lbPrev').style.display = hasMult ? 'flex' : 'none';
+        document.getElementById('lbNext').style.display = hasMult ? 'flex' : 'none';
+
+        renderLightbox();
     }
 
     // Đóng lightbox
@@ -200,7 +299,8 @@
 
     // Di chuyển qua lại giữa các ảnh
     function lbNavigate(dir) {
-        lbIndex = (lbIndex + dir + lbImages.length) % lbImages.length;
+        if (_lbImages.length <= 1) return;
+        _lbIndex = (_lbIndex + dir + _lbImages.length) % _lbImages.length;
         renderLightbox();
     }
 
@@ -208,24 +308,30 @@
     function renderLightbox() {
         const img = document.getElementById('lightboxImg');
         img.style.opacity = 0;
+        
         setTimeout(() => {
-            img.src = lbImages[lbIndex];
+            img.src = _lbImages[_lbIndex];
             img.style.opacity = 1;
         }, 120);
 
-        document.getElementById('lightboxCounter').textContent = `Ảnh ${lbIndex + 1} / ${lbImages.length}`;
+        document.getElementById('lightboxCounter').textContent = `Ảnh ${_lbIndex + 1} / ${_lbImages.length}`;
 
         // Render thumbnails
         const thumbsEl = document.getElementById('lightboxThumbs');
-        thumbsEl.innerHTML = lbImages.map((url, i) =>
-            `<img src="${url}" onclick="lbIndex=${i}; renderLightbox();"
-             style="height:54px; width:72px; object-fit:cover; border-radius:8px; cursor:pointer; border: 2px solid ${i === lbIndex ? '#fff' : 'transparent'}; opacity:${i === lbIndex ? 1 : 0.55}; transition:.2s;">`
+        thumbsEl.innerHTML = _lbImages.map((url, i) =>
+            `<img src="${url}" onclick="_lbIndex=${i}; renderLightbox();"
+             style="height:54px; width:72px; object-fit:cover; border-radius:8px; cursor:pointer; border: 2px solid ${i === _lbIndex ? '#fff' : 'transparent'}; opacity:${i === _lbIndex ? 1 : 0.55}; transition:.2s;">`
         ).join('');
     }
 
+    // Click vào overlay để đóng
+    document.getElementById('lightboxOverlay').addEventListener('click', function(e) {
+        if (e.target === this) closeLightbox();
+    });
+
     // Phím tắt: ESC để đóng, mũi tên trái/phải để điều hướng
     document.addEventListener('keydown', function(e) {
-        if (document.getElementById('lightboxOverlay').style.display === 'flex') {
+        if (document.getElementById('lightboxOverlay').style.display === 'block') {
             if (e.key === 'Escape') closeLightbox();
             if (e.key === 'ArrowLeft') lbNavigate(-1);
             if (e.key === 'ArrowRight') lbNavigate(1);

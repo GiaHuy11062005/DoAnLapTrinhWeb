@@ -11,16 +11,30 @@
     var galleryImages = (Model.Images != null && Model.Images.Any())
         ? Model.Images.Select(x => x.ImageUrl ?? string.Empty).Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x!).ToList()
         : new List<string> { heroImage };
+        
+    var galleryImagesJson = System.Text.Json.JsonSerializer.Serialize(galleryImages);
 
     var fullAddress = $"{Model.SpecificAddress}, {Model.District?.Name}, {Model.City?.Name}";
-    var googleMapsLink = $"https://www.google.com/maps/search/?api=1&query={Uri.EscapeDataString(fullAddress)}";
+    var googleMapsQuery = Uri.EscapeDataString(fullAddress);
+
+    string mapEmbedUrl;
+    if (!string.IsNullOrWhiteSpace(ViewBag.UserDestination as string))
+    {
+        var userDest = Uri.EscapeDataString((string)ViewBag.UserDestination);
+        mapEmbedUrl = $"https://maps.google.com/maps?saddr={userDest}&daddr={googleMapsQuery}&output=embed";
+    }
+    else
+    {
+        mapEmbedUrl = $"https://maps.google.com/maps?q={googleMapsQuery}&t=&z=15&ie=UTF8&iwloc=&output=embed";
+    }
 }
 
 <div class="container py-4 py-lg-5">
     <div class="row g-4">
-        <div class="col-lg-7">
-            <div class="detail-gallery">
-                <div class="detail-gallery__hero">
+        <!-- CỘT TRÁI (Main Content) -->
+        <div class="col-lg-8">
+            <div class="detail-gallery mb-4">
+                <div class="detail-gallery__hero" style="cursor: pointer;" onclick='openLightbox(@Html.Raw(galleryImagesJson), 0)' title="Click để xem toàn màn hình">
                     <img src="@heroImage" alt="@Model.Title" class="detail-gallery__hero-image" />
                     <div class="detail-gallery__badge">Trống sẵn</div>
                 </div>
@@ -28,191 +42,141 @@
                 @if (galleryImages.Count > 1)
                 {
                     <div class="row g-2 mt-2">
+                        @{ int imgIndex = 0; }
                         @foreach (var image in galleryImages.Take(4))
                         {
+                            var currentIndex = imgIndex;
                             <div class="col-6 col-md-3">
-                                <img src="@image" alt="@Model.Title" class="detail-gallery__thumb" />
+                                <img src="@image" alt="@Model.Title" class="detail-gallery__thumb" style="cursor: pointer;" onclick='openLightbox(@Html.Raw(galleryImagesJson), @currentIndex)' title="Click để xem toàn màn hình" />
                             </div>
+                            imgIndex++;
                         }
                     </div>
                 }
             </div>
+
+            <!-- Title & Basic Info -->
+            <div class="mb-4">
+                <span class="badge bg-primary text-white rounded-pill px-3 py-2 mb-2">Cho thuê phòng trọ</span>
+                <h1 class="fw-bold mb-3" style="font-size: 2rem;">@Model.Title</h1>
+                <p class="text-muted mb-3 fs-5"><i class="fas fa-map-marker-alt text-danger me-2"></i> @fullAddress</p>
+                <div class="d-flex flex-wrap gap-3 mb-3 pb-3 border-bottom">
+                    <div class="d-flex align-items-center text-muted fw-semibold px-3 py-2 bg-light rounded-pill">
+                        <i class="fas fa-users text-primary me-2"></i> Tối đa @(Model.MaxPeople > 0 ? Model.MaxPeople : 1) người
+                    </div>
+                    <div class="d-flex align-items-center text-muted fw-semibold px-3 py-2 bg-light rounded-pill">
+                        <i class="fas fa-calendar-alt text-success me-2"></i> Đăng ngày: @Model.CreatedAt.ToString("dd/MM/yyyy")
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tiện ích -->
+            <div class="detail-panel mb-4">
+                <h2 class="h4 fw-bold mb-3">Tiện ích nổi bật</h2>
+                <div class="d-flex flex-wrap gap-2">
+                    @if (Model.AllowsPets) { <span class="detail-chip"><i class="fas fa-paw me-2"></i>Cho nuôi thú cưng</span> }
+                    @if (Model.HasParking) { <span class="detail-chip"><i class="fas fa-motorcycle me-2"></i>Có bãi giữ xe</span> }
+                    @if (Model.HasWifi) { <span class="detail-chip"><i class="fas fa-wifi me-2"></i>Wifi tốc độ cao</span> }
+                    @if (Model.HasAirConditioner) { <span class="detail-chip"><i class="fas fa-snowflake me-2"></i>Điều hòa</span> }
+                    @if (Model.HasKitchen) { <span class="detail-chip"><i class="fas fa-fire-burner me-2"></i>Bếp nấu ăn</span> }
+                    @if (Model.HasSecurity) { <span class="detail-chip"><i class="fas fa-shield-halved me-2"></i>An ninh 24/7</span> }
+                    @if (Model.HasPrivateBathroom) { <span class="detail-chip"><i class="fas fa-sink me-2"></i>Khu vệ sinh riêng</span> }
+                    @if (Model.HasLaundryArea) { <span class="detail-chip"><i class="fas fa-shirt me-2"></i>Chỗ phơi đồ</span> }
+                    @if (!Model.AllowsPets && !Model.HasParking && !Model.HasWifi && !Model.HasAirConditioner && !Model.HasKitchen && !Model.HasSecurity && !Model.HasPrivateBathroom && !Model.HasLaundryArea)
+                    {
+                        <span class="text-muted fst-italic">Phòng trống cơ bản (Chưa cập nhật thêm tiện ích)</span>
+                    }
+                </div>
+            </div>
+
+            <!-- Thông tin chi tiết -->
+            <div class="detail-panel mb-4">
+                <h2 class="h4 fw-bold mb-3">Thông tin chi tiết</h2>
+                <div class="row g-3">
+                    <div class="col-md-6"><div class="info-box shadow-sm border-0 bg-light"><span>Diện tích</span><strong class="fs-5">@Model.Area m²</strong></div></div>
+                    <div class="col-md-6"><div class="info-box shadow-sm border-0 bg-light"><span>Thành phố</span><strong class="fs-5">@Model.City?.Name</strong></div></div>
+                    <div class="col-md-6"><div class="info-box shadow-sm border-0 bg-light"><span>Quận / Huyện</span><strong class="fs-5">@Model.District?.Name</strong></div></div>
+                    <div class="col-md-6"><div class="info-box shadow-sm border-0 bg-light"><span>Địa chỉ</span><strong class="fs-5">@Model.SpecificAddress</strong></div></div>
+                </div>
+                
+                <h3 class="h5 fw-bold mt-4 mb-3">Mô tả phòng trọ</h3>
+                <div class="detail-description bg-light border-0 shadow-sm rounded-4 p-4">
+                    <p class="mb-0 fs-6" style="white-space: pre-line; line-height: 1.8;">@Model.Description</p>
+                </div>
+            </div>
+
+            <!-- Vị trí (Google Maps Embed) -->
+            <div class="detail-panel mb-4">
+                <h2 class="h4 fw-bold mb-3">Vị trí trên bản đồ</h2>
+                <div class="w-100 rounded-4 overflow-hidden shadow-sm border" style="height: 450px;">
+                    <iframe 
+                        width="100%" 
+                        height="100%" 
+                        frameborder="0" 
+                        scrolling="no" 
+                        marginheight="0" 
+                        marginwidth="0" 
+                        src="@mapEmbedUrl">
+                    </iframe>
+                </div>
+            </div>
         </div>
 
-        <div class="col-lg-5">
-            <div class="detail-sticky">
-                <span class="section-kicker">StayEase</span>
-                <h1 class="section-title mb-2">@Model.Title</h1>
-                <p class="text-muted mb-3">
-                    <i class="fas fa-map-marker-alt text-danger me-1"></i>
-                    @fullAddress
-                </p>
-
-                <div class="detail-price mb-3">@Model.Price.ToString("N0") VNĐ<span>/tháng</span></div>
-
-                <div class="detail-contact-card mb-3">
-                    <div class="fw-semibold text-muted small mb-1">Chủ trọ / liên hệ</div>
-                    <div class="fw-bold fs-5">@Model.ContactPhone</div>
+        <!-- CỘT PHẢI (Sticky Sidebar) -->
+        <div class="col-lg-4">
+            <div class="detail-side-card sticky-lg-top bg-white shadow-lg border-0 rounded-4 p-4" style="top: 2rem;">
+                <div class="mb-4 pb-3 border-bottom">
+                    <div class="fw-semibold text-muted small text-uppercase tracking-wide mb-1">Giá thuê</div>
+                    <div class="display-5 fw-bold text-primary">@Model.Price.ToString("N0") <span class="fs-5 text-muted fw-normal">VNĐ/tháng</span></div>
                 </div>
 
-                <div class="d-grid gap-2 mb-3">
-                    @if (User.Identity != null && User.Identity.IsAuthenticated && User.IsInRole("Admin"))
+                <div class="owner-card mb-4 bg-light p-3 rounded-4 d-flex align-items-center gap-3 shadow-sm">
+                    <div class="owner-avatar bg-primary text-white d-flex justify-content-center align-items-center rounded-circle" style="width: 56px; height: 56px; font-size: 1.4rem; font-weight: bold;">
+                        @(Model.Owner?.FullName?.Substring(0, 1).ToUpper() ?? "HA")
+                    </div>
+                    <div>
+                        <div class="fw-bold text-dark fs-5">@(Model.Owner?.FullName ?? "Chủ trọ")</div>
+                        <div class="text-muted small"><i class="fas fa-clock text-warning me-1"></i> Phản hồi thường trong 1 giờ</div>
+                    </div>
+                </div>
+
+                <!-- FORM LIÊN HỆ -->
+                <div class="contact-form-section">
+                    <h5 class="fw-bold mb-3">Liên hệ chủ trọ</h5>
+                    
+                    @if (User.Identity != null && User.Identity.IsAuthenticated && !User.IsInRole("Landlord"))
                     {
-                        <div class="alert alert-info text-center py-2 mb-0">
-                            <i class="fas fa-shield-alt me-2"></i>Quyền Admin: Chế độ xem trước
+                        <div id="contactFormContainer">
+                            <textarea id="contactMessage" class="form-control rounded-4 bg-light border-0 mb-3 shadow-sm" rows="4" style="resize: none;" placeholder="Nhập lời nhắn của bạn (Ví dụ: Chào bạn, phòng này còn không?)..."></textarea>
+                            <button id="btnSendContact" class="btn btn-primary w-100 rounded-pill py-3 fw-bold fs-6 shadow-sm transition-all" onclick="sendContactMessage(@Model.OwnerId)">
+                                <i class="fas fa-paper-plane me-2"></i>Gửi tin nhắn ngay
+                            </button>
                         </div>
+                        <div id="contactSuccessMessage" class="alert alert-success d-none mt-3 rounded-4 shadow-sm border-0">
+                            <i class="fas fa-check-circle me-2 fs-5"></i><strong>Thành công!</strong> Tin nhắn đã được gửi đến chủ trọ.
+                        </div>
+                        <div id="contactErrorMessage" class="alert alert-danger d-none mt-3 rounded-4 shadow-sm border-0">
+                            <i class="fas fa-exclamation-circle me-2 fs-5"></i><strong>Lỗi:</strong> <span id="contactErrorText">Vui lòng thử lại.</span>
+                        </div>
+                    }
+                    else if (User.Identity != null && User.Identity.IsAuthenticated && User.IsInRole("Landlord"))
+                    {
+                        <div class="alert alert-warning mb-0 rounded-4 shadow-sm border-0"><i class="fas fa-exclamation-triangle me-2"></i>Bạn đang đăng nhập bằng tài khoản chủ trọ. Không thể liên hệ chính mình.</div>
                     }
                     else
                     {
-                        @if (!User.IsInRole("Admin") && !User.IsInRole("Landlord"))
-                        {
-                            <button type="button" class="btn btn-primary btn-lg rounded-pill shadow-sm" data-bs-toggle="modal" data-bs-target="#bookingModal">
-                                <i class="fas fa-calendar-check me-2"></i>Đặt phòng ngay
-                            </button>
-                        }
-                        <a href="tel:@Model.ContactPhone" class="btn btn-warning btn-lg rounded-pill text-dark shadow-sm fw-semibold">
-                            <i class="fas fa-phone-alt me-2"></i>Liên hệ chủ trọ
-                        </a>
+                        <div class="alert alert-info mb-0 rounded-4 shadow-sm border-0">Vui lòng <a href="/Account/Login" class="fw-bold text-primary text-decoration-none">Đăng nhập</a> để gửi tin nhắn cho chủ trọ.</div>
                     }
-                    <a href="@googleMapsLink" target="_blank" rel="noreferrer" class="btn btn-outline-success btn-lg rounded-pill mt-2">
-                        <i class="fas fa-map-marked-alt me-2"></i>Xem vị trí trên Google Maps
+                </div>
+
+                <div class="d-grid gap-2 mt-4">
+                    <a href="tel:@Model.ContactPhone" class="btn btn-outline-dark rounded-pill py-3 fw-bold shadow-sm transition-all text-dark">
+                        <i class="fas fa-phone-alt me-2 text-success"></i>Gọi điện thoại
                     </a>
-                    <button onclick="toggleGlobalFavorite(@Model.Id, this)" class="btn btn-outline-danger btn-lg rounded-pill mt-1">
-                        <i class="fas fa-heart me-2"></i>Lưu vào yêu thích
+                    <button class="btn btn-light rounded-pill py-3 fw-bold shadow-sm transition-all border text-danger" onclick="toggleGlobalFavorite(@Model.Id, this)">
+                        <i class="fas fa-heart me-2"></i>Lưu tin này
                     </button>
                 </div>
-
-                @if (User.Identity != null && User.Identity.IsAuthenticated)
-                {
-                    <div class="detail-route-card mt-3">
-                        <h2 class="h5 fw-bold mb-3"><i class="fas fa-route text-primary me-2"></i>Tiện ích di chuyển</h2>
-                        @if (!string.IsNullOrWhiteSpace(ViewBag.UserDestination as string))
-                        {
-                            var userDest = (string)ViewBag.UserDestination;
-                            var routeUrl = $"https://www.google.com/maps/dir/?api=1&origin={Uri.EscapeDataString(fullAddress)}&destination={Uri.EscapeDataString(userDest)}";
-                            <a href="@routeUrl" target="_blank" rel="noreferrer" class="btn btn-primary w-100 rounded-pill mb-2">
-                                <i class="fas fa-directions me-2"></i>Xem đường đi đến nơi ở của bạn
-                            </a>
-
-                            <button id="btnCalcDistance"
-                                    class="btn btn-outline-primary w-100 rounded-pill"
-                                    data-origin="@fullAddress"
-                                    data-destination="@userDest">
-                                <i class="fas fa-ruler-combined me-2"></i>Tính khoảng cách chính xác
-                            </button>
-
-                            <div id="distanceResult" class="mt-3" style="display:none;">
-                                <div class="distance-card">
-                                    <div class="distance-card__item">
-                                        <i class="fas fa-road text-primary"></i>
-                                        <div>
-                                            <div class="small text-muted">Khoảng cách</div>
-                                            <strong id="distanceKm">—</strong>
-                                        </div>
-                                    </div>
-                                    <div class="distance-card__item">
-                                        <i class="fas fa-clock text-warning"></i>
-                                        <div>
-                                            <div class="small text-muted">Thời gian</div>
-                                            <strong id="distanceDuration">—</strong>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div id="distanceError" class="alert alert-warning mt-2 mb-0" style="display:none;"></div>
-                        }
-                        else
-                        {
-                            <div class="alert alert-warning mb-0">
-                                Bạn chưa cập nhật địa chỉ học tập / nơi làm việc.
-                                <a href="/Profile/Update" class="fw-bold text-decoration-none">Cập nhật hồ sơ</a>
-                            </div>
-                        }
-                    </div>
-                }
-            </div>
-        </div>
-    </div>
-
-    <div class="row g-4 mt-1">
-        <div class="col-lg-7">
-            <div class="detail-panel">
-                <h2 class="h4 fw-bold mb-3">Tiện ích</h2>
-                <div class="d-flex flex-wrap gap-2">
-                    <span class="detail-chip"><i class="fas fa-wifi me-2"></i>Wifi tốc độ cao</span>
-                    <span class="detail-chip"><i class="fas fa-snowflake me-2"></i>Điều hòa</span>
-                    <span class="detail-chip"><i class="fas fa-bicycle me-2"></i>Chỗ để xe</span>
-                    <span class="detail-chip"><i class="fas fa-shield-alt me-2"></i>An ninh 24/7</span>
-                    <span class="detail-chip"><i class="fas fa-paw me-2"></i>@(Model.AllowsPets ? "Cho nuôi thú cưng" : "Không nuôi thú cưng")</span>
-                    <span class="detail-chip"><i class="fas fa-parking me-2"></i>@(Model.HasParking ? "Có bãi giữ xe" : "Không có bãi giữ xe")</span>
-                </div>
-            </div>
-
-            <div class="detail-panel mt-4">
-                <h2 class="h4 fw-bold mb-3">Thông tin chi tiết</h2>
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <div class="info-box"><span>Diện tích</span><strong>@Model.Area m²</strong></div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="info-box"><span>Tỉnh / Thành phố</span><strong>@Model.City?.Name</strong></div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="info-box"><span>Quận / Huyện</span><strong>@Model.District?.Name</strong></div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="info-box"><span>Địa chỉ</span><strong>@Model.SpecificAddress</strong></div>
-                    </div>
-                </div>
-
-                <div class="detail-description mt-4">
-                    <p class="mb-0" style="white-space: pre-line;">@Model.Description</p>
-                </div>
-            </div>
-
-            <div class="detail-panel mt-4">
-                <h2 class="h4 fw-bold mb-3">Vị trí & tiện ích xung quanh</h2>
-                <div class="detail-map">
-                    <div class="detail-map__inner">
-                        <i class="fas fa-map-marked-alt"></i>
-                        <span>@Model.District?.Name, @Model.City?.Name</span>
-                    </div>
-                </div>
-                <ul class="list-unstyled mt-3 mb-0 detail-nearby">
-                    <li><span>Trường / khu học tập</span><strong>@(ViewBag.UserDestination ?? "Đang cập nhật")</strong></li>
-                    <li><span>Phòng trọ</span><strong>@Model.SpecificAddress</strong></li>
-                    <li><span>Khu vực</span><strong>@Model.District?.Name</strong></li>
-                </ul>
-            </div>
-        </div>
-
-        <div class="col-lg-5">
-            <div class="detail-side-card sticky-lg-top">
-                <div class="mb-3">
-                    <div class="fw-semibold text-muted small">Giá thuê</div>
-                    <div class="display-6 fw-bold text-primary">@Model.Price.ToString("N0")</div>
-                </div>
-
-                <div class="owner-card mb-3">
-                    <div class="owner-card__avatar">HA</div>
-                    <div>
-                        <div class="fw-bold">Chủ trọ</div>
-                        <div class="text-muted small">Phản hồi thường trong 1 giờ</div>
-                    </div>
-                </div>
-
-                <div class="d-grid gap-2">
-                    <a href="tel:@Model.ContactPhone" class="btn btn-outline-primary rounded-pill">
-                        <i class="fas fa-phone me-2"></i>Liên hệ chủ trọ
-                    </a>
-                    <a href="https://www.google.com/maps/search/?api=1&query=@Uri.EscapeDataString(fullAddress)" target="_blank" rel="noreferrer" class="btn btn-outline-secondary rounded-pill">
-                        <i class="fas fa-map me-2"></i>Xem bản đồ
-                    </a>
-                </div>
-
-                <p class="text-muted small mt-3 mb-0 text-center">
-                    Bạn sẽ không bị trừ tiền khi chỉ xem thông tin phòng.
-                </p>
             </div>
         </div>
     </div>
@@ -221,286 +185,240 @@
 <style>
     .detail-gallery__hero {
         position: relative;
-        border-radius: 28px;
+        border-radius: 24px;
         overflow: hidden;
-        min-height: 420px;
-        box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+        min-height: 480px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
     }
-
     .detail-gallery__hero-image {
         width: 100%;
         height: 100%;
-        min-height: 420px;
+        min-height: 480px;
         object-fit: cover;
         display: block;
+        transition: transform 0.3s ease;
     }
-
+    .detail-gallery__hero:hover .detail-gallery__hero-image {
+        transform: scale(1.02);
+    }
     .detail-gallery__badge {
         position: absolute;
-        top: 1rem;
-        left: 1rem;
-        padding: 0.55rem 0.95rem;
+        top: 1.25rem;
+        left: 1.25rem;
+        padding: 0.5rem 1rem;
         border-radius: 999px;
-        background: rgba(0, 83, 91, 0.9);
+        background: rgba(0, 83, 91, 0.95);
         color: #fff;
         font-weight: 700;
+        backdrop-filter: blur(4px);
     }
-
     .detail-gallery__thumb {
         width: 100%;
-        height: 110px;
+        height: 120px;
         object-fit: cover;
-        border-radius: 18px;
-        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+        border-radius: 16px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
-
-    .detail-sticky,
-    .detail-panel,
-    .detail-side-card {
-        background: rgba(255, 255, 255, 0.94);
-        border: 1px solid rgba(15, 23, 42, 0.08);
-        border-radius: 28px;
-        box-shadow: 0 16px 40px rgba(15, 23, 42, 0.06);
+    .detail-gallery__thumb:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
     }
-
-    .detail-sticky {
-        padding: 1.5rem;
-        position: sticky;
-        top: 6rem;
-    }
-
-    .detail-price {
-        font-size: clamp(2rem, 2vw + 1rem, 3rem);
-        font-weight: 800;
-        color: #dc2626;
-    }
-
-    .detail-price span {
-        font-size: 1rem;
-        color: #64748b;
-        font-weight: 500;
-        margin-left: 0.25rem;
-    }
-
-    .detail-contact-card,
-    .owner-card,
-    .info-box {
-        background: #f8fafc;
-        border: 1px solid rgba(15, 23, 42, 0.08);
-        border-radius: 20px;
-        padding: 1rem;
-    }
-
-    .detail-route-card,
     .detail-panel {
-        padding: 1.5rem;
+        background: #fff;
+        border: 1px solid rgba(15, 23, 42, 0.05);
+        border-radius: 24px;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.03);
+        padding: 2rem;
     }
-
     .detail-chip {
         display: inline-flex;
         align-items: center;
-        padding: 0.7rem 1rem;
+        padding: 0.6rem 1.2rem;
         border-radius: 999px;
-        background: #eef5f7;
+        background: #f1f5f9;
         color: #334155;
         font-weight: 600;
+        transition: all 0.2s ease;
+        border: 1px solid transparent;
     }
-
+    .detail-chip:hover {
+        background: #e2e8f0;
+        border-color: #cbd5e1;
+        color: #0f172a;
+    }
     .info-box {
+        padding: 1.25rem;
+        border-radius: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
         height: 100%;
-        display: flex;
-        flex-direction: column;
-        gap: 0.35rem;
+        transition: transform 0.2s ease;
     }
-
-    .info-box span,
-    .detail-nearby span {
+    .info-box:hover {
+        transform: translateY(-2px);
+    }
+    .info-box span {
         color: #64748b;
-        font-size: 0.92rem;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-weight: 600;
     }
-
-    .info-box strong,
-    .detail-nearby strong {
+    .info-box strong {
         color: #0f172a;
     }
-
-    .detail-description {
-        background: #f8fafc;
-        border-radius: 20px;
-        padding: 1rem 1.25rem;
-        border: 1px solid rgba(15, 23, 42, 0.08);
+    .btn.transition-all {
+        transition: all 0.2s ease-in-out;
     }
-
-    .detail-map {
-        height: 260px;
-        border-radius: 22px;
-        background: linear-gradient(135deg, rgba(0, 109, 119, 0.16), rgba(255, 107, 0, 0.12));
-        display: flex;
-        align-items: center;
-        justify-content: center;
+    .btn.transition-all:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
     }
-
-    .detail-map__inner {
-        display: inline-flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 0.75rem;
-        color: #0f172a;
-        font-weight: 700;
-        font-size: 1.1rem;
-    }
-
-    .detail-map__inner i {
-        font-size: 2rem;
-        color: var(--primary-color);
-    }
-
-    .detail-nearby li {
-        display: flex;
-        justify-content: space-between;
-        gap: 1rem;
-        padding: 0.7rem 0;
-        border-bottom: 1px solid rgba(15, 23, 42, 0.08);
-    }
-
-    .detail-nearby li:last-child {
-        border-bottom: 0;
-    }
-
-    .detail-side-card {
-        padding: 1.5rem;
-    }
-
-    .owner-card {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-    }
-
-    .owner-card__avatar {
-        width: 56px;
-        height: 56px;
-        border-radius: 999px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        background: rgba(0, 109, 119, 0.16);
-        color: var(--primary-color);
-        font-weight: 800;
-    }
-
-    /* Distance Card */
-    .distance-card {
-        display: flex;
-        gap: 1rem;
-        padding: 1rem;
-        background: linear-gradient(135deg, rgba(0, 109, 119, 0.08), rgba(255, 107, 0, 0.06));
-        border: 1px solid rgba(0, 109, 119, 0.15);
-        border-radius: 18px;
-    }
-
-    .distance-card__item {
-        flex: 1;
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        font-size: 1rem;
-    }
-
-    .distance-card__item i {
-        font-size: 1.5rem;
-    }
-
-    .distance-card__item strong {
-        font-size: 1.1rem;
-        color: #0f172a;
-    }
+    /* LIGHTBOX STYLES */
+    #lbPrev:hover { background: rgba(255,255,255,0.3) !important; transform: translateY(-50%) scale(1.08) !important; }
+    #lbNext:hover { background: rgba(255,255,255,0.3) !important; transform: translateY(-50%) scale(1.08) !important; }
+    #lbClose:hover { background: rgba(239,68,68,0.6) !important; }
+    #lightboxThumbs img { border-radius: 7px; cursor: pointer; transition: .18s; }
+    #lightboxThumbs img:hover { transform: scale(1.05); }
 </style>
+
+<!-- LIGHTBOX -->
+<div id="lightboxOverlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 99999; backdrop-filter: blur(8px);">
+    <button id="lbClose" title="Đóng (ESC)" onclick="closeLightbox()" style="position: absolute; top: 16px; right: 20px; background: rgba(255,255,255,0.1); border: none; color: #fff; font-size: 1.6rem; width: 44px; height: 44px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 100001;">&#10005;</button>
+    <button id="lbPrev" title="Ảnh trước (←)" onclick="lbNavigate(-1)" style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; font-size: 1.5rem; width: 56px; height: 56px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 100005;"><i class="fas fa-chevron-left"></i></button>
+    <button id="lbNext" title="Ảnh tiếp theo (→)" onclick="lbNavigate(1)" style="position: absolute; right: 16px; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; font-size: 1.5rem; width: 56px; height: 56px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 100005;"><i class="fas fa-chevron-right"></i></button>
+    <div style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 90px; pointer-events: none;" onclick="event.stopPropagation()">
+        <img id="lightboxImg" src="" alt="" style="max-width: 100%; max-height: 75vh; object-fit: contain; border-radius: 12px; box-shadow: 0 24px 80px rgba(0,0,0,0.5); transition: opacity 0.2s ease; pointer-events: auto;">
+        <div id="lightboxCounter" style="color: rgba(255,255,255,0.8); font-size: 0.9rem; font-weight: 600; margin-top: 14px;"></div>
+        <div id="lightboxThumbs" style="display: flex; gap: 8px; margin-top: 12px; overflow-x: auto; max-width: 80vw; padding-bottom: 4px; pointer-events: auto;"></div>
+    </div>
+</div>
 
 @section Scripts {
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            const btn = document.getElementById('btnCalcDistance');
-            if (!btn) return;
+        // LIÊN HỆ CHỦ TRỌ BẰNG AJAX
+        async function sendContactMessage(receiverId) {
+            const btn = document.getElementById('btnSendContact');
+            const messageInput = document.getElementById('contactMessage');
+            const successBox = document.getElementById('contactSuccessMessage');
+            const errorBox = document.getElementById('contactErrorMessage');
+            const errorText = document.getElementById('contactErrorText');
+            
+            const content = messageInput.value.trim();
+            if (!content) {
+                errorText.textContent = "Bạn chưa nhập nội dung tin nhắn.";
+                errorBox.classList.remove('d-none');
+                successBox.classList.add('d-none');
+                return;
+            }
 
-            btn.addEventListener('click', async function () {
-                const origin = btn.dataset.origin;
-                const destination = btn.dataset.destination;
+            btn.disabled = true;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Đang gửi...';
+            errorBox.classList.add('d-none');
+            successBox.classList.add('d-none');
 
-                // Hiển thị trạng thái loading
-                btn.disabled = true;
-                btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Đang tính...';
+            try {
+                const formData = new URLSearchParams();
+                formData.append('receiverId', receiverId);
+                formData.append('content', content);
 
-                const resultBox = document.getElementById('distanceResult');
-                const errorBox = document.getElementById('distanceError');
-                resultBox.style.display = 'none';
-                errorBox.style.display = 'none';
+                const response = await fetch('/Contact/SendMessage', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: formData.toString()
+                });
 
-                try {
-                    const params = new URLSearchParams({ origin, destination });
-                    const response = await fetch('/Accommodation/GetDistance?' + params.toString());
-                    const data = await response.json();
+                const data = await response.json();
 
-                    if (data.success) {
-                        document.getElementById('distanceKm').textContent = data.distanceText;
-                        document.getElementById('distanceDuration').textContent = '~' + data.durationText;
-                        resultBox.style.display = 'block';
-                    } else {
-                        errorBox.textContent = data.error || 'Không thể tính khoảng cách.';
-                        errorBox.style.display = 'block';
-                    }
-                } catch (err) {
-                    errorBox.textContent = 'Lỗi kết nối. Vui lòng thử lại.';
-                    errorBox.style.display = 'block';
-                } finally {
-                    btn.disabled = false;
-                    btn.innerHTML = '<i class="fas fa-ruler-combined me-2"></i>Tính lại khoảng cách';
+                if (data.success) {
+                    successBox.classList.remove('d-none');
+                    messageInput.value = ''; // Reset form
+                } else {
+                    errorText.textContent = data.message || "Không thể gửi tin nhắn.";
+                    errorBox.classList.remove('d-none');
                 }
+            } catch (err) {
+                errorText.textContent = "Lỗi kết nối mạng. Vui lòng thử lại.";
+                errorBox.classList.remove('d-none');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+                
+                // Tự ẩn thông báo sau 4 giây
+                setTimeout(() => {
+                    successBox.classList.add('d-none');
+                    errorBox.classList.add('d-none');
+                }, 4000);
+            }
+        }
+
+        // --- LIGHTBOX SCRIPT ---
+        var _lbImages = [];
+        var _lbIndex = 0;
+
+        function openLightbox(images, startIndex) {
+            if (!images || images.length === 0) return;
+            _lbImages = images;
+            _lbIndex = startIndex || 0;
+            var overlay = document.getElementById('lightboxOverlay');
+            if (overlay) overlay.style.display = 'block';
+            document.body.style.overflow = 'hidden';
+            var hasMult = _lbImages.length > 1;
+            var prevBtn = document.getElementById('lbPrev');
+            var nextBtn = document.getElementById('lbNext');
+            if (prevBtn) prevBtn.style.display = hasMult ? 'flex' : 'none';
+            if (nextBtn) nextBtn.style.display = hasMult ? 'flex' : 'none';
+            renderLightbox();
+        }
+
+        function closeLightbox() {
+            var overlay = document.getElementById('lightboxOverlay');
+            if (overlay) overlay.style.display = 'none';
+            document.body.style.overflow = '';
+        }
+
+        function lbNavigate(dir) {
+            if (_lbImages.length <= 1) return;
+            _lbIndex = (_lbIndex + dir + _lbImages.length) % _lbImages.length;
+            renderLightbox();
+        }
+
+        function renderLightbox() {
+            const img = document.getElementById('lightboxImg');
+            if (!img) return;
+            img.style.opacity = 0;
+            setTimeout(() => {
+                img.src = _lbImages[_lbIndex];
+                img.style.opacity = 1;
+            }, 150);
+            const counter = document.getElementById('lightboxCounter');
+            if (counter) counter.textContent = `Ảnh ${_lbIndex + 1} / ${_lbImages.length}`;
+            const thumbsEl = document.getElementById('lightboxThumbs');
+            if (thumbsEl) {
+                thumbsEl.innerHTML = _lbImages.map((url, i) =>
+                    `<img src="${url}" onclick="_lbIndex=${i}; renderLightbox();"
+                     style="height:60px; width:80px; object-fit:cover; border-radius:8px; cursor:pointer; border: 2px solid ${i === _lbIndex ? '#fff' : 'transparent'}; opacity:${i === _lbIndex ? 1 : 0.6}; transition:.2s;">`
+                ).join('');
+            }
+        }
+
+        const overlay = document.getElementById('lightboxOverlay');
+        if (overlay) {
+            overlay.addEventListener('click', function(e) {
+                if (e.target === this) closeLightbox();
             });
+        }
+
+        document.addEventListener('keydown', function(e) {
+            const ol = document.getElementById('lightboxOverlay');
+            if (ol && ol.style.display === 'block') {
+                if (e.key === 'Escape') closeLightbox();
+                if (e.key === 'ArrowLeft') lbNavigate(-1);
+                if (e.key === 'ArrowRight') lbNavigate(1);
+            }
         });
-
-        function showLoginToast() {
-        alert("Vui lòng đăng nhập để lưu phòng trọ.");
-    }
     </script>
-
-    <!-- Modal Đặt Phòng -->
-    <div class="modal fade" id="bookingModal" tabindex="-1" aria-labelledby="bookingModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
-                <div class="modal-header bg-primary text-white border-0 py-3">
-                    <h5 class="modal-title fw-bold" id="bookingModalLabel"><i class="fas fa-calendar-alt me-2"></i>Gửi Yêu Cầu Đặt Phòng</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <form action="/Booking/Create" method="post">
-                    <div class="modal-body p-4 bg-light">
-                        <input type="hidden" name="accommodationId" value="@Model.Id" />
-                        
-                        <div class="mb-4">
-                            <div class="d-flex align-items-center p-3 bg-white rounded-3 border">
-                                <img src="@(Model.Images != null && Model.Images.Any() ? Model.Images.First().ImageUrl : "https://via.placeholder.com/60")" class="rounded" width="60" height="60" style="object-fit: cover;" alt="Room">
-                                <div class="ms-3">
-                                    <h6 class="mb-1 text-truncate" style="max-width: 250px;">@Model.Title</h6>
-                                    <strong class="text-primary">@Model.Price.ToString("N0")đ/tháng</strong>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label fw-bold text-dark">Lời nhắn cho chủ trọ (Không bắt buộc)</label>
-                            <textarea class="form-control rounded-3 border-0 shadow-sm" name="message" rows="3" placeholder="Ví dụ: Mình là sinh viên năm nhất, muốn hỏi xem phòng có fix giá không ạ..."></textarea>
-                        </div>
-                        
-                        <div class="alert alert-info border-0 rounded-3 small mb-0">
-                            <i class="fas fa-info-circle me-1"></i> Yêu cầu đặt phòng của bạn sẽ được gửi trực tiếp đến hộp thư của Chủ trọ. Bạn sẽ nhận được thông báo ngay khi chủ trọ phản hồi.
-                        </div>
-                    </div>
-                    <div class="modal-footer border-0 p-3 bg-white">
-                        <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Hủy</button>
-                        <button type="submit" class="btn btn-primary rounded-pill px-4 shadow-sm"><i class="fas fa-paper-plane me-2"></i>Gửi yêu cầu</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
 }

@@ -4,9 +4,19 @@
     Layout = "_AdminLayout";
 }
 
-<div class="mb-6">
-    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Duyệt Hồ Sơ Chủ Trọ</h1>
-    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Xem xét và cấp quyền đăng phòng cho người dùng muốn trở thành chủ trọ.</p>
+<div class="mb-6 flex justify-between items-center">
+    <div>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Quản lý Hồ Sơ Chủ Trọ</h1>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Xem xét và theo dõi hồ sơ đăng ký chủ trọ của người dùng.</p>
+    </div>
+    
+    <div>
+        <select id="statusFilter" class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" onchange="window.location.href='?status=' + this.value">
+            <option value="Pending" selected="@(ViewBag.CurrentStatus == "Pending" ? "selected" : null)">Đang chờ duyệt</option>
+            <option value="Approved" selected="@(ViewBag.CurrentStatus == "Approved" ? "selected" : null)">Đã duyệt</option>
+            <option value="Rejected" selected="@(ViewBag.CurrentStatus == "Rejected" ? "selected" : null)">Đã từ chối</option>
+        </select>
+    </div>
 </div>
 
 <div class="bg-white dark:bg-darkCard border border-gray-100 dark:border-gray-800 rounded-xl shadow-sm overflow-hidden">
@@ -48,18 +58,33 @@
                                     <a href="/Admin/LandlordApplicationDetails/@app.Id" target="_blank" class="p-2 text-gray-400 hover:text-blue-600 bg-gray-50 hover:bg-blue-50 rounded-lg dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors" title="Xem chi tiết hồ sơ">
                                         <i class="fas fa-file-invoice"></i>
                                     </a>
-                                    <form action="/Admin/ApproveLandlordApplication" method="post" class="inline" onsubmit="return confirm('Bạn có chắc chắn muốn Duyệt yêu cầu này không? Tài khoản sẽ trở thành Chủ Trọ ngay lập tức.');">
-                                        <input type="hidden" name="id" value="@app.Id" />
-                                        <button type="submit" class="p-2 text-gray-400 hover:text-green-600 bg-gray-50 hover:bg-green-50 rounded-lg dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors" title="Duyệt">
-                                            <i class="fas fa-check"></i>
-                                        </button>
-                                    </form>
-                                    <form action="/Admin/RejectLandlordApplication" method="post" class="inline" onsubmit="return confirm('Bạn có chắc chắn muốn Từ chối yêu cầu này không?');">
-                                        <input type="hidden" name="id" value="@app.Id" />
-                                        <button type="submit" class="p-2 text-gray-400 hover:text-red-600 bg-gray-50 hover:bg-red-50 rounded-lg dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors" title="Từ chối">
-                                            <i class="fas fa-ban"></i>
-                                        </button>
-                                    </form>
+                                    @if (app.Status == "Pending")
+                                    {
+                                        <form action="/Admin/ApproveLandlordApplication" method="post" class="inline" onsubmit="return confirm('Bạn có chắc chắn muốn Duyệt yêu cầu này không? Tài khoản sẽ trở thành Chủ Trọ ngay lập tức.');">
+                                            <input type="hidden" name="id" value="@app.Id" />
+                                            <button type="submit" class="p-2 text-gray-400 hover:text-green-600 bg-gray-50 hover:bg-green-50 rounded-lg dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors" title="Duyệt">
+                                                <i class="fas fa-check"></i>
+                                            </button>
+                                        </form>
+                                        <form action="/Admin/RejectLandlordApplication" method="post" class="inline" onsubmit="return confirm('Bạn có chắc chắn muốn Từ chối yêu cầu này không?');">
+                                            <input type="hidden" name="id" value="@app.Id" />
+                                            <button type="submit" class="p-2 text-gray-400 hover:text-red-600 bg-gray-50 hover:bg-red-50 rounded-lg dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors" title="Từ chối">
+                                                <i class="fas fa-ban"></i>
+                                            </button>
+                                        </form>
+                                    }
+                                    else if (app.Status == "Approved")
+                                    {
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                                            Đã duyệt
+                                        </span>
+                                    }
+                                    else if (app.Status == "Rejected")
+                                    {
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
+                                            Đã từ chối
+                                        </span>
+                                    }
                                 </div>
                             </td>
                         </tr>
@@ -70,7 +95,7 @@
                     <tr>
                         <td colspan="4" class="px-6 py-8 text-center">
                             <i class="fas fa-id-card text-4xl text-purple-400 mb-3 opacity-50"></i>
-                            <p class="text-sm text-gray-500 dark:text-gray-400">Không có hồ sơ đăng ký chủ trọ nào chờ duyệt.</p>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">Không có hồ sơ nào.</p>
                         </td>
                     </tr>
                 }
