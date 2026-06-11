@@ -1,4 +1,4 @@
-﻿@model IEnumerable<DoAnLapTrinhWeb.Models.Accommodation>
+@model IEnumerable<DoAnLapTrinhWeb.Models.Accommodation>
 
 @{
     ViewData["Title"] = "Quản lý phòng trọ của tôi";
@@ -59,11 +59,22 @@
                                     <td class="text-center fw-bold">@stt</td>
                                     <td>
                                         @{
-                                            var firstImage = (item.Images != null && item.Images.Any())
-                                                ? item.Images.First().ImageUrl
-                                : "/images/accommodations/5007c941-3c42-4e59-8723-0e6c6a85373d_nhatro.jpg";
+                                            var allImages = (item.Images != null && item.Images.Any())
+                                                ? item.Images.Select(img => img.ImageUrl).ToList()
+                                                : new List<string?> { "/images/accommodations/5007c941-3c42-4e59-8723-0e6c6a85373d_nhatro.jpg" };
+                                            var firstImage = allImages.First();
+                                            var imagesJson = System.Text.Json.JsonSerializer.Serialize(allImages);
                                         }
-                                        <img src="@firstImage" class="img-thumbnail" alt="@item.Title" style="height: 80px; width: 110px; object-fit: cover;">
+                                        <img src="@firstImage"
+                                             class="img-thumbnail room-thumb-preview"
+                                             alt="@item.Title"
+                                             style="height: 80px; width: 110px; object-fit: cover; cursor: pointer;"
+                                             onclick="openLightbox(@imagesJson, 0)"
+                                             title="Click để xem tất cả ảnh">
+                                        @if (allImages.Count > 1)
+                                        {
+                                            <span class="badge bg-dark position-relative" style="margin-left:-28px; vertical-align:super; font-size:0.7rem;">+@(allImages.Count - 1)</span>
+                                        }
                                     </td>
                                     <td>
                                         <a href="/Accommodation/Details/@item.Id" class="text-decoration-none fw-bold text-dark text-truncate d-inline-block" style="max-width: 300px;" title="@item.Title">
@@ -125,12 +136,99 @@
     }
 </div>
 
+<!-- Lightbox xem ảnh toàn màn hình -->
+<div id="lightboxOverlay" onclick="closeLightbox()" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.92); z-index:9999; align-items:center; justify-content:center; flex-direction:column;">
+    <!-- Nút đóng -->
+    <button onclick="closeLightbox()" style="position:absolute; top:18px; right:22px; background:none; border:none; color:#fff; font-size:2.2rem; cursor:pointer; z-index:10001; line-height:1;">&times;</button>
+
+    <!-- Khu vực ảnh chính -->
+    <div style="position:relative; display:flex; align-items:center; justify-content:center; width:100%; height:100%;" onclick="event.stopPropagation()">
+        <!-- Nút mũi tên trái -->
+        <button id="lbPrev" onclick="lbNavigate(-1)"
+                style="position:absolute; left:16px; background:rgba(255,255,255,0.18); border:none; color:#fff; font-size:2rem; border-radius:50%; width:52px; height:52px; cursor:pointer; backdrop-filter:blur(6px); transition:.2s; z-index:10001;"
+                title="Ảnh trước">&#8249;</button>
+
+        <!-- Ảnh hiển thị -->
+        <img id="lightboxImg" src="" alt=""
+             style="max-width:90vw; max-height:85vh; object-fit:contain; border-radius:14px; box-shadow:0 32px 80px rgba(0,0,0,0.6); transition:opacity 0.2s ease;">
+
+        <!-- Nút mũi tên phải -->
+        <button id="lbNext" onclick="lbNavigate(1)"
+                style="position:absolute; right:16px; background:rgba(255,255,255,0.18); border:none; color:#fff; font-size:2rem; border-radius:50%; width:52px; height:52px; cursor:pointer; backdrop-filter:blur(6px); transition:.2s; z-index:10001;"
+                title="Ảnh tiếp theo">&#8250;</button>
+    </div>
+
+    <!-- Chỉ số ảnh -->
+    <div id="lightboxCounter" style="color:rgba(255,255,255,0.75); font-size:0.95rem; margin-top:12px; font-weight:600;"></div>
+
+    <!-- Thumbnails dưới -->
+    <div id="lightboxThumbs" style="display:flex; gap:8px; margin-top:10px; padding:0 16px; overflow-x:auto; max-width:95vw;"></div>
+</div>
+
 <style>
     .table-hover tbody tr:hover {
-        background-color: rgba(25, 135, 84, 0.05); /* Màu xanh lá nhạt khi hover */
+        background-color: rgba(25, 135, 84, 0.05);
+    }
+    .table td, .table th { vertical-align: middle; }
+    .room-thumb-preview:hover { opacity: 0.85; transform: scale(1.05); transition: .2s; }
+    #lbPrev:hover, #lbNext:hover { background: rgba(255,255,255,0.35) !important; }
+</style>
+
+<script>
+    // --- LIGHTBOX XEM ẢNH ---
+    let lbImages = [];
+    let lbIndex = 0;
+
+    // Mở lightbox với danh sách ảnh và chỉ số ảnh đầu tiên
+    function openLightbox(images, startIndex) {
+        lbImages = images;
+        lbIndex = startIndex;
+        document.getElementById('lightboxOverlay').style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        renderLightbox();
+
+        // Ẩn mũi tên nếu chỉ có 1 ảnh
+        document.getElementById('lbPrev').style.display = lbImages.length > 1 ? '' : 'none';
+        document.getElementById('lbNext').style.display = lbImages.length > 1 ? '' : 'none';
     }
 
-    .table td, .table th {
-        vertical-align: middle;
+    // Đóng lightbox
+    function closeLightbox() {
+        document.getElementById('lightboxOverlay').style.display = 'none';
+        document.body.style.overflow = '';
     }
-</style>
+
+    // Di chuyển qua lại giữa các ảnh
+    function lbNavigate(dir) {
+        lbIndex = (lbIndex + dir + lbImages.length) % lbImages.length;
+        renderLightbox();
+    }
+
+    // Render ảnh chính và thumbnails
+    function renderLightbox() {
+        const img = document.getElementById('lightboxImg');
+        img.style.opacity = 0;
+        setTimeout(() => {
+            img.src = lbImages[lbIndex];
+            img.style.opacity = 1;
+        }, 120);
+
+        document.getElementById('lightboxCounter').textContent = `Ảnh ${lbIndex + 1} / ${lbImages.length}`;
+
+        // Render thumbnails
+        const thumbsEl = document.getElementById('lightboxThumbs');
+        thumbsEl.innerHTML = lbImages.map((url, i) =>
+            `<img src="${url}" onclick="lbIndex=${i}; renderLightbox();"
+             style="height:54px; width:72px; object-fit:cover; border-radius:8px; cursor:pointer; border: 2px solid ${i === lbIndex ? '#fff' : 'transparent'}; opacity:${i === lbIndex ? 1 : 0.55}; transition:.2s;">`
+        ).join('');
+    }
+
+    // Phím tắt: ESC để đóng, mũi tên trái/phải để điều hướng
+    document.addEventListener('keydown', function(e) {
+        if (document.getElementById('lightboxOverlay').style.display === 'flex') {
+            if (e.key === 'Escape') closeLightbox();
+            if (e.key === 'ArrowLeft') lbNavigate(-1);
+            if (e.key === 'ArrowRight') lbNavigate(1);
+        }
+    });
+</script>

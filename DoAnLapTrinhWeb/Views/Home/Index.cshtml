@@ -86,6 +86,18 @@ else
                     </div>
 
                     <form action="/Accommodation/Search" method="GET" class="hero-search shadow-sm">
+                        <!-- Tab chọn Loại hình: Nhà trọ / Nhà nguyên căn -->
+                        <div class="d-flex gap-2 mb-3">
+                            <button type="button" id="tabPhongTro" onclick="selectHouseType('phong-tro')" 
+                                    class="btn btn-primary rounded-pill px-4 fw-semibold house-type-tab active-tab" style="transition:.2s;">
+                                <i class="fas fa-door-open me-2"></i>Nhà trọ
+                            </button>
+                            <button type="button" id="tabNguyenCan" onclick="selectHouseType('nguyen-can')"
+                                    class="btn btn-outline-secondary rounded-pill px-4 fw-semibold house-type-tab" style="transition:.2s;">
+                                <i class="fas fa-home me-2"></i>Nhà nguyên căn
+                            </button>
+                        </div>
+                        <input type="hidden" name="houseType" id="houseTypeInput" value="phong-tro">
                         <div class="row g-3">
                             <div class="col-12 col-lg-4">
                                 <label class="form-label fw-semibold text-muted small mb-2">Tỉnh / Thành phố</label>
@@ -123,6 +135,17 @@ else
                                     <i class="fas fa-search me-2"></i>Tìm kiếm
                                 </button>
                             </div>
+                        </div>
+
+                        <!-- Lịch sử tìm kiếm gần đây (lưu vào localStorage) -->
+                        <div id="searchHistoryBox" style="display:none; margin-top:14px; padding-top:12px; border-top:1px solid rgba(0,0,0,0.08);">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="small fw-semibold text-muted"><i class="fas fa-history me-1"></i>Lịch sử tìm kiếm</span>
+                                <button type="button" onclick="clearSearchHistory()" class="btn btn-sm btn-outline-danger rounded-pill px-3" style="font-size:.78rem;">
+                                    <i class="fas fa-trash-alt me-1"></i>Xóa lịch sử
+                                </button>
+                            </div>
+                            <div id="searchHistoryList" class="d-flex flex-wrap gap-2"></div>
                         </div>
                     </form>
                 </div>
@@ -782,6 +805,167 @@ else
                     }
                 });
             }
-        });
+            });
     </script>
 }
+
+<style>
+    /* Tab chọn loại hình */
+    .house-type-tab.active-tab {
+        background: var(--primary-color, #006d77) !important;
+        border-color: var(--primary-color, #006d77) !important;
+        color: #fff !important;
+        box-shadow: 0 6px 20px rgba(0,109,119,0.25);
+    }
+    .house-type-tab:not(.active-tab) {
+        background: #fff;
+        color: #334155;
+    }
+
+    /* Tag lịch sử tìm kiếm */
+    .history-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 14px;
+        border-radius: 999px;
+        background: rgba(0,109,119,0.08);
+        color: #006d77;
+        font-size: 0.82rem;
+        font-weight: 600;
+        border: 1px solid rgba(0,109,119,0.2);
+        cursor: pointer;
+        transition: .18s;
+        text-decoration: none;
+    }
+    .history-tag:hover { background: rgba(0,109,119,0.18); }
+    .history-tag .remove-btn {
+        background: none; border: none; padding: 0;
+        color: #94a3b8; font-size: 0.9rem; cursor: pointer; line-height: 1;
+    }
+    .history-tag .remove-btn:hover { color: #ef4444; }
+</style>
+
+<script>
+// === CHỨC NĂNG 1: Tab chọn loại hình (Nhà trọ / Nhà nguyên căn) ===
+function selectHouseType(type) {
+    document.getElementById('houseTypeInput').value = type;
+
+    const tabs = document.querySelectorAll('.house-type-tab');
+    tabs.forEach(t => {
+        t.classList.remove('active-tab', 'btn-primary');
+        t.classList.add('btn-outline-secondary');
+    });
+
+    const activeBtn = type === 'phong-tro'
+        ? document.getElementById('tabPhongTro')
+        : document.getElementById('tabNguyenCan');
+
+    activeBtn.classList.add('active-tab', 'btn-primary');
+    activeBtn.classList.remove('btn-outline-secondary');
+
+    // Khi chọn Nhà nguyên căn: đẩy Nhà trọ qua, thay đổi placeholder tìm kiếm
+    const cityLabel = document.querySelector('#citySelect')?.closest('.col-12');
+    if (type === 'nguyen-can') {
+        document.querySelector('label[for="citySelect"], #citySelect')?.previousElementSibling;
+        // Highlight form với màu khác cho Nhà nguyên căn
+        document.querySelector('.hero-search').style.background = 'rgba(254, 243, 199, 0.92)';
+        document.querySelector('.hero-search').style.borderColor = 'rgba(251,191,36,0.35)';
+        // Cập nhật tiêu đề nếu có
+        const badge = document.querySelector('.section-kicker');
+        if (badge) badge.setAttribute('data-prev', badge.textContent);
+    } else {
+        document.querySelector('.hero-search').style.background = '';
+        document.querySelector('.hero-search').style.borderColor = '';
+        const badge = document.querySelector('.section-kicker');
+        if (badge && badge.getAttribute('data-prev')) {
+            badge.textContent = badge.getAttribute('data-prev');
+        }
+    }
+}
+
+// === CHỨC NĂNG 2: Lịch sử tìm kiếm (localStorage, áp dụng mọi role) ===
+const HISTORY_KEY = 'searchHistory_v1';
+
+function getHistory() {
+    try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); }
+    catch { return []; }
+}
+
+function saveHistory(hist) {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(hist));
+}
+
+function renderHistory() {
+    const hist = getHistory();
+    const box = document.getElementById('searchHistoryBox');
+    const list = document.getElementById('searchHistoryList');
+    if (!box || !list) return;
+
+    if (hist.length === 0) {
+        box.style.display = 'none';
+        return;
+    }
+
+    box.style.display = '';
+    list.innerHTML = hist.map((h, i) =>
+        `<span class="history-tag" onclick="applyHistory(${i})">
+            <i class="fas fa-map-marker-alt"></i>
+            ${h.label}
+            <button class="remove-btn" onclick="event.stopPropagation(); removeHistoryItem(${i});" title="Xóa">&#10005;</button>
+        </span>`
+    ).join('');
+}
+
+function addToHistory(label, url) {
+    let hist = getHistory();
+    // Tránh trùng lặp
+    hist = hist.filter(h => h.label !== label);
+    hist.unshift({ label, url, time: Date.now() });
+    if (hist.length > 8) hist = hist.slice(0, 8); // Giới hạn 8 mục
+    saveHistory(hist);
+}
+
+function applyHistory(index) {
+    const hist = getHistory();
+    if (hist[index]) window.location.href = hist[index].url;
+}
+
+function removeHistoryItem(index) {
+    let hist = getHistory();
+    hist.splice(index, 1);
+    saveHistory(hist);
+    renderHistory();
+}
+
+function clearSearchHistory() {
+    if (confirm('Bạn có chắc muốn xóa toàn bộ lịch sử tìm kiếm không?')) {
+        localStorage.removeItem(HISTORY_KEY);
+        renderHistory();
+    }
+}
+
+// Gắn sự kiện: Khi submit form tìm kiếm thì lưu lịch sử
+document.addEventListener('DOMContentLoaded', function () {
+    renderHistory();
+
+    const searchForm = document.querySelector('form[action="/Accommodation/Search"]');
+    if (searchForm) {
+        searchForm.addEventListener('submit', function () {
+            const cityEl = document.getElementById('citySelect');
+            const districtEl = document.getElementById('districtSelect');
+            const cityText = cityEl?.options[cityEl.selectedIndex]?.text || '';
+            const districtText = districtEl?.options[districtEl?.selectedIndex]?.text || '';
+
+            if (cityText && !cityText.includes('Chọn')) {
+                const label = districtText && !districtText.includes('Chọn')
+                    ? `${cityText} – ${districtText}`
+                    : cityText;
+                const url = searchForm.action + '?' + new URLSearchParams(new FormData(searchForm)).toString();
+                addToHistory(label, url);
+            }
+        });
+    }
+});
+</script>
+

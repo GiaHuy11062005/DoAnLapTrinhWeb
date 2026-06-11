@@ -80,7 +80,7 @@ namespace DoAnLapTrinhWeb.Migrations
 
                     b.HasIndex("OwnerId");
 
-                    b.ToTable("Accommodations");
+                    b.ToTable("Accommodations", (string)null);
                 });
 
             modelBuilder.Entity("DoAnLapTrinhWeb.Models.AccommodationImage", b =>
@@ -101,7 +101,7 @@ namespace DoAnLapTrinhWeb.Migrations
 
                     b.HasIndex("AccommodationId");
 
-                    b.ToTable("AccommodationImages");
+                    b.ToTable("AccommodationImages", (string)null);
                 });
 
             modelBuilder.Entity("DoAnLapTrinhWeb.Models.AppUser", b =>
@@ -147,7 +147,7 @@ namespace DoAnLapTrinhWeb.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Users");
+                    b.ToTable("Users", (string)null);
                 });
 
             modelBuilder.Entity("DoAnLapTrinhWeb.Models.BookingRequest", b =>
@@ -187,7 +187,7 @@ namespace DoAnLapTrinhWeb.Migrations
 
                     b.HasIndex("StudentId");
 
-                    b.ToTable("BookingRequests");
+                    b.ToTable("BookingRequests", (string)null);
                 });
 
             modelBuilder.Entity("DoAnLapTrinhWeb.Models.City", b =>
@@ -209,7 +209,7 @@ namespace DoAnLapTrinhWeb.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Cities");
+                    b.ToTable("Cities", (string)null);
                 });
 
             modelBuilder.Entity("DoAnLapTrinhWeb.Models.District", b =>
@@ -233,7 +233,7 @@ namespace DoAnLapTrinhWeb.Migrations
 
                     b.HasIndex("CityId");
 
-                    b.ToTable("Districts");
+                    b.ToTable("Districts", (string)null);
                 });
 
             modelBuilder.Entity("DoAnLapTrinhWeb.Models.Favorite", b =>
@@ -256,7 +256,7 @@ namespace DoAnLapTrinhWeb.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Favorites");
+                    b.ToTable("Favorites", (string)null);
                 });
 
             modelBuilder.Entity("DoAnLapTrinhWeb.Models.LandlordApplication", b =>
@@ -307,7 +307,7 @@ namespace DoAnLapTrinhWeb.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("LandlordApplications");
+                    b.ToTable("LandlordApplications", (string)null);
                 });
 
             modelBuilder.Entity("DoAnLapTrinhWeb.Models.Notification", b =>
@@ -343,7 +343,7 @@ namespace DoAnLapTrinhWeb.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Notifications");
+                    b.ToTable("Notifications", (string)null);
                 });
 
             modelBuilder.Entity("DoAnLapTrinhWeb.Models.SearchLog", b =>
@@ -368,7 +368,7 @@ namespace DoAnLapTrinhWeb.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("SearchLogs");
+                    b.ToTable("SearchLogs", (string)null);
                 });
 
             modelBuilder.Entity("DoAnLapTrinhWeb.Models.Ward", b =>
@@ -392,7 +392,7 @@ namespace DoAnLapTrinhWeb.Migrations
 
                     b.HasIndex("DistrictId");
 
-                    b.ToTable("Wards");
+                    b.ToTable("Wards", (string)null);
                 });
 
             modelBuilder.Entity("DoAnLapTrinhWeb.Models.Accommodation", b =>

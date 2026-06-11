@@ -121,7 +121,19 @@ namespace DoAnLapTrinhWeb.Controllers
             };
 
             _context.LandlordApplications.Add(application);
-            await _context.SaveChangesAsync();
+
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateException dbEx)
+            {
+                // Lấy lỗi gốc (inner exception) để hiển thị cho người dùng/dev
+                var innerMsg = dbEx.InnerException?.Message ?? dbEx.Message;
+                TempData["Error"] = $"Đã xảy ra lỗi khi lưu dữ liệu: {innerMsg}";
+                ViewBag.LatestApplication = await GetLatestApplicationSafeAsync(user.Id);
+                return RedirectToAction(nameof(Create));
+            }
 
             TempData["Success"] = "Đã gửi yêu cầu đăng ký làm chủ trọ. Vui lòng chờ admin duyệt.";
             return RedirectToAction(nameof(Create));
