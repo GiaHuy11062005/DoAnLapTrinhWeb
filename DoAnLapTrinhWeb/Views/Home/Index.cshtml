@@ -1,0 +1,376 @@
+@using DoAnLapTrinhWeb.Models
+@{
+    ViewData["Title"] = "Trang chủ";
+    var featuredRooms = ViewBag.SuggestedRooms as List<Accommodation> ?? new List<Accommodation>();
+}
+
+<div class="home-page">
+    <section class="home-hero">
+        <div class="home-hero__overlay"></div>
+        <div class="home-hero__content">
+            <h1>Tìm kiếm tổ ấm hoàn hảo của bạn</h1>
+            <div class="home-search">
+                <div class="home-search__tabs">
+                    <span class="home-search__tab-indicator"></span>
+                    <button type="button" class="home-search__tab active" data-home-type="room">Nhà trọ</button>
+                    <button type="button" class="home-search__tab" data-home-type="whole-house">Nhà nguyên căn</button>
+                </div>
+                <form action="/Accommodation/Search" method="get" class="home-search__form">
+                    <div class="home-field">
+                        <label for="citySelect">Địa điểm</label>
+                        <div class="home-field__control">
+                            <i class="fas fa-location-dot"></i>
+                            <select id="citySelect" name="cityId" required>
+                                <option value="" selected disabled>Chọn tỉnh/thành</option>
+                                @if (ViewBag.Cities != null)
+                                {
+                                    foreach (var city in ViewBag.Cities)
+                                    {
+                                        <option value="@city.Id">@city.Name</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+                    </div>
+                    <div class="home-field">
+                        <label for="districtSelect">Khu vực</label>
+                        <div class="home-field__control">
+                            <i class="fas fa-map"></i>
+                            <select id="districtSelect" name="districtId" disabled>
+                                <option value="" selected>Tất cả khu vực</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="home-field">
+                        <label for="priceRange">Mức giá</label>
+                        <div class="home-field__control">
+                            <i class="fas fa-money-bill-wave"></i>
+                            <select id="priceRange" name="priceRange">
+                                <option value="" selected>Tất cả mức giá</option>
+                                <option value="1">Dưới 2 triệu</option>
+                                <option value="2">2 - 4 triệu</option>
+                                <option value="3">Trên 4 triệu</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button type="submit" name="recordHistory" value="true" class="home-search__button">
+                        <i class="fas fa-magnifying-glass"></i> Tìm kiếm
+                    </button>
+                </form>
+            </div>
+            @if (User.Identity?.IsAuthenticated == true)
+            {
+                <button type="button" id="homeLatestNotificationButton" class="home-latest-button">
+                    <i class="far fa-bell"></i>
+                    <span>Xem cập nhật trọ mới nhất</span>
+                    <strong id="homeLatestNotificationCount" hidden>0</strong>
+                </button>
+            }
+        </div>
+    </section>
+
+    <section class="home-section home-featured">
+        <div class="home-section__heading">
+            <div>
+                <h2>Phòng trọ &amp; Nhà ở nổi bật</h2>
+                <p>Khám phá những lựa chọn tốt nhất được xác thực bởi Chỗ Ở Tiện Ích.</p>
+            </div>
+            <a href="/Accommodation/Search">Xem tất cả <i class="fas fa-arrow-right"></i></a>
+        </div>
+
+        <form action="/Accommodation/Search" method="get" class="featured-quick-search">
+            <div class="featured-quick-search__input">
+                <i class="fas fa-magnifying-glass"></i>
+                <input type="text" name="keyword" aria-label="Tìm kiếm phòng" placeholder="Tìm kiếm vị trí hoặc từ khóa..." />
+            </div>
+            <button type="submit">Tìm kiếm</button>
+        </form>
+
+        @if (featuredRooms.Any())
+        {
+            <div class="listing-grid">
+                @{
+                    var fallbackImages = new[]
+                    {
+                        "/images/accommodations/5007c941-3c42-4e59-8723-0e6c6a85373d_nhatro.jpg",
+                        "/images/accommodations/da3b6c60-91a7-43e6-a237-055b3af7a96c_anh1.png"
+                    };
+                    var roomIndex = 0;
+                }
+                @foreach (var room in featuredRooms.Take(3))
+                {
+                    var savedImage = room.Images?.FirstOrDefault()?.ImageUrl;
+                    var fallbackImage = fallbackImages[roomIndex % fallbackImages.Length];
+                    var firstImage = !string.IsNullOrWhiteSpace(savedImage)
+                        ? savedImage
+                        : fallbackImage;
+                    <article class="listing-card">
+                        <a class="listing-card__image" href="/Accommodation/Details/@room.Id">
+                            <img src="@firstImage" alt="@room.Title" onerror="this.onerror=null;this.src='@fallbackImage';" />
+                            <span class="listing-card__badge"><i class="fas fa-circle-check"></i> Xác thực</span>
+                        </a>
+                        <button type="button" class="listing-card__favorite" data-favorite-room-id="@room.Id" onclick="toggleGlobalFavorite(@room.Id, this)" aria-label="Thêm vào yêu thích">
+                            <i class="far fa-heart"></i>
+                        </button>
+                        <div class="listing-card__body">
+                            <div class="listing-card__price">@room.Price.ToString("N0") <small>VNĐ/tháng</small></div>
+                            <a href="/Accommodation/Details/@room.Id" class="listing-card__title">@room.Title</a>
+                            <p class="listing-card__location"><i class="fas fa-location-dot"></i> @room.District?.Name, @room.City?.Name</p>
+                            <div class="listing-card__tags">
+                                @if (room.HasParking) { <span><i class="fas fa-square-parking"></i> Chỗ để xe</span> }
+                                @if (room.AllowsPets) { <span><i class="fas fa-paw"></i> Cho thú cưng</span> }
+                                <span><i class="fas fa-ruler-combined"></i> @room.Area m²</span>
+                            </div>
+                        </div>
+                    </article>
+                    roomIndex++;
+                }
+            </div>
+        }
+        else
+        {
+            <div class="home-empty">
+                <i class="fas fa-house-circle-check"></i>
+                <h3>Phòng trọ nổi bật đang được cập nhật</h3>
+                <p>Các bài đăng đã duyệt sẽ xuất hiện tại đây.</p>
+            </div>
+        }
+    </section>
+
+    <section class="home-benefits">
+        <div class="home-section">
+            <div class="home-benefits__heading">
+                <h2>Tại sao chọn Chỗ Ở Tiện Ích?</h2>
+                <p>Chúng tôi mang đến giải pháp tìm kiếm chỗ ở đơn giản, minh bạch và an toàn nhất cho sinh viên và người đi làm.</p>
+            </div>
+            <div class="benefit-grid">
+                <article class="benefit-card">
+                    <div class="benefit-card__icon benefit-card__icon--blue"><i class="fas fa-shield-halved"></i></div>
+                    <h3>Tin đăng xác thực</h3>
+                    <p>Tất cả tin đăng đều được kiểm duyệt trực tiếp, đảm bảo thông tin chính xác và hình ảnh thực tế.</p>
+                </article>
+                <article class="benefit-card">
+                    <div class="benefit-card__icon benefit-card__icon--orange"><i class="fas fa-hand-holding-dollar"></i></div>
+                    <h3>Không phí môi giới</h3>
+                    <p>Bạn làm việc trực tiếp với chủ nhà, không mất bất kỳ khoản phí trung gian nào.</p>
+                </article>
+                <article class="benefit-card">
+                    <div class="benefit-card__icon benefit-card__icon--peach"><i class="fas fa-magnifying-glass-location"></i></div>
+                    <h3>Tìm kiếm dễ dàng</h3>
+                    <p>Bộ lọc thông minh giúp bạn tìm được căn phòng ưng ý chỉ trong vài cú click chuột.</p>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    <section class="home-reviews">
+        <div class="home-section">
+            <div class="home-reviews__heading">
+                <span class="home-reviews__eyebrow"><i class="fas fa-circle-check"></i> Đánh giá đã xác minh</span>
+                <h2>Đánh giá từ khách hàng</h2>
+                <p>Chia sẻ từ những thành viên đã tìm và thuê phòng thành công qua Chỗ Ở Tiện Ích.</p>
+                <span class="home-reviews__demo">Dữ liệu minh họa giao diện</span>
+            </div>
+
+            <div class="review-carousel" id="homeReviewCarousel">
+                <div class="review-grid" id="homeReviewTrack">
+                    <article class="review-card">
+                    <div class="review-card__top">
+                        <div class="review-card__stars" aria-label="5 trên 5 sao">
+                            <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                        </div>
+                        <span class="review-card__verified"><i class="fas fa-circle-check"></i> Đã thuê phòng</span>
+                    </div>
+                    <blockquote>“Mình tìm được phòng trọ ưng ý chỉ sau hai ngày tìm kiếm. Tin đăng có hình ảnh thực tế và thông tin rất rõ ràng.”</blockquote>
+                    <div class="review-card__author">
+                        <div class="review-card__avatar review-card__avatar--blue">MA</div>
+                        <div>
+                            <strong>Nguyễn Minh Anh</strong>
+                            <span>Sinh viên ĐHQG</span>
+                        </div>
+                    </div>
+                    </article>
+
+                    <article class="review-card">
+                    <div class="review-card__top">
+                        <div class="review-card__stars" aria-label="5 trên 5 sao">
+                            <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                        </div>
+                        <span class="review-card__verified"><i class="fas fa-circle-check"></i> Đã thuê phòng</span>
+                    </div>
+                    <blockquote>“Dịch vụ hỗ trợ rất nhiệt tình. Mình yên tâm vì chủ nhà và bài đăng đều được xác thực rõ ràng.”</blockquote>
+                    <div class="review-card__author">
+                        <div class="review-card__avatar review-card__avatar--orange">HN</div>
+                        <div>
+                            <strong>Trần Hoàng Nam</strong>
+                            <span>Nhân viên văn phòng</span>
+                        </div>
+                    </div>
+                    </article>
+
+                    <article class="review-card">
+                    <div class="review-card__top">
+                        <div class="review-card__stars" aria-label="5 trên 5 sao">
+                            <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                        </div>
+                        <span class="review-card__verified"><i class="fas fa-circle-check"></i> Đã thuê phòng</span>
+                    </div>
+                    <blockquote>“Giao diện dễ sử dụng, bộ lọc khu vực rất tiện. Mình tìm được phòng gần công ty với mức giá phù hợp.”</blockquote>
+                    <div class="review-card__author">
+                        <div class="review-card__avatar review-card__avatar--peach">TT</div>
+                        <div>
+                            <strong>Lê Thị Thu Thảo</strong>
+                            <span>Sinh viên năm cuối</span>
+                        </div>
+                    </div>
+                    </article>
+
+                    <article class="review-card">
+                        <div class="review-card__top">
+                            <div class="review-card__stars" aria-label="5 trên 5 sao">
+                                <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                            </div>
+                            <span class="review-card__verified"><i class="fas fa-circle-check"></i> Đã thuê phòng</span>
+                        </div>
+                        <blockquote>“Mình xem được vị trí và thông tin phòng rất nhanh. Việc liên hệ trực tiếp với chủ trọ cũng thuận tiện.”</blockquote>
+                        <div class="review-card__author">
+                            <div class="review-card__avatar review-card__avatar--blue">QP</div>
+                            <div>
+                                <strong>Phạm Quang Phúc</strong>
+                                <span>Kỹ sư phần mềm</span>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="review-card">
+                        <div class="review-card__top">
+                            <div class="review-card__stars" aria-label="5 trên 5 sao">
+                                <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                            </div>
+                            <span class="review-card__verified"><i class="fas fa-circle-check"></i> Đã thuê phòng</span>
+                        </div>
+                        <blockquote>“Các tiện ích được trình bày rõ ràng nên mình dễ so sánh và chọn được phòng phù hợp với nhu cầu.”</blockquote>
+                        <div class="review-card__author">
+                            <div class="review-card__avatar review-card__avatar--orange">NL</div>
+                            <div>
+                                <strong>Võ Ngọc Linh</strong>
+                                <span>Sinh viên cao học</span>
+                            </div>
+                        </div>
+                    </article>
+                </div>
+
+                <div class="review-carousel__controls" aria-label="Điều khiển danh sách đánh giá">
+                    <button type="button" id="homeReviewPrevious" aria-label="Xem đánh giá trước">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <button type="button" id="homeReviewNext" aria-label="Xem đánh giá tiếp theo">
+                        <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+
+            <p class="home-reviews__notice">
+                <i class="fas fa-shield-halved"></i>
+                Khi chức năng đặt phòng được kích hoạt, chỉ tài khoản hoàn tất thuê phòng mới có quyền gửi đánh giá.
+            </p>
+        </div>
+    </section>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const citySelect = document.getElementById("citySelect");
+            const districtSelect = document.getElementById("districtSelect");
+            const searchTabs = document.querySelectorAll("[data-home-type]");
+            const reviewCarousel = document.getElementById("homeReviewCarousel");
+            const reviewTrack = document.getElementById("homeReviewTrack");
+            const reviewPrevious = document.getElementById("homeReviewPrevious");
+            const reviewNext = document.getElementById("homeReviewNext");
+
+            searchTabs.forEach(tab => {
+                tab.addEventListener("click", () => {
+                    searchTabs.forEach(item => item.classList.remove("active"));
+                    tab.classList.add("active");
+                    tab.closest(".home-search__tabs")?.classList.toggle(
+                        "is-whole-house",
+                        tab.dataset.homeType === "whole-house");
+                });
+            });
+
+            citySelect?.addEventListener("change", async function () {
+                districtSelect.innerHTML = '<option value="" selected>Đang tải...</option>';
+                districtSelect.disabled = true;
+                try {
+                    const response = await fetch(`/Home/GetDistrictsWithRooms?cityId=${this.value}`);
+                    if (!response.ok) throw new Error();
+                    const districts = await response.json();
+                    districtSelect.innerHTML = '<option value="" selected>Tất cả khu vực</option>';
+                    districts.forEach(district => {
+                        const option = document.createElement("option");
+                        option.value = district.id;
+                        option.textContent = district.name;
+                        districtSelect.appendChild(option);
+                    });
+                    districtSelect.disabled = false;
+                } catch {
+                    districtSelect.innerHTML = '<option value="" selected>Lỗi tải dữ liệu</option>';
+                }
+            });
+
+            if (reviewCarousel && reviewTrack) {
+                const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+                let reviewTimer;
+
+                const getReviewStep = () => {
+                    const firstCard = reviewTrack.querySelector(".review-card");
+                    if (!firstCard) return reviewTrack.clientWidth;
+                    const gap = Number.parseFloat(getComputedStyle(reviewTrack).gap) || 0;
+                    return firstCard.getBoundingClientRect().width + gap;
+                };
+
+                const moveReviews = direction => {
+                    const maxScroll = reviewTrack.scrollWidth - reviewTrack.clientWidth;
+                    const isAtEnd = reviewTrack.scrollLeft >= maxScroll - 4;
+                    const isAtStart = reviewTrack.scrollLeft <= 4;
+
+                    if (direction > 0 && isAtEnd) {
+                        reviewTrack.scrollTo({ left: 0, behavior: "smooth" });
+                    } else if (direction < 0 && isAtStart) {
+                        reviewTrack.scrollTo({ left: maxScroll, behavior: "smooth" });
+                    } else {
+                        reviewTrack.scrollBy({ left: direction * getReviewStep(), behavior: "smooth" });
+                    }
+                };
+
+                const stopReviewAutoplay = () => window.clearInterval(reviewTimer);
+                const startReviewAutoplay = () => {
+                    stopReviewAutoplay();
+                    if (!prefersReducedMotion) {
+                        reviewTimer = window.setInterval(() => moveReviews(1), 4500);
+                    }
+                };
+
+                reviewPrevious?.addEventListener("click", () => {
+                    moveReviews(-1);
+                    startReviewAutoplay();
+                });
+                reviewNext?.addEventListener("click", () => {
+                    moveReviews(1);
+                    startReviewAutoplay();
+                });
+                reviewCarousel.addEventListener("mouseenter", stopReviewAutoplay);
+                reviewCarousel.addEventListener("mouseleave", startReviewAutoplay);
+                reviewCarousel.addEventListener("focusin", stopReviewAutoplay);
+                reviewCarousel.addEventListener("focusout", startReviewAutoplay);
+                document.addEventListener("visibilitychange", () => {
+                    if (document.hidden) stopReviewAutoplay();
+                    else startReviewAutoplay();
+                });
+
+                startReviewAutoplay();
+            }
+        });
+    </script>
+}

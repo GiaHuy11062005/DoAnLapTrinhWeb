@@ -1,0 +1,62 @@
+@model IEnumerable<DoAnLapTrinhWeb.Models.SearchLog>
+@using System.Collections.Generic
+@{
+    ViewData["Title"] = "Lịch sử tìm phòng";
+    var cities = ViewBag.Cities as Dictionary<int, string> ?? new();
+    var districts = ViewBag.Districts as Dictionary<int, string> ?? new();
+}
+
+<div class="history-page">
+    <div class="history-shell">
+        <div class="history-heading">
+            <div>
+                <h1>Lịch sử tìm phòng</h1>
+                <p>Xem lại các khu vực bạn đã quan tâm gần đây.</p>
+            </div>
+            <div class="history-heading__actions">
+                @if (Model.Any())
+                {
+                    <form action="/Home/ClearSearchHistory" method="post" onsubmit="return confirm('Xóa toàn bộ lịch sử tìm phòng?');">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-outline-danger"><i class="fas fa-trash"></i> Xóa tất cả</button>
+                    </form>
+                }
+                <a href="/" class="btn btn-primary">Tìm phòng mới</a>
+            </div>
+        </div>
+
+        @if (Model.Any())
+        {
+            <div class="history-list">
+                @foreach (var item in Model)
+                {
+                    var cityName = item.CityId.HasValue && cities.TryGetValue(item.CityId.Value, out var city) ? city : "Tất cả thành phố";
+                    var districtName = item.DistrictId.HasValue && districts.TryGetValue(item.DistrictId.Value, out var district) ? district : "Tất cả khu vực";
+                    <div class="history-item">
+                        <a class="history-item__link" href="/Accommodation/Search?cityId=@item.CityId&districtId=@item.DistrictId&recordHistory=false">
+                            <div class="history-item__icon"><i class="fas fa-clock-rotate-left"></i></div>
+                            <div>
+                                <strong>@districtName, @cityName</strong>
+                                <span>@item.CreatedAt.ToString("dd/MM/yyyy HH:mm")</span>
+                            </div>
+                            <i class="fas fa-arrow-right"></i>
+                        </a>
+                        <form action="/Home/DeleteSearchHistory" method="post" onsubmit="return confirm('Xóa mục lịch sử này?');">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="id" value="@item.Id" />
+                            <button type="submit" class="history-item__delete" aria-label="Xóa lịch sử"><i class="fas fa-trash"></i></button>
+                        </form>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="home-empty">
+                <i class="fas fa-magnifying-glass-location"></i>
+                <h3>Bạn chưa có lịch sử tìm phòng</h3>
+                <p>Những khu vực bạn tìm kiếm sẽ được lưu tại đây.</p>
+            </div>
+        }
+    </div>
+</div>
