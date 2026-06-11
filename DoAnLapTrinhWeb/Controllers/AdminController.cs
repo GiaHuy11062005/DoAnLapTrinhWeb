@@ -99,6 +99,7 @@ namespace DoAnLapTrinhWeb.Controllers
         [HttpPost]
         public async Task<IActionResult> Approve(int id)
         {
+            var approved = false;
             var room = await _context.Accommodations
                 .Include(a => a.Owner)
                 .FirstOrDefaultAsync(a => a.Id == id && !a.IsApproved);
@@ -107,17 +108,44 @@ namespace DoAnLapTrinhWeb.Controllers
                 room.IsApproved = true; // Đổi trạng thái thành Đã Duyệt
                 var history = CreateHistory(room, "Approved");
                 _context.ApprovalHistories.Add(history);
+                var ownerNotification = new AppNotification
+                {
+                    UserId = room.OwnerId,
+                    Type = "Approval",
+                    Title = "Bài đăng đã được duyệt",
+                    Message = room.Title ?? "Bài đăng phòng trọ",
+                    Url = $"/Accommodation/Details/{room.Id}"
+                };
+                _context.Notifications.Add(ownerNotification);
+
+                var renterIds = await _context.Users
+                    .Where(user => user.Role == "User")
+                    .Select(user => user.Id)
+                    .ToListAsync();
+                var renterNotifications = renterIds.Select(renterId => new AppNotification
+                {
+                    UserId = renterId,
+                    Type = "NewAccommodation",
+                    Title = "Có phòng trọ mới vừa được duyệt",
+                    Message = room.Title ?? "Xem phòng trọ mới",
+                    Url = $"/Accommodation/Details/{room.Id}"
+                }).ToList();
+                _context.Notifications.AddRange(renterNotifications);
                 await _context.SaveChangesAsync();
+                await SendNotification(ownerNotification);
+                foreach (var notification in renterNotifications) await SendNotification(notification);
                 await NotifyProcessed(room, history, "Approved", "Đã duyệt");
-                TempData["Success"] = "Đã duyệt bài đăng thành công!";
+                approved = true;
             }
             if (Request.Headers["X-Requested-With"] == "XMLHttpRequest") return Ok();
+            if (approved) TempData["Success"] = "Đã duyệt bài đăng thành công!";
             return RedirectToAction(nameof(Index));
         }
 
         [HttpPost]
         public async Task<IActionResult> Delete(int id)
         {
+            var deleted = false;
             var room = await _context.Accommodations
                 .Include(a => a.Owner)
                 .Include(a => a.Documents)
@@ -130,17 +158,28 @@ namespace DoAnLapTrinhWeb.Controllers
                     .ToList() ?? new();
                 var history = CreateHistory(room, "Rejected");
                 _context.ApprovalHistories.Add(history);
+                var ownerNotification = new AppNotification
+                {
+                    UserId = room.OwnerId,
+                    Type = "Rejected",
+                    Title = "Bài đăng đã bị từ chối",
+                    Message = room.Title ?? "Bài đăng phòng trọ",
+                    Url = "/Accommodation/Index"
+                };
+                _context.Notifications.Add(ownerNotification);
                 _context.Accommodations.Remove(room); // Xóa bài nếu vi phạm
                 await _context.SaveChangesAsync();
+                await SendNotification(ownerNotification);
                 foreach (var storedFileName in storedDocuments)
                 {
                     var filePath = Path.Combine(_environment.ContentRootPath, "App_Data", "land-documents", storedFileName);
                     if (System.IO.File.Exists(filePath)) System.IO.File.Delete(filePath);
                 }
                 await NotifyProcessed(room, history, "Rejected", "Đã từ chối");
-                TempData["Success"] = "Đã xóa bài đăng!";
+                deleted = true;
             }
             if (Request.Headers["X-Requested-With"] == "XMLHttpRequest") return Ok();
+            if (deleted) TempData["Success"] = "Đã xóa bài đăng!";
             return RedirectToAction(nameof(Index));
         }
 
@@ -176,6 +215,20 @@ namespace DoAnLapTrinhWeb.Controllers
                 ProcessedBy = User.FindFirstValue(ClaimTypes.Name) ?? "Admin",
                 ProcessedAt = DateTime.Now
             };
+        }
+
+        private async Task SendNotification(AppNotification notification)
+        {
+            await _hubContext.Clients.Group($"User_{notification.UserId}").SendAsync("NotificationReceived", new
+            {
+                notification.Id,
+                notification.Title,
+                notification.Message,
+                notification.Url,
+                notification.Type,
+                notification.IsRead,
+                createdAt = notification.CreatedAt.ToString("dd/MM/yyyy HH:mm")
+            });
         }
     }
 }

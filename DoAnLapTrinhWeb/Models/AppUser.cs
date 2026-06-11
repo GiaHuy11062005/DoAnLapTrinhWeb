@@ -19,6 +19,7 @@ namespace DoAnLapTrinhWeb.Models
         public int? CityId { get; set; }
         public int? DistrictId { get; set; }
         public string? Phone { get; set; } // SĐT mặc định
+        public string? AvatarUrl { get; set; }
 
         // Lưu định danh: "Student", "Worker", hoặc rỗng (chưa chọn)
         public string? UserIdentity { get; set; }

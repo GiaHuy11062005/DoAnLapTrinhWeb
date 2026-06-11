@@ -15,7 +15,7 @@
             {
                 <div class="col-md-4 mb-4" id="room-card-@room.Id">
                     <div class="card h-100 shadow-sm border-0 transition-hover">
-                        <button onclick="toggleFavorite(@room.Id)" class="btn btn-light position-absolute top-0 end-0 m-2 rounded-circle shadow-sm" title="Bỏ thích" style="z-index: 10;">
+                        <button data-favorite-room-id="@room.Id" onclick="toggleFavorite(@room.Id)" class="btn btn-light position-absolute top-0 end-0 m-2 rounded-circle shadow-sm" title="Bỏ thích" style="z-index: 10;">
                             <i class="fas fa-heart text-danger" id="heart-icon-@room.Id"></i>
                         </button>
 
@@ -79,9 +79,9 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    // [Inference] Giả định bạn muốn ẩn luôn thẻ card khi người dùng bỏ thích trong trang danh sách này
                     if (!data.isFavorited) {
                         document.getElementById(`room-card-${roomId}`).style.display = 'none';
+                        updateFavoriteButtons(roomId, false);
                     }
                 }
             } catch (error) {

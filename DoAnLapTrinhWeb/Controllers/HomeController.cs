@@ -116,5 +116,41 @@ namespace DoAnLapTrinhWeb.Controllers
             ViewBag.Districts = await _context.Districts.ToDictionaryAsync(district => district.Id, district => district.Name ?? "");
             return View(logs);
         }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize]
+        public async Task<IActionResult> DeleteSearchHistory(int id)
+        {
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userIdString, out int userId)) return Unauthorized();
+
+            var log = await _context.SearchLogs.FirstOrDefaultAsync(item => item.Id == id && item.UserId == userId);
+            if (log != null)
+            {
+                _context.SearchLogs.Remove(log);
+                await _context.SaveChangesAsync();
+            }
+
+            return RedirectToAction(nameof(SearchHistory));
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize]
+        public async Task<IActionResult> ClearSearchHistory()
+        {
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userIdString, out int userId)) return Unauthorized();
+
+            var logs = await _context.SearchLogs.Where(item => item.UserId == userId).ToListAsync();
+            if (logs.Count > 0)
+            {
+                _context.SearchLogs.RemoveRange(logs);
+                await _context.SaveChangesAsync();
+            }
+
+            return RedirectToAction(nameof(SearchHistory));
+        }
     }
 }

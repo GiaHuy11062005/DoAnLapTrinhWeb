@@ -26,20 +26,55 @@ async function toggleGlobalFavorite(roomId, buttonElement) {
         const data = await response.json();
 
         if (data.success) {
-            // Đổi giao diện icon trái tim tùy theo trạng thái
-            const icon = buttonElement.querySelector('i');
-            if (data.isFavorited) {
-                icon.classList.remove('far', 'text-muted'); // Bỏ icon rỗng
-                icon.classList.add('fas', 'text-danger');   // Thêm icon đặc màu đỏ
-            } else {
-                icon.classList.remove('fas', 'text-danger');
-                icon.classList.add('far', 'text-muted');
-            }
+            updateFavoriteButtons(roomId, data.isFavorited);
+            document.dispatchEvent(new CustomEvent('favoriteStatusChanged', {
+                detail: { roomId, isFavorited: data.isFavorited }
+            }));
         }
     } catch (error) {
         console.error("Lỗi:", error);
     }
 }
+
+function updateFavoriteButtons(roomId, isFavorited) {
+    document.querySelectorAll(`[data-favorite-room-id="${roomId}"]`).forEach(button => {
+        const icon = button.querySelector('i');
+        if (!icon) return;
+
+        icon.classList.toggle('fas', isFavorited);
+        icon.classList.toggle('far', !isFavorited);
+        icon.classList.toggle('text-danger', isFavorited);
+        icon.classList.toggle('text-muted', !isFavorited);
+        button.classList.toggle('is-favorited', isFavorited);
+        button.setAttribute('aria-label', isFavorited ? 'Bỏ khỏi mục ưa thích' : 'Thêm vào mục ưa thích');
+        button.setAttribute('title', isFavorited ? 'Bỏ khỏi mục ưa thích' : 'Thêm vào mục ưa thích');
+
+        if (button.dataset.favoriteLabel === 'true') {
+            const label = button.querySelector('span');
+            if (label) label.textContent = isFavorited ? 'Đã lưu tin này' : 'Lưu tin này';
+        }
+    });
+}
+
+async function loadFavoriteStatuses() {
+    if (document.body.dataset.authenticated !== 'true') return;
+    if (!document.querySelector('[data-favorite-room-id]')) return;
+
+    try {
+        const response = await fetch('/Favorite/Status');
+        if (!response.ok) return;
+        const data = await response.json();
+        const favoritedIds = new Set((data.accommodationIds || []).map(String));
+
+        document.querySelectorAll('[data-favorite-room-id]').forEach(button => {
+            updateFavoriteButtons(button.dataset.favoriteRoomId, favoritedIds.has(button.dataset.favoriteRoomId));
+        });
+    } catch (error) {
+        console.error('Không thể tải trạng thái yêu thích:', error);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', loadFavoriteStatuses);
 
 
 // ==========================================
@@ -102,7 +137,7 @@ $(document).ready(function () {
         }
     });
 
-    const setupAccumulatingFileInput = ({ inputId, previewId, maxFiles, allowedTypes, maxSize, errorMessage }) => {
+    window.setupAccumulatingFileInput = ({ inputId, previewId, maxFiles, allowedTypes, maxSize, errorMessage }) => {
         const input = document.getElementById(inputId);
         const preview = document.getElementById(previewId);
         if (!input || !preview) return;
@@ -187,7 +222,7 @@ $(document).ready(function () {
         });
     };
 
-    setupAccumulatingFileInput({
+    window.setupAccumulatingFileInput({
         inputId: 'accommodationImageInput',
         previewId: 'accommodationImagePreview',
         maxFiles: 5,
@@ -195,7 +230,7 @@ $(document).ready(function () {
         errorMessage: 'Bạn chỉ được chọn tối đa 5 ảnh hợp lệ.'
     });
 
-    setupAccumulatingFileInput({
+    window.setupAccumulatingFileInput({
         inputId: 'landDocumentInput',
         previewId: 'landDocumentPreview',
         maxFiles: 3,

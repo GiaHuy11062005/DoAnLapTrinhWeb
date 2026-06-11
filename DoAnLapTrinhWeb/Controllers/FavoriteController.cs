@@ -41,6 +41,23 @@ namespace DoAnLapTrinhWeb.Controllers
         }
 
         // --- 2. API AJAX ĐỂ THÊM/XÓA YÊU THÍCH ---
+        [HttpGet]
+        public async Task<IActionResult> Status()
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int userId))
+            {
+                return Unauthorized();
+            }
+
+            var accommodationIds = await _context.Favorites
+                .Where(item => item.UserId == userId)
+                .Select(item => item.AccommodationId)
+                .ToListAsync();
+
+            return Json(new { accommodationIds });
+        }
+
         [HttpPost]
         public async Task<IActionResult> ToggleFavorite(int accommodationId)
         {

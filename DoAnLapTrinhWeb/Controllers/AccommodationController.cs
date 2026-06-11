@@ -21,12 +21,18 @@ namespace DoAnLapTrinhWeb.Controllers
         private readonly AppDbContext _context;
         private readonly IWebHostEnvironment _webHostEnvironment; // Dùng để lấy đường dẫn lưu ảnh
         private readonly IHubContext<AccommodationHub> _hubContext;
+        private readonly IHttpClientFactory _httpClientFactory;
 
-        public AccommodationController(AppDbContext context, IWebHostEnvironment webHostEnvironment, IHubContext<AccommodationHub> hubContext)
+        public AccommodationController(
+            AppDbContext context,
+            IWebHostEnvironment webHostEnvironment,
+            IHubContext<AccommodationHub> hubContext,
+            IHttpClientFactory httpClientFactory)
         {
             _context = context;
             _webHostEnvironment = webHostEnvironment;
             _hubContext = hubContext;
+            _httpClientFactory = httpClientFactory;
         }
 
         // =======================================================
@@ -80,8 +86,10 @@ namespace DoAnLapTrinhWeb.Controllers
                 Title = room.Title,
                 Description = room.Description,
                 SpecificAddress = room.SpecificAddress,
+                GoogleMapsUrl = room.GoogleMapsUrl,
                 CityId = room.CityId,
                 DistrictId = room.DistrictId,
+                MaxOccupants = room.MaxOccupants,
                 AllowsPets = room.AllowsPets,
                 HasParking = room.HasParking,
                 HasHighSpeedWifi = room.HasHighSpeedWifi,
@@ -104,6 +112,12 @@ namespace DoAnLapTrinhWeb.Controllers
             var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (!int.TryParse(userIdString, out int currentUserId)) return Unauthorized();
 
+            // Một số trình duyệt vẫn bind danh sách tệp nhưng chứa phần tử rỗng khi người dùng
+            // không chọn ảnh mới. Chỉ coi các tệp thực sự có dữ liệu là yêu cầu thay ảnh.
+            var replacementImages = model.UploadImages?
+                .Where(file => file != null && file.Length > 0)
+                .ToList() ?? new List<IFormFile>();
+
             var room = await _context.Accommodations
                 .Include(a => a.Images)
                 .FirstOrDefaultAsync(a => a.Id == model.Id && a.OwnerId == currentUserId);
@@ -122,13 +136,17 @@ namespace DoAnLapTrinhWeb.Controllers
                 ModelState.AddModelError(nameof(model.DistrictId), "Quận/Huyện không thuộc Tỉnh/Thành phố đã chọn.");
             }
 
+            if (!IsGoogleMapsUrl(model.GoogleMapsUrl))
+            {
+                ModelState.AddModelError(nameof(model.GoogleMapsUrl), "Vui lòng dán đúng liên kết vị trí được sao chép từ Google Maps.");
+            }
+
             var allowedImageTypes = new[] { "image/jpeg", "image/png", "image/webp" };
-            if (model.UploadImages.Count > 5)
+            if (replacementImages.Count > 5)
             {
                 ModelState.AddModelError(nameof(model.UploadImages), "Chỉ được tải tối đa 5 hình ảnh.");
             }
-            else if (model.UploadImages.Any(file =>
-                file.Length <= 0 ||
+            else if (replacementImages.Any(file =>
                 file.Length > 10 * 1024 * 1024 ||
                 !allowedImageTypes.Contains(file.ContentType)))
             {
@@ -145,8 +163,10 @@ namespace DoAnLapTrinhWeb.Controllers
             room.Title = model.Title?.Trim();
             room.Description = model.Description?.Trim();
             room.SpecificAddress = model.SpecificAddress?.Trim();
+            room.GoogleMapsUrl = await NormalizeGoogleMapsUrlAsync(model.GoogleMapsUrl);
             room.CityId = model.CityId;
             room.DistrictId = model.DistrictId;
+            room.MaxOccupants = model.MaxOccupants;
             room.AllowsPets = model.AllowsPets;
             room.HasParking = model.HasParking;
             room.HasHighSpeedWifi = model.HasHighSpeedWifi;
@@ -159,7 +179,7 @@ namespace DoAnLapTrinhWeb.Controllers
             room.HasBalcony = model.HasBalcony;
 
             var oldImagePaths = new List<string>();
-            if (model.UploadImages.Count > 0)
+            if (replacementImages.Count > 0)
             {
                 var uploadsFolder = Path.Combine(_webHostEnvironment.WebRootPath, "images", "accommodations");
                 Directory.CreateDirectory(uploadsFolder);
@@ -175,7 +195,7 @@ namespace DoAnLapTrinhWeb.Controllers
                 }
 
                 room.Images = new List<AccommodationImage>();
-                foreach (var file in model.UploadImages)
+                foreach (var file in replacementImages)
                 {
                     var safeExtension = file.ContentType switch
                     {
@@ -214,6 +234,61 @@ namespace DoAnLapTrinhWeb.Controllers
                 .Where(district => district.CityId == cityId)
                 .OrderBy(district => district.Name)
                 .ToListAsync();
+        }
+
+        private static bool IsGoogleMapsUrl(string? url)
+        {
+            if (!Uri.TryCreate(url?.Trim(), UriKind.Absolute, out var uri) ||
+                uri.Scheme != Uri.UriSchemeHttps)
+            {
+                return false;
+            }
+
+            var host = uri.Host.ToLowerInvariant();
+            return host == "maps.app.goo.gl" ||
+                   host == "maps.google.com" ||
+                   host == "goo.gl" ||
+                   host == "google.com" ||
+                   host.EndsWith(".google.com", StringComparison.Ordinal);
+        }
+
+        private async Task<string?> NormalizeGoogleMapsUrlAsync(string? url)
+        {
+            var normalizedUrl = url?.Trim();
+            if (string.IsNullOrWhiteSpace(normalizedUrl) ||
+                !Uri.TryCreate(normalizedUrl, UriKind.Absolute, out var uri))
+            {
+                return normalizedUrl;
+            }
+
+            if (uri.Host.Equals("maps.app.goo.gl", StringComparison.OrdinalIgnoreCase) ||
+                uri.Host.Equals("goo.gl", StringComparison.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    var client = _httpClientFactory.CreateClient();
+                    client.Timeout = TimeSpan.FromSeconds(8);
+                    using var response = await client.GetAsync(
+                        uri,
+                        HttpCompletionOption.ResponseHeadersRead);
+
+                    var finalUrl = response.RequestMessage?.RequestUri?.ToString();
+                    if (IsGoogleMapsUrl(finalUrl))
+                    {
+                        return finalUrl;
+                    }
+                }
+                catch (HttpRequestException)
+                {
+                    // Google Maps không phản hồi thì vẫn giữ link người dùng đã nhập.
+                }
+                catch (TaskCanceledException)
+                {
+                    // Không để việc mở rộng link làm người dùng không thể lưu bài.
+                }
+            }
+
+            return normalizedUrl;
         }
 
         // --- API LOAD DANH SÁCH THÀNH PHỐ CHO POPUP ---
@@ -268,6 +343,20 @@ namespace DoAnLapTrinhWeb.Controllers
                 model.OwnerId = int.Parse(userIdString);
                 model.CreatedAt = DateTime.Now;
                 model.IsApproved = false; // Mặc định bài đăng cần Admin duyệt
+
+                if (model.MaxOccupants < 1 || model.MaxOccupants > 20)
+                {
+                    TempData["Error"] = "Giới hạn số người ở phải từ 1 đến 20 người.";
+                    return RedirectToAction("Index", "Home");
+                }
+
+                if (!IsGoogleMapsUrl(model.GoogleMapsUrl))
+                {
+                    TempData["Error"] = "Vui lòng dán đúng liên kết vị trí được sao chép từ Google Maps.";
+                    return RedirectToAction("Index", "Home");
+                }
+
+                model.GoogleMapsUrl = await NormalizeGoogleMapsUrlAsync(model.GoogleMapsUrl);
 
                 // Khởi tạo list ảnh
                 model.Images = new List<AccommodationImage>();
@@ -334,13 +423,34 @@ namespace DoAnLapTrinhWeb.Controllers
                 // 3. Lưu vào Database
                 _context.Accommodations.Add(model);
                 await _context.SaveChangesAsync();
+
+                var adminIds = await _context.Users
+                    .Where(user => user.Role == "Admin")
+                    .Select(user => user.Id)
+                    .ToListAsync();
+                var adminNotifications = adminIds.Select(adminId => new AppNotification
+                {
+                    UserId = adminId,
+                    Type = "PendingApproval",
+                    Title = "Có bài đăng mới chờ duyệt",
+                    Message = model.Title ?? "Bài đăng phòng trọ mới",
+                    Url = "/Admin"
+                }).ToList();
+                _context.Notifications.AddRange(adminNotifications);
+                await _context.SaveChangesAsync();
+
+                foreach (var notification in adminNotifications)
+                {
+                    await SendNotification(notification);
+                }
+
                 await _hubContext.Clients.Group("Admins").SendAsync("PendingAccommodationCreated", new
                 {
                     id = model.Id
                 });
 
                 TempData["Success"] = "Đăng bài thành công! Vui lòng chờ Admin duyệt.";
-                return RedirectToAction("Index", "Home");
+                return RedirectToAction(nameof(Index));
             }
             catch (Exception ex)
             {
@@ -428,6 +538,7 @@ namespace DoAnLapTrinhWeb.Controllers
                 .Include(a => a.City)
                 .Include(a => a.District)
                 .Include(a => a.Images)
+                .Include(a => a.Owner)
                 .AsQueryable();
 
             // Khách chỉ được xem phòng đã duyệt. Admin và chính chủ vẫn được xem trước bài chờ duyệt.
@@ -448,6 +559,10 @@ namespace DoAnLapTrinhWeb.Controllers
 
             if (room == null) return NotFound();
 
+            // Bài cũ có thể đang lưu link chia sẻ rút gọn. Mở rộng link trong bộ nhớ
+            // để preview vẫn lấy được tọa độ ghim chính xác khi người dùng mở bản đồ.
+            room.GoogleMapsUrl = await NormalizeGoogleMapsUrlAsync(room.GoogleMapsUrl);
+
             if (User.Identity != null && User.Identity.IsAuthenticated)
             {
                 var userEmail = User.FindFirstValue(ClaimTypes.Email);
@@ -460,6 +575,20 @@ namespace DoAnLapTrinhWeb.Controllers
             }
 
             return View(room);
+        }
+
+        private async Task SendNotification(AppNotification notification)
+        {
+            await _hubContext.Clients.Group($"User_{notification.UserId}").SendAsync("NotificationReceived", new
+            {
+                notification.Id,
+                notification.Title,
+                notification.Message,
+                notification.Url,
+                notification.Type,
+                notification.IsRead,
+                createdAt = notification.CreatedAt.ToString("dd/MM/yyyy HH:mm")
+            });
         }
     }
 }

@@ -1,128 +1,369 @@
-﻿@model DoAnLapTrinhWeb.Models.Accommodation
+@model DoAnLapTrinhWeb.Models.Accommodation
 @{
     ViewData["Title"] = Model.Title;
-    
-    // Chuỗi địa chỉ chuẩn bị cho Google Maps (Sử dụng Model.District?.Name để lấy tên an toàn)
-    string fullAddress = $"{Model.SpecificAddress}, {Model.District?.Name}, {Model.City?.Name}";
-    
-    // Đã sửa thành URL API tìm kiếm vị trí chuẩn của Google Maps
-    string googleMapsLink = $"https://www.google.com/maps/search/?api=1&query={Uri.EscapeDataString(fullAddress)}";
+    var images = Model.Images?.Where(image => !string.IsNullOrWhiteSpace(image.ImageUrl)).ToList() ?? new();
+    var fullAddress = $"{Model.SpecificAddress}, {Model.District?.Name}, {Model.City?.Name}";
+    var googleMapsLink = GoogleMapsUrlHelper.GetDetailedUrl(Model.GoogleMapsUrl, fullAddress);
+    var googleMapsEmbedUrl = GoogleMapsUrlHelper.GetEmbedUrl(Model.GoogleMapsUrl, fullAddress);
+    var roomMapDestination = GoogleMapsUrlHelper.GetMapQuery(Model.GoogleMapsUrl, fullAddress);
+    var ownerName = Model.Owner?.FullName ?? "Chủ trọ";
+    var ownerInitial = ownerName.Substring(0, 1).ToUpper();
+    var isAuthenticated = User.Identity?.IsAuthenticated == true;
+    var amenities = new[]
+    {
+        (Model.HasParking, "fa-motorcycle", "Bãi giữ xe"),
+        (Model.AllowsPets, "fa-paw", "Cho nuôi thú cưng"),
+        (Model.HasHighSpeedWifi, "fa-wifi", "WiFi tốc độ cao"),
+        (Model.HasInverterAirConditioner, "fa-snowflake", "Máy lạnh Inverter"),
+        (Model.HasWasherDryer, "fa-soap", "Máy giặt sấy"),
+        (Model.Has24HourSecurity, "fa-shield-halved", "An ninh 24/7"),
+        (Model.HasBasementParking, "fa-square-parking", "Hầm để xe"),
+        (Model.HasElevator, "fa-elevator", "Thang máy"),
+        (Model.HasRefrigerator, "fa-temperature-low", "Tủ lạnh"),
+        (Model.HasBalcony, "fa-building", "Ban công")
+    }.Where(item => item.Item1).ToList();
 }
 
-<div class="container mt-4 mb-5">
-    <div class="row">
-        <div class="col-md-7">
-            @if (Model.Images != null && Model.Images.Any())
-            {
-                <div id="roomCarousel" class="carousel slide shadow-sm rounded" data-bs-ride="carousel">
-                    <div class="carousel-inner rounded">
-                        @for (int i = 0; i < Model.Images.Count; i++)
-                        {
-                            <div class="carousel-item @(i == 0 ? "active" : "")">
-                                <img src="@Model.Images.ElementAt(i).ImageUrl" class="d-block w-100" style="height: 450px; object-fit: cover;" alt="Hình phòng">
-                            </div>
-                        }
-                    </div>
-                    <button class="carousel-control-prev" type="button" data-bs-target="#roomCarousel" data-bs-slide="prev">
-                        <span class="carousel-control-prev-icon"></span>
-                    </button>
-                    <button class="carousel-control-next" type="button" data-bs-target="#roomCarousel" data-bs-slide="next">
-                        <span class="carousel-control-next-icon"></span>
-                    </button>
-                </div>
-            }
-        </div>
+<div class="room-detail-page">
+    <div class="container room-detail-shell">
+        <button type="button" class="room-back-button" onclick="goBackFromRoom()">
+            <i class="fas fa-arrow-left"></i> Quay lại
+        </button>
 
-        <div class="col-md-5">
-            <h2 class="fw-bold text-primary">@Model.Title</h2>
-            <p class="text-muted"><i class="fas fa-map-marker-alt text-danger"></i> @fullAddress</p>
-            
-            <a href="@googleMapsLink" target="_blank" class="btn btn-outline-success mb-3 w-100 fw-bold">
-                <i class="fas fa-map-marked-alt"></i> Bấm để xem vị trí trên Google Maps
-            </a>
-
-            <h3 class="text-danger fw-bold mb-3">@Model.Price.ToString("N0") VNĐ/tháng</h3>
-            
-            <ul class="list-group mb-3 shadow-sm">
-                <li class="list-group-item"><i class="fas fa-expand-arrows-alt text-primary"></i> <strong>Diện tích:</strong> @Model.Area m²</li>
-                <li class="list-group-item"><i class="fas fa-motorcycle text-primary"></i> <strong>Bãi giữ xe:</strong> @(Model.HasParking ? "Có" : "Không")</li>
-                <li class="list-group-item"><i class="fas fa-paw text-primary"></i> <strong>Nuôi thú cưng:</strong> @(Model.AllowsPets ? "Cho phép" : "Không")</li>
-                <li class="list-group-item"><i class="fas fa-wifi text-primary"></i> <strong>WiFi tốc độ cao:</strong> @(Model.HasHighSpeedWifi ? "Có" : "Không")</li>
-                <li class="list-group-item"><i class="fas fa-snowflake text-primary"></i> <strong>Máy lạnh Inverter:</strong> @(Model.HasInverterAirConditioner ? "Có" : "Không")</li>
-                <li class="list-group-item"><i class="fas fa-soap text-primary"></i> <strong>Máy giặt sấy:</strong> @(Model.HasWasherDryer ? "Có" : "Không")</li>
-                <li class="list-group-item"><i class="fas fa-shield-halved text-primary"></i> <strong>An ninh 24/7:</strong> @(Model.Has24HourSecurity ? "Có" : "Không")</li>
-                <li class="list-group-item"><i class="fas fa-square-parking text-primary"></i> <strong>Hầm để xe:</strong> @(Model.HasBasementParking ? "Có" : "Không")</li>
-                <li class="list-group-item"><i class="fas fa-elevator text-primary"></i> <strong>Thang máy:</strong> @(Model.HasElevator ? "Có" : "Không")</li>
-                <li class="list-group-item"><i class="fas fa-temperature-low text-primary"></i> <strong>Tủ lạnh:</strong> @(Model.HasRefrigerator ? "Có" : "Không")</li>
-                <li class="list-group-item"><i class="fas fa-building text-primary"></i> <strong>Ban công:</strong> @(Model.HasBalcony ? "Có" : "Không")</li>
-                <li class="list-group-item">
-                    <i class="fas fa-phone-alt text-success"></i>
-                    <strong>Liên hệ chủ trọ:</strong>
-                    @if (User.Identity != null && User.Identity.IsAuthenticated)
+        <div class="room-detail-layout">
+            <main class="room-detail-main">
+                <section class="room-gallery">
+                    @if (images.Any())
                     {
-                        <span class="fw-bold fs-5 text-success">@Model.ContactPhone</span>
+                        <div class="room-gallery__primary">
+                            <img id="roomGalleryMainImage" src="@images[0].ImageUrl" alt="@Model.Title" />
+                            <span class="room-gallery__status @(Model.IsApproved ? "" : "is-pending")">
+                                <i class="fas @(Model.IsApproved ? "fa-circle-check" : "fa-clock")"></i>
+                                @(Model.IsApproved ? "Đã xác minh" : "Đang chờ duyệt")
+                            </span>
+                        </div>
+                        <div class="room-gallery__rail">
+                            @foreach (var image in images.Skip(1).Take(4))
+                            {
+                                <button type="button" class="room-gallery__thumb" data-gallery-image="@image.ImageUrl">
+                                    <img src="@image.ImageUrl" alt="Ảnh khác của @Model.Title" />
+                                </button>
+                            }
+                        </div>
                     }
                     else
                     {
-                        <a href="/Auth/Login?returnUrl=@Uri.EscapeDataString(Context.Request.Path)" class="fw-bold text-primary text-decoration-none">
-                            Đăng nhập để xem số điện thoại
-                        </a>
+                        <div class="room-gallery__empty"><i class="far fa-image"></i><span>Chưa có hình ảnh phòng</span></div>
                     }
-                </li>
-            </ul>
+                </section>
 
-            @if (User.Identity != null && User.Identity.IsAuthenticated)
-            {
-                <button onclick="toggleGlobalFavorite(@Model.Id, this)" class="btn btn-danger w-100">
-                    <i class="far fa-heart"></i> Lưu vào Yêu thích
-                </button>
-            }
-            else
-            {
-                <a href="/Auth/Login?returnUrl=@Uri.EscapeDataString(Context.Request.Path)" class="btn btn-danger w-100">
-                    <i class="fas fa-right-to-bracket"></i> Đăng nhập để lưu phòng
-                </a>
-            }
+                <section class="room-detail-card room-summary-card">
+                    <div class="room-summary-card__heading">
+                        <div>
+                            <h1>@Model.Title</h1>
+                            <p><i class="fas fa-location-dot"></i> @fullAddress</p>
+                        </div>
+                        <div class="room-summary-card__price">
+                            <strong>@Model.Price.ToString("N0")đ</strong>
+                            <span>/tháng</span>
+                        </div>
+                    </div>
 
-            @if (User.Identity != null && User.Identity.IsAuthenticated)
-            {
-                <div class="card shadow-sm border-0 mt-4">
-                    <div class="card-body">
-                        <h5 class="fw-bold mb-3"><i class="fas fa-route text-primary"></i> Tiện ích di chuyển</h5>
-                        
-                        @if (!string.IsNullOrEmpty(ViewBag.UserDestination))
+                    <div class="room-facts">
+                        <span><i class="fas fa-expand"></i><strong>@Model.Area m²</strong> Diện tích</span>
+                        <span><i class="fas fa-user-group"></i><strong>@Model.MaxOccupants người</strong> Tối đa</span>
+                        <span><i class="fas fa-calendar-day"></i><strong>@Model.CreatedAt.ToString("dd/MM/yyyy")</strong> Ngày đăng</span>
+                        <span><i class="fas fa-circle-check"></i><strong>@(Model.IsApproved ? "Đã duyệt" : "Chờ duyệt")</strong> Trạng thái</span>
+                    </div>
+
+                    <button type="button" class="room-map-button" id="roomMapToggle" aria-expanded="false" aria-controls="roomMapPanel">
+                        <i class="fas fa-map-location-dot"></i>
+                        <span><strong>Xem trên bản đồ</strong><small>Hiện vị trí phòng trọ ngay tại đây</small></span>
+                        <i class="fas fa-chevron-down room-map-button__chevron"></i>
+                    </button>
+
+                    <div class="room-map-panel" id="roomMapPanel">
+                        <iframe id="roomMapFrame"
+                                class="room-map-frame"
+                                src="@googleMapsEmbedUrl"
+                                title="Vị trí @Model.Title"
+                                loading="lazy"
+                                referrerpolicy="no-referrer-when-downgrade"></iframe>
+                        <a href="@googleMapsLink" target="_blank" rel="noopener noreferrer" class="room-map-external">
+                            Mở bằng Google Maps <i class="fas fa-arrow-up-right-from-square"></i>
+                        </a>
+                    </div>
+
+                    <div class="room-action-grid">
+                        <button type="button" class="room-action-card" id="roomDistanceToggle" aria-expanded="false" aria-controls="roomDistanceMenu">
+                            <i class="fas fa-route"></i>
+                            <span><strong>Xem khoảng cách</strong><small>Đến trường đại học của bạn</small></span>
+                        </button>
+                        <button type="button" class="room-action-card is-disabled" disabled>
+                            <i class="fas fa-compass"></i>
+                            <span><strong>Tiện ích xung quanh</strong><small>Sắp ra mắt</small></span>
+                        </button>
+                    </div>
+
+                    <div class="room-distance-menu" id="roomDistanceMenu">
+                        <label for="schoolMapInput">Nhập tên trường cần so sánh</label>
+                        <input type="text" id="schoolMapInput" placeholder="VD: Đại học Bách Khoa TP.HCM" />
+                        <p id="schoolMapError" class="room-distance-menu__error" hidden>Vui lòng nhập tên trường.</p>
+                        <div class="room-distance-menu__actions">
+                            <button type="button" id="roomDistanceCancel">Hủy bỏ</button>
+                            <button type="button" id="roomDistanceConfirm" class="is-primary">Xác nhận</button>
+                        </div>
+                    </div>
+                </section>
+
+                @if (amenities.Any())
+                {
+                    <section class="room-detail-card">
+                        <h2>Tiện ích đi kèm</h2>
+                        <div class="room-amenities">
+                            @foreach (var amenity in amenities)
+                            {
+                                <div class="room-amenity"><i class="fas @amenity.Item2"></i><span>@amenity.Item3</span></div>
+                            }
+                        </div>
+                    </section>
+                }
+
+                <section class="room-detail-card">
+                    <h2>Mô tả chi tiết</h2>
+                    <p class="room-description">@Model.Description</p>
+                </section>
+            </main>
+
+            <aside class="room-detail-sidebar">
+                <div class="room-detail-card room-contact-card">
+                    <h2>Thông tin thuê phòng</h2>
+
+                    <div class="room-occupant-section">
+                        <label>Số lượng người ở</label>
+                        <div class="room-occupant-control" data-max-occupants="@Model.MaxOccupants">
+                            <button type="button" data-occupant-action="decrease" aria-label="Giảm số người"><i class="fas fa-minus"></i></button>
+                            <strong id="roomOccupantCount">1</strong>
+                            <button type="button" data-occupant-action="increase" aria-label="Tăng số người"><i class="fas fa-plus"></i></button>
+                        </div>
+                        <small>Phòng cho phép tối đa @Model.MaxOccupants người ở.</small>
+                    </div>
+
+                    @if (User.IsInRole("User"))
+                    {
+                        <button type="button" id="roomRentalRequestButton" class="room-booking-button" data-room-id="@Model.Id">
+                            Đăng ký thuê ngay
+                        </button>
+                        <p id="roomRentalRequestMessage" class="room-rental-request-message" hidden></p>
+                    }
+                    else if (isAuthenticated)
+                    {
+                        <button type="button" class="room-booking-button" disabled>Chỉ tài khoản người thuê có thể gửi yêu cầu</button>
+                    }
+                    else
+                    {
+                        <a href="/Auth/Login?returnUrl=@Uri.EscapeDataString(Context.Request.Path)" class="room-booking-button">Đăng ký thuê ngay</a>
+                    }
+
+                    <div class="room-owner">
+                        @if (!string.IsNullOrWhiteSpace(Model.Owner?.AvatarUrl))
                         {
-                            string fullOriginAddress = $"{Model.SpecificAddress}, {Model.District?.Name}, {Model.City?.Name}";
-                            
-                            string origin = Uri.EscapeDataString(fullOriginAddress);
-                            string destination = Uri.EscapeDataString(ViewBag.UserDestination);
-                            
-                            // Đã sửa lại URL thành link chuẩn của Google Maps Directions API
-                            string mapUrl = $"https://www.google.com/maps/dir/?api=1&origin={origin}&destination={destination}";
-                            
-                            <a href="@mapUrl" target="_blank" class="btn btn-outline-primary w-100 fw-bold rounded-pill">
-                                <i class="fas fa-map-marked-alt me-2"></i> Xem đường đi từ Trọ đến Trường/Chỗ làm
-                            </a>
+                            <img src="@Model.Owner.AvatarUrl" alt="Avatar của @ownerName" />
                         }
                         else
                         {
-                            <div class="alert alert-warning small mb-3">
-                                Hệ thống chưa có thông tin địa chỉ trường học / công ty của bạn để tính quãng đường.
-                            </div>
-                            <a href="/Profile" class="btn btn-warning w-100 fw-bold rounded-pill">
-                                <i class="fas fa-edit me-2"></i> Cập nhật địa chỉ để xem lộ trình
-                            </a>
+                            <div class="room-owner__fallback">@ownerInitial</div>
+                        }
+                        <div>
+                            <strong>@ownerName</strong>
+                            <span>Người cho thuê @(Model.Owner?.IsEmailConfirmed == true ? "· Đã xác thực" : "")</span>
+                        </div>
+                    </div>
+
+                    <div class="room-contact-card__phone">
+                        <i class="fas fa-phone"></i>
+                        @if (isAuthenticated)
+                        {
+                            <span>@(string.IsNullOrWhiteSpace(Model.ContactPhone) ? "Chưa cập nhật số điện thoại" : Model.ContactPhone)</span>
+                        }
+                        else
+                        {
+                            <a href="/Auth/Login?returnUrl=@Uri.EscapeDataString(Context.Request.Path)">Đăng nhập để xem số điện thoại</a>
                         }
                     </div>
-                </div>
-            }
-        </div>
-    </div>
 
-    <div class="row mt-5">
-        <div class="col-12">
-            <h4 class="fw-bold border-bottom pb-2">Mô tả chi tiết</h4>
-            <p style="white-space: pre-line;" class="text-justify mt-3">@Model.Description</p>
+                    @if (Model.IsApproved)
+                    {
+                        @if (isAuthenticated)
+                        {
+                            <button data-favorite-room-id="@Model.Id" data-favorite-label="true" onclick="toggleGlobalFavorite(@Model.Id, this)" class="room-favorite-button">
+                                <i class="far fa-heart"></i><span>Lưu tin này</span>
+                            </button>
+                        }
+                        else
+                        {
+                            <a href="/Auth/Login?returnUrl=@Uri.EscapeDataString(Context.Request.Path)" class="room-favorite-button">
+                                <i class="far fa-heart"></i> Đăng nhập để lưu tin
+                            </a>
+                        }
+                    }
+                    else
+                    {
+                        <div class="room-pending-note"><i class="fas fa-clock"></i> Bài đăng đang chờ Admin duyệt.</div>
+                    }
+                </div>
+
+                <div class="room-safety-card">
+                    <i class="fas fa-shield-halved"></i>
+                    <div>
+                        <strong>Giao dịch an toàn</strong>
+                        <p>Hãy kiểm tra phòng thực tế và giấy tờ trước khi đặt cọc hoặc chuyển tiền.</p>
+                    </div>
+                </div>
+            </aside>
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        function goBackFromRoom() {
+            if (window.history.length > 1) {
+                window.history.back();
+            } else {
+                window.location.href = "/Accommodation/Search";
+            }
+        }
+
+        document.querySelectorAll("[data-gallery-image]").forEach(button => {
+            button.addEventListener("click", () => {
+                const mainImage = document.getElementById("roomGalleryMainImage");
+                const selectedImage = button.querySelector("img");
+                if (!mainImage || !selectedImage) return;
+
+                const oldMainSource = mainImage.src;
+                mainImage.src = button.dataset.galleryImage;
+                selectedImage.src = oldMainSource;
+                button.dataset.galleryImage = oldMainSource;
+            });
+        });
+
+        const mapToggle = document.getElementById("roomMapToggle");
+        const mapPanel = document.getElementById("roomMapPanel");
+        const mapFrame = document.getElementById("roomMapFrame");
+        const distanceToggle = document.getElementById("roomDistanceToggle");
+        const distanceMenu = document.getElementById("roomDistanceMenu");
+        const distanceCancel = document.getElementById("roomDistanceCancel");
+        const distanceConfirm = document.getElementById("roomDistanceConfirm");
+        const schoolInput = document.getElementById("schoolMapInput");
+        const schoolError = document.getElementById("schoolMapError");
+        const roomDestination = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(roomMapDestination));
+        const roomMapEmbedUrl = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(googleMapsEmbedUrl));
+
+        function setMapOpen(isOpen) {
+            mapPanel?.classList.toggle("is-open", isOpen);
+            mapToggle?.classList.toggle("is-open", isOpen);
+            mapToggle?.setAttribute("aria-expanded", isOpen.toString());
+        }
+
+        function setDistanceMenuOpen(isOpen) {
+            distanceMenu?.classList.toggle("is-open", isOpen);
+            distanceToggle?.setAttribute("aria-expanded", isOpen.toString());
+            if (isOpen) schoolInput?.focus();
+        }
+
+        mapToggle?.addEventListener("click", () => {
+            const willOpen = !mapPanel?.classList.contains("is-open");
+            if (willOpen && mapFrame) {
+                // Luôn trở về đúng ghim phòng trọ khi người dùng bấm xem bản đồ.
+                mapFrame.src = roomMapEmbedUrl;
+            }
+            setMapOpen(willOpen);
+        });
+
+        distanceToggle?.addEventListener("click", () => {
+            setDistanceMenuOpen(!distanceMenu?.classList.contains("is-open"));
+        });
+
+        distanceCancel?.addEventListener("click", () => {
+            setDistanceMenuOpen(false);
+            schoolError.hidden = true;
+        });
+
+        distanceConfirm?.addEventListener("click", () => {
+            const school = schoolInput?.value.trim();
+            if (!school) {
+                schoolError.hidden = false;
+                schoolInput?.focus();
+                return;
+            }
+
+            schoolError.hidden = true;
+            mapFrame.src = `https://www.google.com/maps?saddr=${encodeURIComponent(school)}&daddr=${encodeURIComponent(roomDestination)}&output=embed`;
+            setMapOpen(true);
+            setDistanceMenuOpen(false);
+            mapPanel?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        });
+
+        schoolInput?.addEventListener("input", () => {
+            schoolError.hidden = true;
+        });
+
+        schoolInput?.addEventListener("keydown", event => {
+            if (event.key === "Enter") distanceConfirm?.click();
+        });
+
+        const occupantControl = document.querySelector("[data-max-occupants]");
+        const occupantCount = document.getElementById("roomOccupantCount");
+        const rentalRequestButton = document.getElementById("roomRentalRequestButton");
+        const rentalRequestMessage = document.getElementById("roomRentalRequestMessage");
+        let selectedOccupants = 1;
+        if (occupantControl && occupantCount) {
+            const maxOccupants = Number(occupantControl.dataset.maxOccupants) || 1;
+            const decreaseButton = occupantControl.querySelector("[data-occupant-action='decrease']");
+            const increaseButton = occupantControl.querySelector("[data-occupant-action='increase']");
+
+            function updateOccupantControl() {
+                occupantCount.textContent = selectedOccupants.toString();
+                decreaseButton.disabled = selectedOccupants <= 1;
+                increaseButton.disabled = selectedOccupants >= maxOccupants;
+            }
+
+            occupantControl.querySelectorAll("[data-occupant-action]").forEach(button => {
+                button.addEventListener("click", () => {
+                    const change = button.dataset.occupantAction === "increase" ? 1 : -1;
+                    selectedOccupants = Math.min(maxOccupants, Math.max(1, selectedOccupants + change));
+                    updateOccupantControl();
+                });
+            });
+
+            updateOccupantControl();
+        }
+
+        rentalRequestButton?.addEventListener("click", async () => {
+            rentalRequestButton.disabled = true;
+            rentalRequestButton.textContent = "Đang gửi yêu cầu...";
+            rentalRequestMessage.hidden = true;
+
+            try {
+                const response = await fetch("/Notification/RequestRent", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                    body: `accommodationId=${encodeURIComponent(rentalRequestButton.dataset.roomId)}&occupants=${selectedOccupants}`
+                });
+                const result = await response.json();
+                rentalRequestMessage.textContent = result.message;
+                rentalRequestMessage.classList.toggle("is-error", !response.ok);
+                rentalRequestMessage.hidden = false;
+                rentalRequestButton.textContent = response.ok ? "Đã gửi yêu cầu thuê" : "Đăng ký thuê ngay";
+                rentalRequestButton.disabled = response.ok;
+            } catch {
+                rentalRequestMessage.textContent = "Không thể gửi yêu cầu lúc này. Vui lòng thử lại.";
+                rentalRequestMessage.classList.add("is-error");
+                rentalRequestMessage.hidden = false;
+                rentalRequestButton.textContent = "Đăng ký thuê ngay";
+                rentalRequestButton.disabled = false;
+            }
+        });
+    </script>
+}

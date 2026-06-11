@@ -8,7 +8,9 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 </head>
-<body data-authenticated="@(User.Identity?.IsAuthenticated == true ? "true" : "false")">
+<body data-authenticated="@(User.Identity?.IsAuthenticated == true ? "true" : "false")"
+      data-user-id="@User.Claims.FirstOrDefault(claim => claim.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value"
+      data-user-role="@User.Claims.FirstOrDefault(claim => claim.Type == System.Security.Claims.ClaimTypes.Role)?.Value">
     <header class="sticky-top app-header">
         <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light navbar-glass py-2">
             <div class="container">
@@ -26,21 +28,19 @@
                         <li class="nav-item">
                             <a class="nav-link app-nav-link" asp-area="" asp-controller="Home" asp-action="Index">Trang chủ</a>
                         </li>
-                        <li class="nav-item">
-                            @if (User.IsInRole("Admin"))
-                            {
+                        @if (User.IsInRole("Admin"))
+                        {
+                            <li class="nav-item">
                                 <a class="nav-link app-nav-link" href="/Admin">Bài đăng chờ duyệt</a>
-                            }
-                            else if (User.IsInRole("Landlord"))
-                            {
+                            </li>
+                        }
+                        else if (User.IsInRole("Landlord"))
+                        {
+                            <li class="nav-item">
                                 <a class="nav-link app-nav-link" href="/Accommodation/Index">Danh sách trọ đang cho thuê</a>
-                            }
-                            else
-                            {
-                                <a class="nav-link app-nav-link" asp-area="" asp-controller="Accommodation" asp-action="Search">Tìm phòng</a>
-                            }
-                        </li>
-                        @if (User.Identity != null && User.Identity.IsAuthenticated && !User.IsInRole("Admin"))
+                            </li>
+                        }
+                        @if (User.Identity != null && User.Identity.IsAuthenticated)
                         {
                             <li class="nav-item">
                                 <a class="nav-link app-nav-link" href="/Home/SearchHistory">Lịch sử tìm phòng</a>
@@ -51,12 +51,24 @@
                     <div class="d-flex align-items-center gap-3 mt-3 mt-sm-0">
                         @if (User.Identity != null && User.Identity.IsAuthenticated)
                         {
-                            @if (!User.IsInRole("Admin"))
-                            {
-                                <a href="/Favorite/Index" class="text-danger text-decoration-none fw-medium d-none d-md-block">
-                                    <i class="far fa-heart fs-5"></i>
-                                </a>
-                            }
+                            <div class="dropdown app-notification">
+                                <button class="app-notification__button" id="notificationDropdownButton" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Thông báo mới">
+                                    <i class="far fa-bell"></i>
+                                    <span id="notificationCount" class="app-notification__count" hidden>0</span>
+                                </button>
+                                <div class="dropdown-menu dropdown-menu-end app-notification__menu">
+                                    <div class="app-notification__heading">
+                                        <div>
+                                            <strong>@(User.IsInRole("Admin") ? "Thông báo quản trị" : User.IsInRole("Landlord") ? "Thông báo cho thuê" : "Thông báo thuê phòng")</strong>
+                                            <span>Cập nhật realtime dành riêng cho tài khoản</span>
+                                        </div>
+                                        <button type="button" id="markNotificationsRead"><i class="fas fa-check"></i> Đã đọc</button>
+                                    </div>
+                                    <div id="notificationList" class="app-notification__list">
+                                        <div class="app-notification__empty">Đang tải thông báo...</div>
+                                    </div>
+                                </div>
+                            </div>
                             <div class="dropdown">
                                 <button class="btn btn-light dropdown-toggle rounded-pill fw-medium border-0 px-3 py-2 bg-light d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                                     <img src="/images/avatar-default.png" class="rounded-circle" width="28" height="28" alt="User" onerror="this.src='https://cdn-icons-png.flaticon.com/512/149/149071.png'">
@@ -68,10 +80,11 @@
                                     {
                                         <li><a class="dropdown-item py-2" href="/Admin"><i class="fas fa-list-check text-muted me-2"></i> Danh sách duyệt bài</a></li>
                                     }
-                                    else
+                                    @if (!User.IsInRole("Admin"))
                                     {
-                                        <li><a class="dropdown-item py-2" href="/Home/SearchHistory"><i class="fas fa-clock-rotate-left text-muted me-2"></i> Lịch sử tìm phòng</a></li>
+                                        <li><a class="dropdown-item py-2" href="/Favorite/Index"><i class="fas fa-heart text-danger me-2"></i> Mục ưa thích</a></li>
                                     }
+                                    <li><a class="dropdown-item py-2" href="/Home/SearchHistory"><i class="fas fa-clock-rotate-left text-muted me-2"></i> Lịch sử tìm phòng</a></li>
                                     @if (User.IsInRole("Landlord"))
                                     {
                                         <li><hr class="dropdown-divider"></li>
@@ -126,6 +139,15 @@
                                 <label class="form-label fw-bold">Diện tích (m²) <span class="text-danger">*</span></label>
                                 <input type="number" step="0.1" name="Area" class="form-control" required>
                             </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Giới hạn số người ở <span class="text-danger">*</span></label>
+                                <select name="MaxOccupants" class="form-select" required>
+                                    @for (var occupants = 1; occupants <= 20; occupants++)
+                                    {
+                                        <option value="@occupants">@occupants người</option>
+                                    }
+                                </select>
+                            </div>
 
                             <div class="col-md-6">
                                 <label class="form-label fw-bold">Tỉnh / Thành phố <span class="text-danger">*</span></label>
@@ -143,7 +165,14 @@
                             <div class="col-12">
                                 <label class="form-label fw-bold">Số nhà, Tên đường cụ thể <span class="text-danger">*</span></label>
                                 <input type="text" name="SpecificAddress" class="form-control" required placeholder="VD: 475A Điện Biên Phủ, Phường 25">
-                                <small class="text-muted fst-italic"><i class="fas fa-info-circle"></i> Dùng để tích hợp định vị Google Maps.</small>
+                            </div>
+
+                            <div class="col-12">
+                                <label class="form-label fw-bold">Link vị trí chính xác trên Google Maps <span class="text-danger">*</span></label>
+                                <input type="url" name="GoogleMapsUrl" class="form-control" required placeholder="https://maps.app.goo.gl/...">
+                                <small class="text-muted fst-italic">
+                                    <i class="fas fa-location-dot"></i> Mở đúng vị trí trọ trên Google Maps, chọn Chia sẻ, rồi sao chép và dán liên kết vào đây.
+                                </small>
                             </div>
 
                             <div class="col-12">
@@ -222,6 +251,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.7/signalr.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
     <script src="~/js/accommodation-realtime.js" asp-append-version="true"></script>
+    <script src="~/js/notifications.js" asp-append-version="true"></script>
     
     @await RenderSectionAsync("Scripts", required: false)
 </body>

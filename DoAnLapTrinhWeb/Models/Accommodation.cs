@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 
 namespace DoAnLapTrinhWeb.Models
 {
@@ -11,8 +12,12 @@ namespace DoAnLapTrinhWeb.Models
         public decimal Price { get; set; }
         public double Area { get; set; }
 
+        [Range(1, 20)]
+        public int MaxOccupants { get; set; } = 1;
+
         // --- CÁC TRƯỜNG ĐỊA CHỈ ---
         public string? SpecificAddress { get; set; } // Số nhà, tên đường chi tiết
+        public string? GoogleMapsUrl { get; set; } // Link vị trí chính xác được sao chép từ Google Maps
 
         // Khóa ngoại lưu mã ID
         public int CityId { get; set; }

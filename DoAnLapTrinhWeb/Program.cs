@@ -10,6 +10,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 builder.Services.AddSignalR();
+builder.Services.AddHttpClient();
 
 // Đăng ký AppDbContext kết nối với SQL Server
 builder.Services.AddDbContext<AppDbContext>(options =>
@@ -56,6 +57,15 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
             }
         };
     })
+    .AddCookie("GoogleExternal", options =>
+    {
+        // Cookie tạm chỉ dùng để nhận thông tin tài khoản từ Google.
+        options.Cookie.Name = "DoAnLapTrinhWeb.GoogleExternal";
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SameSite = SameSiteMode.Lax;
+        options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+        options.ExpireTimeSpan = TimeSpan.FromMinutes(10);
+    })
     .AddGoogle(googleOptions =>
      {
          // Các thông tin này bạn sẽ lấy trên Google Cloud Console khi tạo Credentials
@@ -64,6 +74,7 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
 
          // Đường dẫn Google sẽ cấu hình trả kết quả về sau khi người dùng đăng nhập thành công
          googleOptions.CallbackPath = "/signin-google";
+         googleOptions.SignInScheme = "GoogleExternal";
          googleOptions.Events.OnRemoteFailure = context =>
          {
              // Google trả access_denied khi người dùng bấm Hủy ở màn hình cấp quyền.

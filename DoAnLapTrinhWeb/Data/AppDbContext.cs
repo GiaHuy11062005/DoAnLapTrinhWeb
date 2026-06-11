@@ -20,6 +20,8 @@ namespace DoAnLapTrinhWeb.Data
 
         public DbSet<SearchLog> SearchLogs { get; set; }
         public DbSet<ApprovalHistory> ApprovalHistories { get; set; }
+        public DbSet<AppNotification> Notifications { get; set; }
+        public DbSet<RentalRequest> RentalRequests { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -72,6 +74,24 @@ namespace DoAnLapTrinhWeb.Data
                 .WithMany()
                 .HasForeignKey(f => f.AccommodationId)
                 .OnDelete(DeleteBehavior.NoAction); // Tắt xóa dây chuyền từ Phòng
+
+            modelBuilder.Entity<AppNotification>()
+                .HasOne(notification => notification.User)
+                .WithMany()
+                .HasForeignKey(notification => notification.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<RentalRequest>()
+                .HasOne(request => request.Renter)
+                .WithMany()
+                .HasForeignKey(request => request.RenterId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<RentalRequest>()
+                .HasOne(request => request.Accommodation)
+                .WithMany()
+                .HasForeignKey(request => request.AccommodationId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

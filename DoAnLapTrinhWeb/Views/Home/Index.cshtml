@@ -11,8 +11,9 @@
             <h1>Tìm kiếm tổ ấm hoàn hảo của bạn</h1>
             <div class="home-search">
                 <div class="home-search__tabs">
-                    <button type="button" class="home-search__tab active">Nhà trọ</button>
-                    <button type="button" class="home-search__tab">Nhà nguyên căn</button>
+                    <span class="home-search__tab-indicator"></span>
+                    <button type="button" class="home-search__tab active" data-home-type="room">Nhà trọ</button>
+                    <button type="button" class="home-search__tab" data-home-type="whole-house">Nhà nguyên căn</button>
                 </div>
                 <form action="/Accommodation/Search" method="get" class="home-search__form">
                     <div class="home-field">
@@ -57,6 +58,14 @@
                     </button>
                 </form>
             </div>
+            @if (User.Identity?.IsAuthenticated == true)
+            {
+                <button type="button" id="homeLatestNotificationButton" class="home-latest-button">
+                    <i class="far fa-bell"></i>
+                    <span>Xem cập nhật trọ mới nhất</span>
+                    <strong id="homeLatestNotificationCount" hidden>0</strong>
+                </button>
+            }
         </div>
     </section>
 
@@ -73,16 +82,6 @@
             <div class="featured-quick-search__input">
                 <i class="fas fa-magnifying-glass"></i>
                 <input type="text" name="keyword" aria-label="Tìm kiếm phòng" placeholder="Tìm kiếm vị trí hoặc từ khóa..." />
-            </div>
-            <div class="featured-quick-search__radius">
-                <i class="fas fa-location-crosshairs"></i>
-                <select name="radius" aria-label="Bán kính tìm kiếm">
-                    <option value="">Bán kính</option>
-                    <option value="1">Trong 1 km</option>
-                    <option value="3">Trong 3 km</option>
-                    <option value="5">Trong 5 km</option>
-                    <option value="10">Trong 10 km</option>
-                </select>
             </div>
             <button type="submit">Tìm kiếm</button>
         </form>
@@ -110,7 +109,7 @@
                             <img src="@firstImage" alt="@room.Title" onerror="this.onerror=null;this.src='@fallbackImage';" />
                             <span class="listing-card__badge"><i class="fas fa-circle-check"></i> Xác thực</span>
                         </a>
-                        <button type="button" class="listing-card__favorite" onclick="toggleGlobalFavorite(@room.Id, this)" aria-label="Thêm vào yêu thích">
+                        <button type="button" class="listing-card__favorite" data-favorite-room-id="@room.Id" onclick="toggleGlobalFavorite(@room.Id, this)" aria-label="Thêm vào yêu thích">
                             <i class="far fa-heart"></i>
                         </button>
                         <div class="listing-card__body">
@@ -173,8 +172,9 @@
                 <span class="home-reviews__demo">Dữ liệu minh họa giao diện</span>
             </div>
 
-            <div class="review-grid">
-                <article class="review-card">
+            <div class="review-carousel" id="homeReviewCarousel">
+                <div class="review-grid" id="homeReviewTrack">
+                    <article class="review-card">
                     <div class="review-card__top">
                         <div class="review-card__stars" aria-label="5 trên 5 sao">
                             <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
@@ -189,9 +189,9 @@
                             <span>Sinh viên ĐHQG</span>
                         </div>
                     </div>
-                </article>
+                    </article>
 
-                <article class="review-card">
+                    <article class="review-card">
                     <div class="review-card__top">
                         <div class="review-card__stars" aria-label="5 trên 5 sao">
                             <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
@@ -206,9 +206,9 @@
                             <span>Nhân viên văn phòng</span>
                         </div>
                     </div>
-                </article>
+                    </article>
 
-                <article class="review-card">
+                    <article class="review-card">
                     <div class="review-card__top">
                         <div class="review-card__stars" aria-label="5 trên 5 sao">
                             <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
@@ -223,7 +223,51 @@
                             <span>Sinh viên năm cuối</span>
                         </div>
                     </div>
-                </article>
+                    </article>
+
+                    <article class="review-card">
+                        <div class="review-card__top">
+                            <div class="review-card__stars" aria-label="5 trên 5 sao">
+                                <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                            </div>
+                            <span class="review-card__verified"><i class="fas fa-circle-check"></i> Đã thuê phòng</span>
+                        </div>
+                        <blockquote>“Mình xem được vị trí và thông tin phòng rất nhanh. Việc liên hệ trực tiếp với chủ trọ cũng thuận tiện.”</blockquote>
+                        <div class="review-card__author">
+                            <div class="review-card__avatar review-card__avatar--blue">QP</div>
+                            <div>
+                                <strong>Phạm Quang Phúc</strong>
+                                <span>Kỹ sư phần mềm</span>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="review-card">
+                        <div class="review-card__top">
+                            <div class="review-card__stars" aria-label="5 trên 5 sao">
+                                <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                            </div>
+                            <span class="review-card__verified"><i class="fas fa-circle-check"></i> Đã thuê phòng</span>
+                        </div>
+                        <blockquote>“Các tiện ích được trình bày rõ ràng nên mình dễ so sánh và chọn được phòng phù hợp với nhu cầu.”</blockquote>
+                        <div class="review-card__author">
+                            <div class="review-card__avatar review-card__avatar--orange">NL</div>
+                            <div>
+                                <strong>Võ Ngọc Linh</strong>
+                                <span>Sinh viên cao học</span>
+                            </div>
+                        </div>
+                    </article>
+                </div>
+
+                <div class="review-carousel__controls" aria-label="Điều khiển danh sách đánh giá">
+                    <button type="button" id="homeReviewPrevious" aria-label="Xem đánh giá trước">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <button type="button" id="homeReviewNext" aria-label="Xem đánh giá tiếp theo">
+                        <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
             </div>
 
             <p class="home-reviews__notice">
@@ -239,6 +283,22 @@
         document.addEventListener("DOMContentLoaded", function () {
             const citySelect = document.getElementById("citySelect");
             const districtSelect = document.getElementById("districtSelect");
+            const searchTabs = document.querySelectorAll("[data-home-type]");
+            const reviewCarousel = document.getElementById("homeReviewCarousel");
+            const reviewTrack = document.getElementById("homeReviewTrack");
+            const reviewPrevious = document.getElementById("homeReviewPrevious");
+            const reviewNext = document.getElementById("homeReviewNext");
+
+            searchTabs.forEach(tab => {
+                tab.addEventListener("click", () => {
+                    searchTabs.forEach(item => item.classList.remove("active"));
+                    tab.classList.add("active");
+                    tab.closest(".home-search__tabs")?.classList.toggle(
+                        "is-whole-house",
+                        tab.dataset.homeType === "whole-house");
+                });
+            });
+
             citySelect?.addEventListener("change", async function () {
                 districtSelect.innerHTML = '<option value="" selected>Đang tải...</option>';
                 districtSelect.disabled = true;
@@ -258,6 +318,59 @@
                     districtSelect.innerHTML = '<option value="" selected>Lỗi tải dữ liệu</option>';
                 }
             });
+
+            if (reviewCarousel && reviewTrack) {
+                const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+                let reviewTimer;
+
+                const getReviewStep = () => {
+                    const firstCard = reviewTrack.querySelector(".review-card");
+                    if (!firstCard) return reviewTrack.clientWidth;
+                    const gap = Number.parseFloat(getComputedStyle(reviewTrack).gap) || 0;
+                    return firstCard.getBoundingClientRect().width + gap;
+                };
+
+                const moveReviews = direction => {
+                    const maxScroll = reviewTrack.scrollWidth - reviewTrack.clientWidth;
+                    const isAtEnd = reviewTrack.scrollLeft >= maxScroll - 4;
+                    const isAtStart = reviewTrack.scrollLeft <= 4;
+
+                    if (direction > 0 && isAtEnd) {
+                        reviewTrack.scrollTo({ left: 0, behavior: "smooth" });
+                    } else if (direction < 0 && isAtStart) {
+                        reviewTrack.scrollTo({ left: maxScroll, behavior: "smooth" });
+                    } else {
+                        reviewTrack.scrollBy({ left: direction * getReviewStep(), behavior: "smooth" });
+                    }
+                };
+
+                const stopReviewAutoplay = () => window.clearInterval(reviewTimer);
+                const startReviewAutoplay = () => {
+                    stopReviewAutoplay();
+                    if (!prefersReducedMotion) {
+                        reviewTimer = window.setInterval(() => moveReviews(1), 4500);
+                    }
+                };
+
+                reviewPrevious?.addEventListener("click", () => {
+                    moveReviews(-1);
+                    startReviewAutoplay();
+                });
+                reviewNext?.addEventListener("click", () => {
+                    moveReviews(1);
+                    startReviewAutoplay();
+                });
+                reviewCarousel.addEventListener("mouseenter", stopReviewAutoplay);
+                reviewCarousel.addEventListener("mouseleave", startReviewAutoplay);
+                reviewCarousel.addEventListener("focusin", stopReviewAutoplay);
+                reviewCarousel.addEventListener("focusout", startReviewAutoplay);
+                document.addEventListener("visibilitychange", () => {
+                    if (document.hidden) stopReviewAutoplay();
+                    else startReviewAutoplay();
+                });
+
+                startReviewAutoplay();
+            }
         });
     </script>
 }

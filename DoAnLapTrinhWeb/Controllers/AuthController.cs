@@ -20,6 +20,7 @@ namespace DoAnLapTrinhWeb.Controllers
 {
     public class AuthController : Controller
     {
+        private const string GoogleExternalScheme = "GoogleExternal";
         private readonly AppDbContext _context;
 
         public AuthController(AppDbContext context)
@@ -185,7 +186,8 @@ namespace DoAnLapTrinhWeb.Controllers
         public async Task<IActionResult> Logout()
         {
             await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-            return RedirectToAction("Index", "Home");
+            TempData.Clear();
+            return RedirectToAction("Login");
         }
 
         public async Task<IActionResult> ConfirmEmail(string token)
@@ -328,21 +330,41 @@ namespace DoAnLapTrinhWeb.Controllers
         [HttpGet]
         public async Task<IActionResult> GoogleResponse()
         {
-            var result = await HttpContext.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-            if (!result.Succeeded) return RedirectToAction("Login");
+            var result = await HttpContext.AuthenticateAsync(GoogleExternalScheme);
+            if (!result.Succeeded || result.Principal == null)
+            {
+                return RedirectToAction("Login", new { googleLoginFailed = true });
+            }
 
             var email = result.Principal.FindFirstValue(ClaimTypes.Email);
             var fullName = result.Principal.FindFirstValue(ClaimTypes.Name);
+            await HttpContext.SignOutAsync(GoogleExternalScheme);
 
-            var user = _context.Users.FirstOrDefault(u => u.Email == email);
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                return RedirectToAction("Login", new { googleLoginFailed = true });
+            }
+
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
 
             if (user != null)
             {
+                // Google đã xác minh quyền sở hữu email, nên tài khoản cùng email được xem là đã xác thực.
+                var accountChanged = false;
+                if (!user.IsEmailConfirmed)
+                {
+                    user.IsEmailConfirmed = true;
+                    user.EmailConfirmationToken = null;
+                    accountChanged = true;
+                }
+
                 if (string.IsNullOrWhiteSpace(user.UserName))
                 {
                     user.UserName = CreateGoogleUserName(email);
-                    await _context.SaveChangesAsync();
+                    accountChanged = true;
                 }
+
+                if (accountChanged) await _context.SaveChangesAsync();
 
                 // TÍNH NĂNG ÉP CHỌN ROLE:
                 // Nếu tài khoản cũ chưa có Định danh V2 (Sinh viên/Đi làm) hoặc chưa có Role rõ ràng
@@ -405,6 +427,8 @@ namespace DoAnLapTrinhWeb.Controllers
                 // NẾU TÀI KHOẢN ĐÃ TỒN TẠI -> CẬP NHẬT DỮ LIỆU (KHÔNG CẦN SQL)
                 existingUser.Role = role;
                 existingUser.UserIdentity = userIdentity;
+                existingUser.IsEmailConfirmed = true;
+                existingUser.EmailConfirmationToken = null;
 
                 _context.Users.Update(existingUser);
                 userToLogin = existingUser;

@@ -20,13 +20,6 @@
         </div>
     }
 
-    <nav aria-label="breadcrumb">
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="/Home/Index">Trang chủ</a></li>
-            <li class="breadcrumb-item active" aria-current="page">Quản lý phòng</li>
-        </ol>
-    </nav>
-
     <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
         <h2 class="fw-bold text-dark"><i class="fas fa-tasks me-2"></i> @ViewData["Title"]</h2>
         <button class="btn btn-success btn-lg px-4 rounded-pill shadow" data-bs-toggle="modal" data-bs-target="#postAccommodationModal">
@@ -77,8 +70,21 @@
                                             var firstImage = (item.Images != null && item.Images.Any())
                                                 ? item.Images.First().ImageUrl
                                                 : "/images/default-room.jpg";
+                                            var roomImages = item.Images?
+                                                .Where(image => !string.IsNullOrWhiteSpace(image.ImageUrl))
+                                                .Select(image => image.ImageUrl!)
+                                                .ToList() ?? new List<string>();
                                         }
-                                        <img src="@firstImage" class="img-thumbnail" alt="@item.Title" style="height: 80px; width: 110px; object-fit: cover;">
+                                        <button type="button"
+                                                class="landlord-gallery-trigger"
+                                                data-room-title="@item.Title"
+                                                data-room-images='@System.Text.Json.JsonSerializer.Serialize(roomImages)'>
+                                            <img src="@firstImage" class="img-thumbnail" alt="@item.Title">
+                                            @if (roomImages.Count > 1)
+                                            {
+                                                <span><i class="fas fa-images"></i> @roomImages.Count</span>
+                                            }
+                                        </button>
                                     </td>
                                     <td>
                                         <a href="/Accommodation/Details/@item.Id" class="text-decoration-none fw-bold text-dark text-truncate d-inline-block" style="max-width: 300px;" title="@item.Title">
@@ -149,6 +155,24 @@
     }
 </div>
 
+<div class="landlord-gallery-modal" id="landlordGalleryModal" hidden>
+    <div class="landlord-gallery-modal__backdrop" data-gallery-close></div>
+    <div class="landlord-gallery-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="landlordGalleryTitle">
+        <div class="landlord-gallery-modal__top">
+            <div>
+                <strong id="landlordGalleryTitle">Ảnh phòng trọ</strong>
+                <span id="landlordGalleryCounter"></span>
+            </div>
+            <button type="button" data-gallery-close aria-label="Đóng"><i class="fas fa-xmark"></i></button>
+        </div>
+        <div class="landlord-gallery-modal__stage">
+            <button type="button" id="landlordGalleryPrevious" class="landlord-gallery-modal__arrow is-left" aria-label="Ảnh trước"><i class="fas fa-chevron-left"></i></button>
+            <img id="landlordGalleryImage" src="" alt="Ảnh phòng trọ" />
+            <button type="button" id="landlordGalleryNext" class="landlord-gallery-modal__arrow is-right" aria-label="Ảnh tiếp theo"><i class="fas fa-chevron-right"></i></button>
+        </div>
+    </div>
+</div>
+
 <style>
     .table-hover tbody tr:hover {
         background-color: rgba(25, 135, 84, 0.05); /* Màu xanh lá nhạt khi hover */
@@ -161,6 +185,61 @@
 
 @section Scripts {
     <script>
+        const galleryModal = document.getElementById("landlordGalleryModal");
+        const galleryImage = document.getElementById("landlordGalleryImage");
+        const galleryTitle = document.getElementById("landlordGalleryTitle");
+        const galleryCounter = document.getElementById("landlordGalleryCounter");
+        const galleryPrevious = document.getElementById("landlordGalleryPrevious");
+        const galleryNext = document.getElementById("landlordGalleryNext");
+        let galleryImages = [];
+        let galleryIndex = 0;
+
+        function renderLandlordGallery() {
+            if (!galleryImages.length) return;
+            galleryImage.src = galleryImages[galleryIndex];
+            galleryCounter.textContent = `${galleryIndex + 1} / ${galleryImages.length}`;
+            const hasMultipleImages = galleryImages.length > 1;
+            galleryPrevious.hidden = !hasMultipleImages;
+            galleryNext.hidden = !hasMultipleImages;
+        }
+
+        function closeLandlordGallery() {
+            galleryModal.hidden = true;
+            document.body.classList.remove("gallery-modal-open");
+        }
+
+        document.querySelectorAll(".landlord-gallery-trigger").forEach(trigger => {
+            trigger.addEventListener("click", () => {
+                try {
+                    galleryImages = JSON.parse(trigger.dataset.roomImages || "[]").filter(Boolean);
+                } catch {
+                    galleryImages = [];
+                }
+                if (!galleryImages.length) return;
+                galleryIndex = 0;
+                galleryTitle.textContent = trigger.dataset.roomTitle || "Ảnh phòng trọ";
+                renderLandlordGallery();
+                galleryModal.hidden = false;
+                document.body.classList.add("gallery-modal-open");
+            });
+        });
+
+        galleryPrevious?.addEventListener("click", () => {
+            galleryIndex = (galleryIndex - 1 + galleryImages.length) % galleryImages.length;
+            renderLandlordGallery();
+        });
+        galleryNext?.addEventListener("click", () => {
+            galleryIndex = (galleryIndex + 1) % galleryImages.length;
+            renderLandlordGallery();
+        });
+        document.querySelectorAll("[data-gallery-close]").forEach(button => button.addEventListener("click", closeLandlordGallery));
+        document.addEventListener("keydown", event => {
+            if (galleryModal?.hidden) return;
+            if (event.key === "Escape") closeLandlordGallery();
+            if (event.key === "ArrowLeft") galleryPrevious?.click();
+            if (event.key === "ArrowRight") galleryNext?.click();
+        });
+
         document.addEventListener("accommodationStatusChanged", event => {
             const update = event.detail;
             const row = document.getElementById(`landlord-room-${update.id}`);

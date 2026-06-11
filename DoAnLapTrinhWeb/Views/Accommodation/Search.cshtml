@@ -13,7 +13,7 @@
             {
                 <div class="col-md-4 mb-4">
                     <div class="card h-100 shadow-sm border-0 transition-hover">
-                        <button onclick="toggleGlobalFavorite(@room.Id, this)" class="btn btn-light position-absolute top-0 end-0 m-2 rounded-circle shadow-sm" style="z-index: 10;">
+                        <button data-favorite-room-id="@room.Id" onclick="toggleGlobalFavorite(@room.Id, this)" class="btn btn-light position-absolute top-0 end-0 m-2 rounded-circle shadow-sm" style="z-index: 10;">
                             <i class="far fa-heart text-muted"></i>
                         </button>
                         @{

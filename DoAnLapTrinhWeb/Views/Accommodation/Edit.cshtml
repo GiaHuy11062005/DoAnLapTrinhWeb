@@ -30,6 +30,16 @@
                     <textarea asp-for="Description" class="form-control" rows="5"></textarea>
                     <span asp-validation-for="Description" class="text-danger small"></span>
                 </div>
+                <div class="col-md-6">
+                    <label asp-for="MaxOccupants" class="form-label fw-bold">Giới hạn số người ở</label>
+                    <select asp-for="MaxOccupants" class="form-select">
+                        @for (var occupants = 1; occupants <= 20; occupants++)
+                        {
+                            <option value="@occupants">@occupants người</option>
+                        }
+                    </select>
+                    <span asp-validation-for="MaxOccupants" class="text-danger small"></span>
+                </div>
 
                 <div class="col-md-6">
                     <label asp-for="CityId" class="form-label fw-bold">Tỉnh / Thành phố</label>
@@ -55,6 +65,12 @@
                     <input asp-for="SpecificAddress" class="form-control" />
                     <span asp-validation-for="SpecificAddress" class="text-danger small"></span>
                 </div>
+                <div class="col-12">
+                    <label asp-for="GoogleMapsUrl" class="form-label fw-bold">Link vị trí chính xác trên Google Maps</label>
+                    <input asp-for="GoogleMapsUrl" type="url" class="form-control" placeholder="https://maps.app.goo.gl/..." />
+                    <small class="text-muted">Mở đúng vị trí trọ trên Google Maps, chọn Chia sẻ, rồi sao chép và dán liên kết vào đây.</small>
+                    <span asp-validation-for="GoogleMapsUrl" class="text-danger small d-block"></span>
+                </div>
 
                 <div class="col-12">
                     <label class="form-label fw-bold">Tiện ích</label>
@@ -74,15 +90,22 @@
 
                 <div class="col-12">
                     <label class="form-label fw-bold">Ảnh hiện tại</label>
-                    <div class="d-flex flex-wrap gap-2 mb-3">
+                    <div class="listing-image-preview mb-3">
                         @foreach (var image in Model.ExistingImages)
                         {
-                            <img src="@image.ImageUrl" alt="Ảnh phòng hiện tại" class="img-thumbnail" style="width: 150px; height: 105px; object-fit: cover;" />
+                            <div class="listing-image-preview__item">
+                                <img src="@image.ImageUrl" alt="Ảnh phòng hiện tại" />
+                                <span>Ảnh hiện tại</span>
+                            </div>
                         }
                     </div>
                     <label asp-for="UploadImages" class="form-label fw-bold">Thay toàn bộ ảnh</label>
-                    <input asp-for="UploadImages" type="file" class="form-control" accept="image/jpeg,image/png,image/webp" multiple />
+                    <input asp-for="UploadImages" id="editAccommodationImageInput" type="file" class="form-control" accept="image/jpeg,image/png,image/webp" multiple />
                     <small class="text-muted">Không chọn ảnh mới nếu muốn giữ nguyên. Chọn từ 1 đến 5 ảnh để thay toàn bộ ảnh hiện tại.</small>
+                    <div id="editAccommodationImagePreviewWrap" class="mt-3" hidden>
+                        <label class="form-label fw-bold mb-0">Xem trước ảnh mới</label>
+                        <div id="editAccommodationImagePreview" class="listing-image-preview"></div>
+                    </div>
                     <span asp-validation-for="UploadImages" class="text-danger small d-block"></span>
                 </div>
 
@@ -113,6 +136,73 @@
             districts.forEach(district => {
                 districtSelect.add(new Option(district.name, district.id));
             });
+        });
+
+        const editImageInput = document.getElementById("editAccommodationImageInput");
+        const editImagePreview = document.getElementById("editAccommodationImagePreview");
+        const editImagePreviewWrap = document.getElementById("editAccommodationImagePreviewWrap");
+        let editSelectedImages = [];
+
+        function syncEditImages() {
+            const transfer = new DataTransfer();
+            editSelectedImages.forEach(file => transfer.items.add(file));
+            editImageInput.files = transfer.files;
+        }
+
+        function renderEditImagePreview(error = "") {
+            editImagePreview.innerHTML = "";
+            editImagePreviewWrap.hidden = editSelectedImages.length === 0 && !error;
+
+            editSelectedImages.forEach((file, index) => {
+                const item = document.createElement("div");
+                item.className = "listing-image-preview__item";
+
+                const image = document.createElement("img");
+                image.alt = file.name;
+                image.src = URL.createObjectURL(file);
+                image.onload = () => URL.revokeObjectURL(image.src);
+
+                const removeButton = document.createElement("button");
+                removeButton.type = "button";
+                removeButton.className = "listing-image-preview__remove";
+                removeButton.innerHTML = '<i class="fas fa-xmark"></i>';
+                removeButton.setAttribute("aria-label", `Xóa ${file.name}`);
+                removeButton.addEventListener("click", () => {
+                    editSelectedImages.splice(index, 1);
+                    syncEditImages();
+                    renderEditImagePreview();
+                });
+
+                const name = document.createElement("span");
+                name.textContent = file.name;
+                item.append(image, removeButton, name);
+                editImagePreview.appendChild(item);
+            });
+
+            if (error) {
+                const errorElement = document.createElement("div");
+                errorElement.className = "listing-image-preview__error";
+                errorElement.textContent = error;
+                editImagePreview.appendChild(errorElement);
+            }
+        }
+
+        editImageInput?.addEventListener("change", function () {
+            const selectedFiles = Array.from(this.files);
+            const validTypes = ["image/jpeg", "image/png", "image/webp"];
+            const hasInvalidFile = selectedFiles.some(file =>
+                !validTypes.includes(file.type) || file.size > 10 * 1024 * 1024);
+
+            if (hasInvalidFile || selectedFiles.length > 5) {
+                editSelectedImages = [];
+                syncEditImages();
+                renderEditImagePreview("Chỉ chọn tối đa 5 ảnh JPG, PNG hoặc WEBP; tối đa 10MB mỗi ảnh.");
+                return;
+            }
+
+            editSelectedImages = selectedFiles;
+            syncEditImages();
+            renderEditImagePreview();
         });
     </script>
 }

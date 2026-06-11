@@ -1,94 +1,133 @@
-﻿@{
+@{
     ViewData["Title"] = "Đăng ký tài khoản";
 }
 
-<div class="container mt-5 mb-5">
-    <div class="row justify-content-center">
-        <div class="col-md-6">
-            <div class="card shadow-sm">
-                <div class="card-header bg-primary text-white text-center">
-                    <h4>Đăng Ký Tài Khoản</h4>
+<section class="auth-page auth-page--register">
+    <div class="auth-page__glow auth-page__glow--blue"></div>
+    <div class="auth-page__glow auth-page__glow--orange"></div>
+
+    <div class="auth-card auth-card--wide">
+        <div class="auth-card__heading">
+            <div class="auth-card__mark"><i class="fas fa-house"></i></div>
+            <h1>Tạo tài khoản Chỗ Ở Tiện Ích</h1>
+            <p>Đăng ký để tìm kiếm hoặc bắt đầu đăng tin cho thuê phòng trọ.</p>
+        </div>
+
+        @if (ViewBag.Error != null)
+        {
+            <div class="alert alert-danger">@ViewBag.Error</div>
+        }
+
+        <form asp-action="Register" method="post" class="auth-form">
+            <div class="auth-form__grid">
+                <div class="auth-field">
+                    <label for="registerFullName">Họ và tên <span>*</span></label>
+                    <div class="auth-input">
+                        <i class="far fa-user"></i>
+                        <input id="registerFullName" type="text" name="FullName" required placeholder="Nhập họ và tên" />
+                    </div>
                 </div>
-                <div class="card-body p-4">
-                    @if (ViewBag.Error != null)
-                    {
-                        <div class="alert alert-danger">@ViewBag.Error</div>
-                    }
 
-                    <form asp-action="Register" method="post">
-                        <div class="mb-3">
-                            <label class="form-label">Họ và tên <span class="text-danger">*</span></label>
-                            <input type="text" name="FullName" class="form-control" required />
-                        </div>
+                <div class="auth-field">
+                    <label for="registerUserName">Tên đăng nhập <span>*</span></label>
+                    <div class="auth-input">
+                        <i class="fas fa-at"></i>
+                        <input id="registerUserName" type="text" name="UserName" required minlength="4" maxlength="40" autocomplete="username" placeholder="Nhập tên đăng nhập" />
+                    </div>
+                    <small>Tên đăng nhập không được trùng với tài khoản khác.</small>
+                </div>
 
-                        <div class="mb-3">
-                            <label class="form-label">Tên đăng nhập <span class="text-danger">*</span></label>
-                            <input type="text" name="UserName" class="form-control" required minlength="4" maxlength="40" autocomplete="username" />
-                            <small class="text-muted">Tên đăng nhập không được trùng với tài khoản khác.</small>
-                        </div>
+                <div class="auth-field">
+                    <label for="registerEmail">Email <span>*</span></label>
+                    <div class="auth-input">
+                        <i class="far fa-envelope"></i>
+                        <input id="registerEmail" type="email" name="Email" required placeholder="example@gmail.com" />
+                    </div>
+                </div>
 
-                        <div class="mb-3">
-                            <label class="form-label">Email <span class="text-danger">*</span></label>
-                            <input type="email" name="Email" class="form-control" required />
-                        </div>
+                <div class="auth-field">
+                    <label for="registerPassword">Mật khẩu <span>*</span></label>
+                    <div class="auth-input">
+                        <i class="fas fa-lock"></i>
+                        <input id="registerPassword" type="password" name="PasswordHash" required autocomplete="new-password" placeholder="Nhập mật khẩu" />
+                        <button type="button" class="auth-password-toggle" data-password-toggle="registerPassword" aria-label="Hiện mật khẩu">
+                            <i class="far fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
 
-                        <div class="mb-3">
-                            <label class="form-label">Mật khẩu <span class="text-danger">*</span></label>
-                            <input type="password" name="PasswordHash" class="form-control" required />
-                        </div>
+                <div class="auth-field">
+                    <label for="registerRole">Vai trò sử dụng <span>*</span></label>
+                    <div class="auth-input auth-input--select">
+                        <i class="fas fa-briefcase"></i>
+                        <select id="registerRole" name="Role" required>
+                            <option value="" selected disabled>Chọn vai trò</option>
+                            <option value="User">Người tìm thuê</option>
+                            <option value="Landlord">Người cho thuê</option>
+                        </select>
+                    </div>
+                </div>
 
-                        <div class="mb-3">
-                            <label class="form-label">Vai trò sử dụng <span class="text-danger">*</span></label>
-                            <select id="registerRole" name="Role" class="form-select" required>
-                                <option value="" selected disabled>-- Chọn vai trò --</option>
-                                <option value="User">Người tìm thuê</option>
-                                <option value="Landlord">Người cho thuê</option>
-                            </select>
-                        </div>
+                <div class="auth-field" id="registerIdentityWrap" hidden>
+                    <label for="registerIdentity">Bạn đang là? <span>*</span></label>
+                    <div class="auth-input auth-input--select">
+                        <i class="fas fa-graduation-cap"></i>
+                        <select id="registerIdentity" name="UserIdentity">
+                            <option value="">Chọn định danh</option>
+                            <option value="Student">Sinh viên</option>
+                            <option value="Worker">Người đi làm</option>
+                        </select>
+                    </div>
+                </div>
 
-                        <div class="mb-3" id="registerIdentityWrap" hidden>
-                            <label class="form-label">Bạn đang là? <span class="text-danger">*</span></label>
-                            <select id="registerIdentity" name="UserIdentity" class="form-select">
-                                <option value="">-- Chọn --</option>
-                                <option value="Student">Sinh viên</option>
-                                <option value="Worker">Người đi làm</option>
-                            </select>
-                        </div>
-
-                        <div class="row mb-3">
-                            <div class="col-6">
-                                <label class="form-label">Tỉnh / Thành phố <span class="text-danger">*</span></label>
-                                <select name="CityId" class="form-select" required>
-                                    <option value="" selected disabled>-- Chọn --</option>
-                                    @if (ViewBag.Cities != null)
-                                    {
-                                        foreach (var city in ViewBag.Cities)
-                                        {
-                                            <option value="@city.Id">@city.Name</option>
-                                        }
-                                    }
-                                </select>
-                            </div>
-                        </div>
-
-                        <button type="submit" class="btn btn-primary w-100">Đăng Ký</button>
-                    </form>
+                <div class="auth-field">
+                    <label for="registerCity">Tỉnh / Thành phố <span>*</span></label>
+                    <div class="auth-input auth-input--select">
+                        <i class="fas fa-location-dot"></i>
+                        <select id="registerCity" name="CityId" required>
+                            <option value="" selected disabled>Chọn tỉnh / thành phố</option>
+                            @if (ViewBag.Cities != null)
+                            {
+                                foreach (var city in ViewBag.Cities)
+                                {
+                                    <option value="@city.Id">@city.Name</option>
+                                }
+                            }
+                        </select>
+                    </div>
                 </div>
             </div>
-        </div>
-    </div>
-</div>
 
-<script>
-    document.addEventListener("DOMContentLoaded", function () {
-        const role = document.getElementById("registerRole");
-        const identityWrap = document.getElementById("registerIdentityWrap");
-        const identity = document.getElementById("registerIdentity");
-        role.addEventListener("change", function () {
-            const isRenter = this.value === "User";
-            identityWrap.hidden = !isRenter;
-            identity.required = isRenter;
-            if (!isRenter) identity.value = "";
+            <button type="submit" class="auth-primary-button">Đăng ký</button>
+        </form>
+
+        <p class="auth-card__switch">Đã có tài khoản? <a asp-action="Login">Đăng nhập ngay</a></p>
+    </div>
+</section>
+
+@section Scripts {
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const role = document.getElementById("registerRole");
+            const identityWrap = document.getElementById("registerIdentityWrap");
+            const identity = document.getElementById("registerIdentity");
+
+            role.addEventListener("change", function () {
+                const isRenter = this.value === "User";
+                identityWrap.hidden = !isRenter;
+                identity.required = isRenter;
+                if (!isRenter) identity.value = "";
+            });
+
+            document.querySelectorAll("[data-password-toggle]").forEach(button => {
+                button.addEventListener("click", () => {
+                    const input = document.getElementById(button.dataset.passwordToggle);
+                    const icon = button.querySelector("i");
+                    const showPassword = input.type === "password";
+                    input.type = showPassword ? "text" : "password";
+                    icon.className = showPassword ? "far fa-eye-slash" : "far fa-eye";
+                });
+            });
         });
-    });
-</script>
+    </script>
+}
