@@ -64,6 +64,21 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
 
          // Đường dẫn Google sẽ cấu hình trả kết quả về sau khi người dùng đăng nhập thành công
          googleOptions.CallbackPath = "/signin-google";
+         googleOptions.Events.OnRemoteFailure = context =>
+         {
+             // Google trả access_denied khi người dùng bấm Hủy ở màn hình cấp quyền.
+             // Bắt lỗi tại middleware để không hiển thị trang exception.
+             var wasCancelled = string.Equals(
+                 context.Request.Query["error"],
+                 "access_denied",
+                 StringComparison.OrdinalIgnoreCase);
+
+             context.HandleResponse();
+             context.Response.Redirect(wasCancelled
+                 ? "/Auth/Login?googleCancelled=true"
+                 : "/Auth/Login?googleLoginFailed=true");
+             return Task.CompletedTask;
+         };
      });
 
 var app = builder.Build();

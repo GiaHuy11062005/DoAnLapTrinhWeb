@@ -55,6 +55,167 @@ namespace DoAnLapTrinhWeb.Controllers
             return View(myRooms);
         }
 
+        [HttpGet]
+        [Authorize(Roles = "Landlord")]
+        public async Task<IActionResult> Edit(int id)
+        {
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userIdString, out int currentUserId)) return Unauthorized();
+
+            var room = await _context.Accommodations
+                .Include(a => a.Images)
+                .FirstOrDefaultAsync(a => a.Id == id && a.OwnerId == currentUserId);
+
+            if (room == null) return NotFound();
+            if (!room.IsApproved)
+            {
+                TempData["Error"] = "Chỉ có thể chỉnh sửa bài đăng sau khi Admin đã duyệt.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            await LoadEditLocations(room.CityId);
+            return View(new EditAccommodationViewModel
+            {
+                Id = room.Id,
+                Title = room.Title,
+                Description = room.Description,
+                SpecificAddress = room.SpecificAddress,
+                CityId = room.CityId,
+                DistrictId = room.DistrictId,
+                AllowsPets = room.AllowsPets,
+                HasParking = room.HasParking,
+                HasHighSpeedWifi = room.HasHighSpeedWifi,
+                HasInverterAirConditioner = room.HasInverterAirConditioner,
+                HasWasherDryer = room.HasWasherDryer,
+                Has24HourSecurity = room.Has24HourSecurity,
+                HasBasementParking = room.HasBasementParking,
+                HasElevator = room.HasElevator,
+                HasRefrigerator = room.HasRefrigerator,
+                HasBalcony = room.HasBalcony,
+                ExistingImages = room.Images?.ToList() ?? new()
+            });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Landlord")]
+        public async Task<IActionResult> Edit(EditAccommodationViewModel model)
+        {
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userIdString, out int currentUserId)) return Unauthorized();
+
+            var room = await _context.Accommodations
+                .Include(a => a.Images)
+                .FirstOrDefaultAsync(a => a.Id == model.Id && a.OwnerId == currentUserId);
+
+            if (room == null) return NotFound();
+            if (!room.IsApproved)
+            {
+                TempData["Error"] = "Chỉ có thể chỉnh sửa bài đăng sau khi Admin đã duyệt.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            var districtIsValid = await _context.Districts
+                .AnyAsync(d => d.Id == model.DistrictId && d.CityId == model.CityId);
+            if (!districtIsValid)
+            {
+                ModelState.AddModelError(nameof(model.DistrictId), "Quận/Huyện không thuộc Tỉnh/Thành phố đã chọn.");
+            }
+
+            var allowedImageTypes = new[] { "image/jpeg", "image/png", "image/webp" };
+            if (model.UploadImages.Count > 5)
+            {
+                ModelState.AddModelError(nameof(model.UploadImages), "Chỉ được tải tối đa 5 hình ảnh.");
+            }
+            else if (model.UploadImages.Any(file =>
+                file.Length <= 0 ||
+                file.Length > 10 * 1024 * 1024 ||
+                !allowedImageTypes.Contains(file.ContentType)))
+            {
+                ModelState.AddModelError(nameof(model.UploadImages), "Ảnh chỉ nhận JPG, PNG hoặc WEBP và tối đa 10MB mỗi ảnh.");
+            }
+
+            if (!ModelState.IsValid)
+            {
+                model.ExistingImages = room.Images?.ToList() ?? new();
+                await LoadEditLocations(model.CityId);
+                return View(model);
+            }
+
+            room.Title = model.Title?.Trim();
+            room.Description = model.Description?.Trim();
+            room.SpecificAddress = model.SpecificAddress?.Trim();
+            room.CityId = model.CityId;
+            room.DistrictId = model.DistrictId;
+            room.AllowsPets = model.AllowsPets;
+            room.HasParking = model.HasParking;
+            room.HasHighSpeedWifi = model.HasHighSpeedWifi;
+            room.HasInverterAirConditioner = model.HasInverterAirConditioner;
+            room.HasWasherDryer = model.HasWasherDryer;
+            room.Has24HourSecurity = model.Has24HourSecurity;
+            room.HasBasementParking = model.HasBasementParking;
+            room.HasElevator = model.HasElevator;
+            room.HasRefrigerator = model.HasRefrigerator;
+            room.HasBalcony = model.HasBalcony;
+
+            var oldImagePaths = new List<string>();
+            if (model.UploadImages.Count > 0)
+            {
+                var uploadsFolder = Path.Combine(_webHostEnvironment.WebRootPath, "images", "accommodations");
+                Directory.CreateDirectory(uploadsFolder);
+
+                oldImagePaths = room.Images?
+                    .Where(image => !string.IsNullOrWhiteSpace(image.ImageUrl))
+                    .Select(image => Path.Combine(uploadsFolder, Path.GetFileName(image.ImageUrl)))
+                    .ToList() ?? new();
+
+                if (room.Images != null)
+                {
+                    _context.AccommodationImages.RemoveRange(room.Images);
+                }
+
+                room.Images = new List<AccommodationImage>();
+                foreach (var file in model.UploadImages)
+                {
+                    var safeExtension = file.ContentType switch
+                    {
+                        "image/jpeg" => ".jpg",
+                        "image/png" => ".png",
+                        "image/webp" => ".webp",
+                        _ => throw new InvalidOperationException("Loại ảnh không hợp lệ.")
+                    };
+                    var uniqueFileName = $"{Guid.NewGuid():N}{safeExtension}";
+                    var filePath = Path.Combine(uploadsFolder, uniqueFileName);
+                    using var fileStream = new FileStream(filePath, FileMode.Create);
+                    await file.CopyToAsync(fileStream);
+                    room.Images.Add(new AccommodationImage
+                    {
+                        ImageUrl = $"/images/accommodations/{uniqueFileName}"
+                    });
+                }
+            }
+
+            // Giấy tờ đất không được gán hoặc thay đổi trong chức năng chỉnh sửa này.
+            await _context.SaveChangesAsync();
+
+            foreach (var oldImagePath in oldImagePaths)
+            {
+                if (System.IO.File.Exists(oldImagePath)) System.IO.File.Delete(oldImagePath);
+            }
+
+            TempData["Success"] = "Đã cập nhật thông tin phòng trọ.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        private async Task LoadEditLocations(int cityId)
+        {
+            ViewBag.Cities = await _context.Cities.OrderBy(city => city.Name).ToListAsync();
+            ViewBag.Districts = await _context.Districts
+                .Where(district => district.CityId == cityId)
+                .OrderBy(district => district.Name)
+                .ToListAsync();
+        }
+
         // --- API LOAD DANH SÁCH THÀNH PHỐ CHO POPUP ---
         [HttpGet]
         public async Task<IActionResult> GetAllCities()

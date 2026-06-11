@@ -90,12 +90,25 @@ namespace DoAnLapTrinhWeb.Controllers
         // PHẦN 2: GIAO DIỆN VÀ XỬ LÝ ĐĂNG NHẬP
         // ==========================================
         [HttpGet]
-        public IActionResult Login(string? returnUrl = null)
+        public IActionResult Login(
+            string? returnUrl = null,
+            bool googleCancelled = false,
+            bool googleLoginFailed = false)
         {
             if (User.Identity != null && User.Identity.IsAuthenticated)
             {
                 return RedirectToAction("Index", "Home");
             }
+
+            if (googleCancelled)
+            {
+                ViewBag.GoogleMessage = "Bạn đã hủy đăng nhập bằng Google.";
+            }
+            else if (googleLoginFailed)
+            {
+                ViewBag.Error = "Không thể đăng nhập bằng Google lúc này. Vui lòng thử lại.";
+            }
+
             ViewBag.ReturnUrl = returnUrl;
             return View();
         }

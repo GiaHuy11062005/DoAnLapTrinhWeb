@@ -1,0 +1,118 @@
+@model DoAnLapTrinhWeb.Models.EditAccommodationViewModel
+@{
+    ViewData["Title"] = "Chỉnh sửa phòng trọ";
+    var cities = ViewBag.Cities as List<City> ?? new();
+    var districts = ViewBag.Districts as List<District> ?? new();
+}
+
+<div class="container py-4 mb-5">
+    <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
+        <div>
+            <h2 class="fw-bold mb-1"><i class="fas fa-pen-to-square text-warning me-2"></i>Chỉnh sửa phòng trọ</h2>
+            <p class="text-muted mb-0">Chỉ cập nhật tên, mô tả, địa chỉ, hình ảnh và tiện ích. Giấy tờ đất vẫn được giữ nguyên.</p>
+        </div>
+        <a asp-action="Index" class="btn btn-outline-secondary">Quay lại</a>
+    </div>
+
+    <form asp-action="Edit" method="post" enctype="multipart/form-data" class="card border-0 shadow-sm">
+        <input asp-for="Id" type="hidden" />
+        <div class="card-body p-4">
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+            <div class="row g-3">
+                <div class="col-12">
+                    <label asp-for="Title" class="form-label fw-bold">Tên phòng trọ</label>
+                    <input asp-for="Title" class="form-control" />
+                    <span asp-validation-for="Title" class="text-danger small"></span>
+                </div>
+
+                <div class="col-12">
+                    <label asp-for="Description" class="form-label fw-bold">Mô tả</label>
+                    <textarea asp-for="Description" class="form-control" rows="5"></textarea>
+                    <span asp-validation-for="Description" class="text-danger small"></span>
+                </div>
+
+                <div class="col-md-6">
+                    <label asp-for="CityId" class="form-label fw-bold">Tỉnh / Thành phố</label>
+                    <select asp-for="CityId" id="editCitySelect" class="form-select">
+                        @foreach (var city in cities)
+                        {
+                            <option value="@city.Id">@city.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="DistrictId" class="form-label fw-bold">Quận / Huyện</label>
+                    <select asp-for="DistrictId" id="editDistrictSelect" class="form-select">
+                        @foreach (var district in districts)
+                        {
+                            <option value="@district.Id">@district.Name</option>
+                        }
+                    </select>
+                    <span asp-validation-for="DistrictId" class="text-danger small"></span>
+                </div>
+                <div class="col-12">
+                    <label asp-for="SpecificAddress" class="form-label fw-bold">Số nhà, tên đường cụ thể</label>
+                    <input asp-for="SpecificAddress" class="form-control" />
+                    <span asp-validation-for="SpecificAddress" class="text-danger small"></span>
+                </div>
+
+                <div class="col-12">
+                    <label class="form-label fw-bold">Tiện ích</label>
+                    <div class="listing-amenities__grid">
+                        <label><input asp-for="HasParking"><i class="fas fa-motorcycle"></i> Bãi giữ xe</label>
+                        <label><input asp-for="AllowsPets"><i class="fas fa-paw"></i> Cho nuôi thú cưng</label>
+                        <label><input asp-for="HasHighSpeedWifi"><i class="fas fa-wifi"></i> WiFi tốc độ cao</label>
+                        <label><input asp-for="HasInverterAirConditioner"><i class="fas fa-snowflake"></i> Máy lạnh Inverter</label>
+                        <label><input asp-for="HasWasherDryer"><i class="fas fa-soap"></i> Máy giặt sấy</label>
+                        <label><input asp-for="Has24HourSecurity"><i class="fas fa-shield-halved"></i> An ninh 24/7</label>
+                        <label><input asp-for="HasBasementParking"><i class="fas fa-square-parking"></i> Hầm để xe</label>
+                        <label><input asp-for="HasElevator"><i class="fas fa-elevator"></i> Thang máy</label>
+                        <label><input asp-for="HasRefrigerator"><i class="fas fa-temperature-low"></i> Tủ lạnh</label>
+                        <label><input asp-for="HasBalcony"><i class="fas fa-building"></i> Ban công</label>
+                    </div>
+                </div>
+
+                <div class="col-12">
+                    <label class="form-label fw-bold">Ảnh hiện tại</label>
+                    <div class="d-flex flex-wrap gap-2 mb-3">
+                        @foreach (var image in Model.ExistingImages)
+                        {
+                            <img src="@image.ImageUrl" alt="Ảnh phòng hiện tại" class="img-thumbnail" style="width: 150px; height: 105px; object-fit: cover;" />
+                        }
+                    </div>
+                    <label asp-for="UploadImages" class="form-label fw-bold">Thay toàn bộ ảnh</label>
+                    <input asp-for="UploadImages" type="file" class="form-control" accept="image/jpeg,image/png,image/webp" multiple />
+                    <small class="text-muted">Không chọn ảnh mới nếu muốn giữ nguyên. Chọn từ 1 đến 5 ảnh để thay toàn bộ ảnh hiện tại.</small>
+                    <span asp-validation-for="UploadImages" class="text-danger small d-block"></span>
+                </div>
+
+                <div class="col-12">
+                    <div class="alert alert-secondary mb-0">
+                        <i class="fas fa-lock me-1"></i> Giấy tờ đất đã gửi cho Admin không thể chỉnh sửa tại đây.
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card-footer bg-white border-0 p-4 pt-0 text-end">
+            <a asp-action="Index" class="btn btn-light me-2">Hủy</a>
+            <button type="submit" class="btn btn-warning fw-bold"><i class="fas fa-save me-1"></i>Lưu thay đổi</button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.getElementById("editCitySelect")?.addEventListener("change", async function () {
+            const districtSelect = document.getElementById("editDistrictSelect");
+            districtSelect.innerHTML = '<option value="">-- Đang tải... --</option>';
+
+            const response = await fetch(`/Accommodation/GetAllDistricts?cityId=${this.value}`);
+            const districts = await response.json();
+            districtSelect.innerHTML = '<option value="">-- Chọn Quận/Huyện --</option>';
+            districts.forEach(district => {
+                districtSelect.add(new Option(district.name, district.id));
+            });
+        });
+    </script>
+}

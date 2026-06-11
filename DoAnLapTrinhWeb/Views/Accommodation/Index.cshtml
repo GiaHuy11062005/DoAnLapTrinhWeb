@@ -5,6 +5,21 @@
 }
 
 <div class="container mt-4 mb-5">
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb">
             <li class="breadcrumb-item"><a href="/Home/Index">Trang chủ</a></li>
@@ -93,9 +108,18 @@
                                             <a href="/Accommodation/Details/@item.Id" class="btn btn-sm btn-outline-primary" title="Xem chi tiết">
                                                 <i class="fas fa-eye"></i>
                                             </a>
-                                            <a href="/Accommodation/Edit/@item.Id" class="btn btn-sm btn-outline-warning" title="Sửa bài">
-                                                <i class="fas fa-edit"></i>
-                                            </a>
+                                            @if (item.IsApproved)
+                                            {
+                                                <a href="/Accommodation/Edit/@item.Id" class="btn btn-sm btn-outline-warning" title="Sửa thông tin bài đã duyệt">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                            }
+                                            else
+                                            {
+                                                <button type="button" class="btn btn-sm btn-outline-secondary" title="Chỉ sửa được sau khi Admin duyệt" disabled>
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                            }
                                             <button class="btn btn-sm btn-outline-danger" title="Xóa bài">
                                                 <i class="fas fa-trash-alt"></i>
                                             </button>

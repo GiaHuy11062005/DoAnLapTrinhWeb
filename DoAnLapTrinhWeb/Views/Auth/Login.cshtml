@@ -21,6 +21,11 @@
                         <div class="alert alert-danger">@ViewBag.Error</div>
                     }
 
+                    @if (ViewBag.GoogleMessage != null)
+                    {
+                        <div class="alert alert-info">@ViewBag.GoogleMessage</div>
+                    }
+
                     <form asp-action="Login" method="post">
                         <input type="hidden" name="returnUrl" value="@ViewBag.ReturnUrl" />
                         <div class="mb-3">
