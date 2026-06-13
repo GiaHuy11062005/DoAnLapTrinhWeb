@@ -1,0 +1,60 @@
+@model DoAnLapTrinhWeb.Models.SupportTicket
+@{
+    ViewData["Title"] = "Liên hệ hỗ trợ";
+}
+
+<div class="container mt-5 mb-5" style="max-width: 800px;">
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-primary text-white text-center py-4">
+            <h3 class="mb-0 fw-bold"><i class="fas fa-headset me-2"></i> Liên Hệ / Hỗ Trợ Admin</h3>
+            <p class="mb-0 mt-2 text-white-50">Chúng tôi luôn sẵn sàng lắng nghe và giải quyết vấn đề của bạn</p>
+        </div>
+        <div class="card-body p-4 p-md-5">
+
+            @if (TempData["SuccessMessage"] != null)
+            {
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <i class="fas fa-check-circle me-2"></i> @TempData["SuccessMessage"]
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            }
+
+            <div asp-validation-summary="All" class="text-danger mb-3"></div>
+
+            <form asp-action="Create" method="post" enctype="multipart/form-data">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label asp-for="FullName" class="form-label fw-bold">Họ và Tên</label>
+                        <input asp-for="FullName" class="form-control" placeholder="Nhập họ và tên của bạn..." />
+                        <span asp-validation-for="FullName" class="text-danger small"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="Email" class="form-label fw-bold">Địa chỉ Email</label>
+                        <input asp-for="Email" type="email" class="form-control" placeholder="example@email.com" />
+                        <span asp-validation-for="Email" class="text-danger small"></span>
+                    </div>
+                    <div class="col-12">
+                        <label asp-for="Subject" class="form-label fw-bold">Tiêu đề hỗ trợ</label>
+                        <input asp-for="Subject" class="form-control" placeholder="Ví dụ: Báo cáo bài đăng, Lỗi nạp tiền, v.v..." />
+                        <span asp-validation-for="Subject" class="text-danger small"></span>
+                    </div>
+                    <div class="col-12">
+                        <label asp-for="Message" class="form-label fw-bold">Nội dung chi tiết</label>
+                        <textarea asp-for="Message" class="form-control" rows="6" placeholder="Mô tả chi tiết vấn đề bạn đang gặp phải để Admin có thể hỗ trợ nhanh nhất..."></textarea>
+                        <span asp-validation-for="Message" class="text-danger small"></span>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-bold">Ảnh đính kèm (Tối đa 5 ảnh)</label>
+                        <input type="file" name="attachments" class="form-control" accept="image/*" multiple />
+                        <small class="text-muted">Đính kèm ảnh chụp màn hình (nhiều ảnh) để Admin dễ dàng hỗ trợ bạn hơn.</small>
+                    </div>
+                    <div class="col-12 mt-4 text-center">
+                        <button type="submit" class="btn btn-primary btn-lg px-5 rounded-pill shadow-sm">
+                            <i class="fas fa-paper-plane me-2"></i> Gửi yêu cầu hỗ trợ
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

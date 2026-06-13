@@ -1,0 +1,110 @@
+@model DoAnLapTrinhWeb.Models.SupportTicket
+@{
+    ViewData["Title"] = "Chi tiết yêu cầu hỗ trợ";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container mt-4 mb-5" style="max-width: 900px;">
+    <div class="mb-3">
+        <a href="/Support/MyTickets" class="text-decoration-none text-muted">
+            <i class="fas fa-arrow-left me-1"></i> Quay lại danh sách
+        </a>
+    </div>
+
+    <div class="row g-4">
+        <!-- Main Content Column -->
+        <div class="col-md-8">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 fw-bold text-primary"><i class="fas fa-file-alt me-2"></i> Nội dung yêu cầu</h5>
+                    @if (Model.Status == "Pending")
+                    {
+                        <span class="badge bg-warning text-dark px-3 py-2"><i class="fas fa-clock me-1"></i> Chờ xử lý</span>
+                    }
+                    else if (Model.Status == "Rejected")
+                    {
+                        <span class="badge bg-danger px-3 py-2"><i class="fas fa-times me-1"></i> Bị từ chối</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-success px-3 py-2"><i class="fas fa-check me-1"></i> Đã giải quyết</span>
+                    }
+                </div>
+                <div class="card-body p-4">
+                    <h4 class="fw-bold mb-4">@Model.Subject</h4>
+                    <div class="bg-light p-3 rounded mb-4 text-break">
+                        @Html.Raw(Model.Message.Replace("\n", "<br />"))
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(Model.AttachedImagePath))
+                    {
+                        var images = Model.AttachedImagePath.Split('|');
+                        <h6 class="fw-bold mb-3"><i class="fas fa-paperclip me-2"></i> Ảnh đính kèm (@images.Length ảnh):</h6>
+                        <div class="row g-3">
+                            @foreach (var img in images)
+                            {
+                                <div class="col-md-6 col-12 text-center bg-light p-3 rounded border">
+                                    <img src="@img" class="img-fluid rounded shadow-sm" style="max-height: 200px; object-fit: contain;" alt="Ảnh đính kèm" />
+                                    <div class="mt-3">
+                                        <a href="@img" target="_blank" class="btn btn-outline-secondary btn-sm">
+                                            <i class="fas fa-external-link-alt me-1"></i> Mở ảnh gốc
+                                        </a>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar Column -->
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-white border-bottom py-3">
+                    <h5 class="mb-0 fw-bold text-info"><i class="fas fa-info-circle me-2"></i> Thông tin gửi</h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-2"><strong>Ngày gửi:</strong> @Model.CreatedAt.ToString("dd/MM/yyyy HH:mm")</p>
+                    <p class="mb-0"><strong>Trạng thái:</strong> 
+                        @if (Model.Status == "Pending")
+                        {
+                            <span class="text-warning fw-bold">Chờ xử lý</span>
+                        }
+                        else if (Model.Status == "Rejected")
+                        {
+                            <span class="text-danger fw-bold">Đã bị từ chối</span>
+                        }
+                        else
+                        {
+                            <span class="text-success fw-bold">Đã giải quyết</span>
+                        }
+                    </p>
+                </div>
+            </div>
+
+            @if (Model.Status != "Pending")
+            {
+                <div class="card shadow-sm border-0 border-top border-4 @(Model.Status == "Resolved" ? "border-success" : "border-danger")">
+                    <div class="card-header bg-white border-bottom py-3">
+                        <h5 class="mb-0 fw-bold @(Model.Status == "Resolved" ? "text-success" : "text-danger")">
+                            <i class="fas fa-reply me-2"></i> Phản hồi từ Admin
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        @if (!string.IsNullOrEmpty(Model.AdminResponse))
+                        {
+                            <div class="p-3 bg-light rounded text-break" style="font-size: 0.95rem;">
+                                @Html.Raw(Model.AdminResponse.Replace("\n", "<br />"))
+                            </div>
+                        }
+                        else
+                        {
+                            <p class="text-muted fst-italic mb-0">Admin đã xử lý yêu cầu này nhưng không để lại lời nhắn.</p>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>

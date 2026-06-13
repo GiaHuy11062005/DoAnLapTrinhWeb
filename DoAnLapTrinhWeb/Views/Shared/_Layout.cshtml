@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="utf-8" />
@@ -46,6 +46,12 @@
                                 <a class="nav-link app-nav-link" href="/Home/SearchHistory">Lịch sử tìm phòng</a>
                             </li>
                         }
+                        @if (!User.IsInRole("Admin"))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link app-nav-link text-primary fw-bold" href="/Support/Create">Liên hệ hỗ trợ</a>
+                            </li>
+                        }
                     </ul>
 
                     <div class="d-flex align-items-center gap-3 mt-3 mt-sm-0">
@@ -79,12 +85,18 @@
                                     @if (User.IsInRole("Admin"))
                                     {
                                         <li><a class="dropdown-item py-2" href="/Admin"><i class="fas fa-list-check text-muted me-2"></i> Danh sách duyệt bài</a></li>
+                                        <li><a class="dropdown-item py-2" href="/Admin/SupportTickets"><i class="fas fa-envelope-open-text text-muted me-2"></i> Quản lý hỗ trợ</a></li>
                                     }
                                     @if (!User.IsInRole("Admin"))
                                     {
                                         <li><a class="dropdown-item py-2" href="/Favorite/Index"><i class="fas fa-heart text-danger me-2"></i> Mục ưa thích</a></li>
                                     }
                                     <li><a class="dropdown-item py-2" href="/Home/SearchHistory"><i class="fas fa-clock-rotate-left text-muted me-2"></i> Lịch sử tìm phòng</a></li>
+                                    @if (!User.IsInRole("Admin"))
+                                    {
+                                        <li><a class="dropdown-item py-2" href="/Support/Create"><i class="fas fa-headset text-primary me-2"></i> Liên hệ Admin</a></li>
+                                        <li><a class="dropdown-item py-2" href="/Support/MyTickets"><i class="fas fa-list-alt text-info me-2"></i> Lịch sử hỗ trợ</a></li>
+                                    }
                                     @if (User.IsInRole("Landlord"))
                                     {
                                         <li><hr class="dropdown-divider"></li>

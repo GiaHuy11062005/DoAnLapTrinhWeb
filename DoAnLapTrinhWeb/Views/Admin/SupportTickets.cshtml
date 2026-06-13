@@ -1,0 +1,102 @@
+@model IEnumerable<DoAnLapTrinhWeb.Models.SupportTicket>
+@{
+    ViewData["Title"] = "Quản lý yêu cầu hỗ trợ";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container mt-4 mb-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold mb-0"><i class="fas fa-headset text-primary me-2"></i> Danh sách yêu cầu hỗ trợ</h2>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
+            <i class="fas fa-check-circle me-2"></i> @TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4">Trạng thái</th>
+                            <th>Ngày gửi</th>
+                            <th>Người gửi</th>
+                            <th>Nội dung</th>
+                            <th class="pe-4 text-end">Hành động</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!Model.Any())
+                        {
+                            <tr>
+                                <td colspan="6" class="text-center py-5 text-muted">
+                                    <i class="fas fa-inbox fa-3x mb-3 text-light"></i>
+                                    <p class="mb-0 fs-5">Hiện không có yêu cầu hỗ trợ nào.</p>
+                                </td>
+                            </tr>
+                        }
+                        else
+                        {
+                            foreach (var ticket in Model)
+                            {
+                                <tr>
+                                    <td class="ps-4">
+                                        @if (ticket.Status == "Pending")
+                                        {
+                                            <span class="badge bg-warning text-dark"><i class="fas fa-clock me-1"></i> Chờ xử lý</span>
+                                        }
+                                        else if (ticket.Status == "Rejected")
+                                        {
+                                            <span class="badge bg-danger"><i class="fas fa-times me-1"></i> Đã từ chối</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-success"><i class="fas fa-check me-1"></i> Đã giải quyết</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <div class="small fw-bold">@ticket.CreatedAt.ToString("dd/MM/yyyy")</div>
+                                        <div class="small text-muted">@ticket.CreatedAt.ToString("HH:mm")</div>
+                                    </td>
+                                    <td>
+                                        <div class="fw-bold">@ticket.FullName</div>
+                                        <div class="small text-muted">@ticket.Email</div>
+                                        @if (ticket.UserId.HasValue)
+                                        {
+                                            <span class="badge bg-light text-secondary border mt-1">ID: @ticket.UserId</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <div class="fw-bold text-truncate" style="max-width: 250px;" title="@ticket.Subject">@ticket.Subject</div>
+                                        <div class="small text-muted text-truncate" style="max-width: 250px;" title="@ticket.Message">@ticket.Message</div>
+                                    </td>
+                                    <td class="pe-4 text-end">
+                                        @if (ticket.Status == "Pending")
+                                        {
+                                            <div class="d-flex justify-content-end gap-2">
+                                                <a href="/Admin/TicketDetails/@ticket.Id" class="btn btn-sm btn-outline-info shadow-sm">
+                                                    <i class="fas fa-info-circle"></i> Xem & Xử lý
+                                                </a>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <a href="/Admin/TicketDetails/@ticket.Id" class="btn btn-sm btn-outline-secondary shadow-sm">
+                                                <i class="fas fa-eye"></i> Xem lại
+                                            </a>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

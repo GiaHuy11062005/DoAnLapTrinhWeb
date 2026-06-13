@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Hosting;
@@ -463,7 +463,7 @@ namespace DoAnLapTrinhWeb.Controllers
         // --- HÀM XỬ LÝ TRANG KẾT QUẢ TÌM KIẾM (TASK 2) VÀ GHI LOG (TASK 4) ---
         [HttpGet]
         [AllowAnonymous] // Ai cũng có thể tìm kiếm
-        public async Task<IActionResult> Search(int? cityId, int? districtId, int? priceRange, string? keyword, bool recordHistory = false)
+        public async Task<IActionResult> Search(int? cityId, int? districtId, int? priceRange, string? keyword, bool recordHistory = false, int page = 1)
         {
             // Lấy danh sách phòng ĐÃ DUYỆT
             var query = _context.Accommodations.Include(a => a.Images).Where(a => a.IsApproved);
@@ -493,12 +493,30 @@ namespace DoAnLapTrinhWeb.Controllers
                 else if (priceRange == 3) query = query.Where(a => a.Price > 4000000);
             }
 
-            var results = await query.ToListAsync();
+            // --- THÊM PHẦN TÍNH TOÁN PHÂN TRANG ---
+            int pageSize = 6;
+            int totalCount = await query.CountAsync();
+            int totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+
+            ViewBag.CurrentPage = page;
+            ViewBag.TotalPages = totalPages;
+            ViewBag.TotalCount = totalCount;
+            // Lưu lại tham số tìm kiếm để gán vào các nút bấm chuyển trang
+            ViewBag.SearchCityId = cityId;
+            ViewBag.SearchDistrictId = districtId;
+            ViewBag.SearchPriceRange = priceRange;
+            ViewBag.SearchKeyword = keyword;
+
+            var results = await query
+                .OrderByDescending(a => a.CreatedAt)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
 
             // Chỉ lưu khi người dùng chủ động tìm mới, đã đăng nhập và tìm thấy phòng.
             // Link xem lại từ lịch sử không gửi recordHistory nên sẽ không tạo log trùng.
             if (recordHistory &&
-                results.Count > 0 &&
+                totalCount > 0 &&
                 User.Identity?.IsAuthenticated == true &&
                 (cityId.HasValue || districtId.HasValue))
             {

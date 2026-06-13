@@ -1,10 +1,10 @@
-﻿@model IEnumerable<DoAnLapTrinhWeb.Models.Accommodation>
+@model IEnumerable<DoAnLapTrinhWeb.Models.Accommodation>
 @{
     ViewData["Title"] = "Kết quả tìm kiếm";
 }
 
 <div class="container mt-5 mb-5" style="min-height: 60vh;">
-    <h3 class="fw-bold mb-4 border-bottom pb-2">Kết quả tìm kiếm (@Model.Count() phòng)</h3>
+    <h3 class="fw-bold mb-4 border-bottom pb-2">Kết quả tìm kiếm (@(ViewBag.TotalCount ?? 0) phòng)</h3>
 
     @if (Model != null && Model.Any())
     {
@@ -31,6 +31,29 @@
                 </div>
             }
         </div>
+
+        @if (ViewBag.TotalPages != null && ViewBag.TotalPages > 1)
+        {
+            var currentPage = (int)ViewBag.CurrentPage;
+            var totalPages = (int)ViewBag.TotalPages;
+
+            <nav aria-label="Page navigation" class="mt-5">
+                <ul class="pagination justify-content-center">
+                    <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                        <a class="page-link" href="@Url.Action("Search", new { cityId = ViewBag.SearchCityId, districtId = ViewBag.SearchDistrictId, priceRange = ViewBag.SearchPriceRange, keyword = ViewBag.SearchKeyword, page = currentPage - 1 })">« Trang trước</a>
+                    </li>
+                    @for (int i = 1; i <= totalPages; i++)
+                    {
+                        <li class="page-item @(currentPage == i ? "active" : "")">
+                            <a class="page-link" href="@Url.Action("Search", new { cityId = ViewBag.SearchCityId, districtId = ViewBag.SearchDistrictId, priceRange = ViewBag.SearchPriceRange, keyword = ViewBag.SearchKeyword, page = i })">@i</a>
+                        </li>
+                    }
+                    <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                        <a class="page-link" href="@Url.Action("Search", new { cityId = ViewBag.SearchCityId, districtId = ViewBag.SearchDistrictId, priceRange = ViewBag.SearchPriceRange, keyword = ViewBag.SearchKeyword, page = currentPage + 1 })">Trang sau »</a>
+                    </li>
+                </ul>
+            </nav>
+        }
     }
     else
     {

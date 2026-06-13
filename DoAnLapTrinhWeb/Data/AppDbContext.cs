@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using DoAnLapTrinhWeb.Models;
 
 namespace DoAnLapTrinhWeb.Data
@@ -22,6 +22,7 @@ namespace DoAnLapTrinhWeb.Data
         public DbSet<ApprovalHistory> ApprovalHistories { get; set; }
         public DbSet<AppNotification> Notifications { get; set; }
         public DbSet<RentalRequest> RentalRequests { get; set; }
+        public DbSet<SupportTicket> SupportTickets { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using DoAnLapTrinhWeb.Data;
@@ -229,6 +229,77 @@ namespace DoAnLapTrinhWeb.Controllers
                 notification.IsRead,
                 createdAt = notification.CreatedAt.ToString("dd/MM/yyyy HH:mm")
             });
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> SupportTickets()
+        {
+            var tickets = await _context.SupportTickets
+                .OrderBy(t => t.Status == "Pending" ? 0 : 1) // Pending lên đầu
+                .ThenByDescending(t => t.CreatedAt)
+                .ToListAsync();
+
+            return View(tickets);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> TicketDetails(int id)
+        {
+            var ticket = await _context.SupportTickets.FindAsync(id);
+            if (ticket == null) return NotFound();
+            return View(ticket);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> ResolveTicket(int id, string actionType, string? responseMessage)
+        {
+            var ticket = await _context.SupportTickets.FindAsync(id);
+            if (ticket != null && ticket.Status == "Pending")
+            {
+                if (actionType == "Reject")
+                {
+                    ticket.Status = "Rejected";
+                }
+                else
+                {
+                    ticket.Status = "Resolved";
+                }
+                
+                ticket.AdminResponse = responseMessage;
+                
+                // Nếu người gửi có tài khoản, báo cho họ biết
+                if (ticket.UserId.HasValue)
+                {
+                    string defaultMsg = ticket.Status == "Resolved" 
+                        ? $"Admin đã chấp nhận và xử lý yêu cầu: {ticket.Subject}" 
+                        : $"Admin đã từ chối yêu cầu: {ticket.Subject}";
+
+                    var msg = string.IsNullOrWhiteSpace(responseMessage) 
+                        ? defaultMsg 
+                        : $"Phản hồi từ Admin: {responseMessage}";
+
+                    var userNotification = new AppNotification
+                    {
+                        UserId = ticket.UserId.Value,
+                        Type = "SupportTicket",
+                        Title = ticket.Status == "Resolved" ? "Hỗ trợ đã được giải quyết" : "Hỗ trợ bị từ chối",
+                        Message = msg,
+                        Url = "#"
+                    };
+                    _context.Notifications.Add(userNotification);
+                    await _context.SaveChangesAsync();
+                    await SendNotification(userNotification);
+                }
+                else
+                {
+                    await _context.SaveChangesAsync();
+                }
+                
+                TempData["Success"] = ticket.Status == "Resolved" 
+                    ? "Đã đánh dấu giải quyết thành công!" 
+                    : "Đã từ chối yêu cầu hỗ trợ!";
+            }
+            return RedirectToAction(nameof(SupportTickets));
         }
     }
 }
