@@ -17,7 +17,7 @@ namespace DoAnLapTrinhWeb.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.8")
+                .HasAnnotation("ProductVersion", "9.0.8")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -294,6 +294,73 @@ namespace DoAnLapTrinhWeb.Migrations
                     b.ToTable("ApprovalHistories");
                 });
 
+            modelBuilder.Entity("DoAnLapTrinhWeb.Models.ChatConversation", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AccommodationId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("LandlordId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RenterId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AccommodationId");
+
+                    b.HasIndex("LandlordId");
+
+                    b.HasIndex("RenterId");
+
+                    b.ToTable("ChatConversations");
+                });
+
+            modelBuilder.Entity("DoAnLapTrinhWeb.Models.ChatMessage", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("ConversationId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("SenderId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ConversationId");
+
+                    b.HasIndex("SenderId");
+
+                    b.ToTable("ChatMessages");
+                });
+
             modelBuilder.Entity("DoAnLapTrinhWeb.Models.City", b =>
                 {
                     b.Property<int>("Id")
@@ -527,6 +594,52 @@ namespace DoAnLapTrinhWeb.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("DoAnLapTrinhWeb.Models.ChatConversation", b =>
+                {
+                    b.HasOne("DoAnLapTrinhWeb.Models.Accommodation", "Accommodation")
+                        .WithMany()
+                        .HasForeignKey("AccommodationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DoAnLapTrinhWeb.Models.AppUser", "Landlord")
+                        .WithMany()
+                        .HasForeignKey("LandlordId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("DoAnLapTrinhWeb.Models.AppUser", "Renter")
+                        .WithMany()
+                        .HasForeignKey("RenterId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Accommodation");
+
+                    b.Navigation("Landlord");
+
+                    b.Navigation("Renter");
+                });
+
+            modelBuilder.Entity("DoAnLapTrinhWeb.Models.ChatMessage", b =>
+                {
+                    b.HasOne("DoAnLapTrinhWeb.Models.ChatConversation", "Conversation")
+                        .WithMany("Messages")
+                        .HasForeignKey("ConversationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DoAnLapTrinhWeb.Models.AppUser", "Sender")
+                        .WithMany()
+                        .HasForeignKey("SenderId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Conversation");
+
+                    b.Navigation("Sender");
+                });
+
             modelBuilder.Entity("DoAnLapTrinhWeb.Models.District", b =>
                 {
                     b.HasOne("DoAnLapTrinhWeb.Models.City", "City")
@@ -595,6 +708,11 @@ namespace DoAnLapTrinhWeb.Migrations
             modelBuilder.Entity("DoAnLapTrinhWeb.Models.AppUser", b =>
                 {
                     b.Navigation("Accommodations");
+                });
+
+            modelBuilder.Entity("DoAnLapTrinhWeb.Models.ChatConversation", b =>
+                {
+                    b.Navigation("Messages");
                 });
 
             modelBuilder.Entity("DoAnLapTrinhWeb.Models.City", b =>

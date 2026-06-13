@@ -1,0 +1,111 @@
+@model IEnumerable<ChatConversation>
+
+@{
+    ViewData["Title"] = "Tin nhắn";
+    var currentUserId = (int)ViewBag.CurrentUserId;
+}
+
+<div class="chat-inbox-page">
+    <div class="container py-4">
+        <div class="chat-inbox-header mb-4">
+            <h2><i class="fas fa-comments me-2"></i>Tin nhắn</h2>
+        </div>
+
+        @if (!Model.Any())
+        {
+            <div class="chat-inbox-empty text-center py-5">
+                <i class="fas fa-inbox fa-4x text-muted mb-3 d-block"></i>
+                <p class="text-muted fs-5">Bạn chưa có cuộc trò chuyện nào</p>
+            </div>
+        }
+        else
+        {
+            <div class="chat-inbox-list">
+                @foreach (var conversation in Model)
+                {
+                    var otherName = currentUserId == conversation.RenterId
+                        ? conversation.Landlord?.FullName
+                        : conversation.Renter?.FullName;
+
+                    var lastMessage = conversation.Messages?
+                        .OrderByDescending(m => m.CreatedAt)
+                        .FirstOrDefault();
+
+                    var unreadCount = conversation.Messages?
+                        .Count(m => m.SenderId != currentUserId && !m.IsRead) ?? 0;
+
+                    var firstImage = conversation.Accommodation?.Images?.FirstOrDefault();
+
+                    <div onclick="openChatPopup(0, @conversation.Id)" class="text-decoration-none" style="cursor:pointer;">
+                        <div class="chat-inbox-card d-flex align-items-center p-3 mb-2 @(unreadCount > 0 ? "chat-inbox-card--unread" : "")">
+                            <div class="chat-inbox-thumbnail me-3">
+                                @if (firstImage != null)
+                                {
+                                    <img src="@firstImage.ImageUrl" alt="@conversation.Accommodation?.Title" class="chat-inbox-thumb-img" />
+                                }
+                                else
+                                {
+                                    <div class="chat-inbox-thumb-placeholder">
+                                        <i class="fas fa-home"></i>
+                                    </div>
+                                }
+                            </div>
+
+                            <div class="chat-inbox-info flex-grow-1 overflow-hidden">
+                                <div class="chat-inbox-title fw-semibold text-truncate">
+                                    @conversation.Accommodation?.Title
+                                </div>
+                                <div class="chat-inbox-other-name text-muted small">
+                                    <i class="fas fa-user me-1"></i>@otherName
+                                </div>
+                                @if (lastMessage != null)
+                                {
+                                    <div class="chat-inbox-last-msg text-muted small text-truncate">
+                                        @if (lastMessage.Content?.Length > 50)
+                                        {
+                                            @(lastMessage.Content.Substring(0, 50) + "...")
+                                        }
+                                        else
+                                        {
+                                            @lastMessage.Content
+                                        }
+                                    </div>
+                                }
+                            </div>
+
+                            <div class="chat-inbox-meta text-end ms-3">
+                                @if (lastMessage != null)
+                                {
+                                    <div class="chat-inbox-time text-muted small">
+                                        @lastMessage.CreatedAt.ToString("dd/MM HH:mm")
+                                    </div>
+                                }
+                                @if (unreadCount > 0)
+                                {
+                                    <span class="chat-inbox-badge badge bg-danger rounded-pill mt-1">
+                                        @unreadCount
+                                    </span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const openChatId = urlParams.get('openChat');
+            if (openChatId && window.openChatPopup) {
+                // Wait slightly for signalr to initialize if needed
+                setTimeout(() => {
+                    openChatPopup(0, parseInt(openChatId));
+                }, 300);
+            }
+        });
+    </script>
+}

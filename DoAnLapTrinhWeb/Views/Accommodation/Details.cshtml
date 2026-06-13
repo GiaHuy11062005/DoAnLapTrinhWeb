@@ -165,6 +165,20 @@
                         <a href="/Auth/Login?returnUrl=@Uri.EscapeDataString(Context.Request.Path)" class="room-booking-button">Đăng ký thuê ngay</a>
                     }
 
+                    @* ====== NÚT NHẮN TIN VỚI CHỦ TRỌ ====== *@
+                    @if (User.IsInRole("User"))
+                    {
+                        <button type="button" class="room-chat-button" onclick="openChatPopup(@Model.Id, 0)">
+                            <i class="fas fa-comments"></i> Nhắn tin với chủ trọ
+                        </button>
+                    }
+                    else if (!isAuthenticated)
+                    {
+                        <a href="/Auth/Login?returnUrl=@Uri.EscapeDataString(Context.Request.Path)" class="room-chat-button">
+                            <i class="fas fa-comments"></i> Đăng nhập để nhắn tin
+                        </a>
+                    }
+
                     <div class="room-owner">
                         @if (!string.IsNullOrWhiteSpace(Model.Owner?.AvatarUrl))
                         {

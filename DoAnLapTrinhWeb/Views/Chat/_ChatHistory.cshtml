@@ -1,0 +1,97 @@
+@model DoAnLapTrinhWeb.Models.ChatConversation
+
+@{
+    var currentUserId = (int)ViewBag.CurrentUserId;
+    var otherUser = currentUserId == Model.RenterId ? Model.Landlord : Model.Renter;
+    var firstImage = Model.Accommodation?.Images?.FirstOrDefault();
+}
+
+<div id="miniChatInner" data-conversation-id="@Model.Id" data-current-user-id="@currentUserId" style="display: flex; flex-direction: column; height: 100%; width: 100%;">
+    <!-- Header -->
+    <div class="mini-chat-header" onclick="toggleMinimizeChatPopup(event)">
+        <div class="mini-chat-header-info">
+            @if (!string.IsNullOrEmpty(otherUser?.AvatarUrl))
+            {
+                <img src="@otherUser.AvatarUrl" class="mini-chat-avatar" alt="@otherUser.FullName" />
+            }
+            else
+            {
+                <div class="mini-chat-avatar-placeholder"><i class="fas fa-user"></i></div>
+            }
+            <div class="mini-chat-header-text">
+                <strong class="text-truncate d-block" style="max-width: 180px;">@otherUser?.FullName</strong>
+                <small class="text-truncate d-block text-muted" style="max-width: 180px;">@Model.Accommodation?.Title</small>
+            </div>
+        </div>
+        <div class="mini-chat-header-actions">
+            <button type="button" class="mini-chat-btn-action" onclick="toggleMinimizeChatPopup(event)" title="Thu nhỏ/Phóng to"><i class="fas fa-minus"></i></button>
+            <button type="button" class="mini-chat-btn-action text-danger" onclick="closeChatPopup(event)" title="Đóng"><i class="fas fa-times"></i></button>
+        </div>
+    </div>
+
+    <div class="mini-chat-body-wrapper">
+        <!-- Product Snippet -->
+        <div class="mini-chat-product-snippet">
+            <div class="mini-chat-product-thumb">
+                @if (firstImage != null)
+                {
+                    <img src="@firstImage.ImageUrl" alt="@Model.Accommodation?.Title" />
+                }
+                else
+                {
+                    <div class="mini-chat-product-placeholder"><i class="fas fa-home"></i></div>
+                }
+            </div>
+            <div class="mini-chat-product-info">
+                <div class="mini-chat-product-title text-truncate" title="@Model.Accommodation?.Title">@Model.Accommodation?.Title</div>
+                <div class="mini-chat-product-price text-danger">@Model.Accommodation?.Price.ToString("N0") đ/tháng</div>
+            </div>
+            <a href="/Accommodation/Details/@Model.Accommodation?.Id" class="mini-chat-product-link" title="Xem chi tiết">
+                <i class="fas fa-chevron-right"></i>
+            </a>
+        </div>
+
+        <!-- Messages -->
+        <div class="mini-chat-messages" id="chatMessages">
+            @if (Model.Messages != null && Model.Messages.Any())
+            {
+                @foreach (var message in Model.Messages.OrderBy(m => m.CreatedAt))
+                {
+                    var isMine = message.SenderId == currentUserId;
+                    var senderName = isMine ? "Bạn" : otherUser?.FullName;
+
+                    <div class="chat-bubble @(isMine ? "chat-bubble-mine" : "chat-bubble-other")">
+                        <div class="chat-bubble__name small">@senderName</div>
+                        <div class="chat-bubble__content">@message.Content</div>
+                        <div class="chat-bubble__time small">@message.CreatedAt.ToString("HH:mm")</div>
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="mini-chat-empty text-center text-muted mt-4">
+                    <small>Hãy bắt đầu cuộc trò chuyện!</small>
+                </div>
+            }
+        </div>
+
+        <!-- Quick Questions -->
+        @if (currentUserId == Model.RenterId)
+        {
+            <div class="chat-quick-questions">
+                <button type="button" class="chat-quick-btn" data-message="Phòng này còn không?">Phòng này còn không?</button>
+                <button type="button" class="chat-quick-btn" data-message="Giá có thương lượng không?">Giá thương lượng?</button>
+                <button type="button" class="chat-quick-btn" data-message="Có chỗ để xe không?">Có chỗ để xe không?</button>
+                <button type="button" class="chat-quick-btn" data-message="Điện nước tính thế nào?">Điện nước tính sao?</button>
+                <button type="button" class="chat-quick-btn" data-message="Có cho nuôi thú cưng không?">Nuôi thú cưng?</button>
+                <button type="button" class="chat-quick-btn" data-message="Có thể xem phòng lúc mấy giờ?">Xem phòng lúc nào?</button>
+            </div>
+        }
+
+        <!-- Input Footer -->
+        <div class="mini-chat-input">
+            <input type="text" id="chatInput" placeholder="Nhập tin nhắn..." autocomplete="off" />
+            <button type="button" id="chatSendBtn" class="btn btn-primary btn-sm"><i class="fas fa-paper-plane"></i></button>
+        </div>
+    </div>
+</div>

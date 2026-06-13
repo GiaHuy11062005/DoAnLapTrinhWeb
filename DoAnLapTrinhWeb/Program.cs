@@ -113,6 +113,7 @@ app.UseAuthorization();
 
 app.MapStaticAssets();
 app.MapHub<AccommodationHub>("/hubs/accommodations");
+app.MapHub<ChatHub>("/hubs/chat");
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}")

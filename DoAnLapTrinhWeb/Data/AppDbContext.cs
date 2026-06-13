@@ -24,6 +24,10 @@ namespace DoAnLapTrinhWeb.Data
         public DbSet<RentalRequest> RentalRequests { get; set; }
         public DbSet<SupportTicket> SupportTickets { get; set; }
 
+        // Bảng Chat
+        public DbSet<ChatConversation> ChatConversations { get; set; }
+        public DbSet<ChatMessage> ChatMessages { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<AppUser>()
@@ -92,6 +96,39 @@ namespace DoAnLapTrinhWeb.Data
                 .HasOne(request => request.Accommodation)
                 .WithMany()
                 .HasForeignKey(request => request.AccommodationId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // =========================================================
+            // CẤU HÌNH QUAN HỆ BẢNG CHAT
+            // =========================================================
+            modelBuilder.Entity<ChatConversation>()
+                .HasOne(c => c.Renter)
+                .WithMany()
+                .HasForeignKey(c => c.RenterId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<ChatConversation>()
+                .HasOne(c => c.Landlord)
+                .WithMany()
+                .HasForeignKey(c => c.LandlordId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<ChatConversation>()
+                .HasOne(c => c.Accommodation)
+                .WithMany()
+                .HasForeignKey(c => c.AccommodationId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ChatMessage>()
+                .HasOne(m => m.Sender)
+                .WithMany()
+                .HasForeignKey(m => m.SenderId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<ChatMessage>()
+                .HasOne(m => m.Conversation)
+                .WithMany(c => c.Messages)
+                .HasForeignKey(m => m.ConversationId)
                 .OnDelete(DeleteBehavior.Cascade);
         }
     }
