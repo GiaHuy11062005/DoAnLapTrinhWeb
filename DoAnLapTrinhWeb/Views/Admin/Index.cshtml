@@ -1,138 +1,322 @@
 @model IEnumerable<DoAnLapTrinhWeb.Models.Accommodation>
 @using DoAnLapTrinhWeb.Models
 @{
-    ViewData["Title"] = "Danh sách duyệt bài";
-    var pendingRooms = Model?.ToList() ?? new List<Accommodation>();
+    ViewData["Title"] = "Dashboard Quản Trị";
+    Layout = "~/Views/Shared/_Layout.cshtml"; 
+
+    // Lấy dữ liệu danh sách chờ duyệt và lịch sử từ ViewBag mà Controller đã truyền sang
+    var pendingRooms = ViewBag.PendingRoomsList as List<Accommodation> ?? new List<Accommodation>();
     var approvalHistory = ViewBag.ApprovalHistory as List<ApprovalHistory> ?? new List<ApprovalHistory>();
 }
 
-<div class="admin-approval-page">
+<div class="admin-approval-page container mt-4 mb-5">
     <div class="admin-approval-shell">
-        <div class="admin-approval-heading">
+        
+        <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom print-hide">
             <div>
-                <span class="admin-approval-label"><i class="fas fa-shield-halved"></i> Khu vực quản trị</span>
-                <h1>Danh sách bài đăng duyệt</h1>
-                <p>Kiểm tra bài đăng mới và theo dõi toàn bộ lịch sử xử lý theo thời gian thực.</p>
+                <h2 class="fw-bold text-dark mb-1"><i class="fas fa-chart-pie text-primary me-2"></i> Bảng Điều Khiển Trung Tâm</h2>
+                <p class="text-muted mb-0">Kiểm tra bài đăng mới, thống kê tổng quan và theo dõi lịch sử hệ thống.</p>
             </div>
-            <a href="/" class="btn btn-outline-primary">Về trang chủ</a>
+            <div class="d-flex gap-2">
+                <a href="/Admin/CreateRoom" class="btn btn-success rounded-pill shadow-sm fw-bold">
+                    <i class="fas fa-plus-circle me-1"></i> Đăng tin hộ
+                </a>
+                <button class="btn btn-outline-dark rounded-pill shadow-sm" onclick="window.print()">
+                    <i class="fas fa-print me-1"></i> In báo cáo
+                </button>
+                <a href="/" class="btn btn-primary rounded-pill shadow-sm">Về trang chủ</a>
+            </div>
         </div>
 
-        <div class="admin-stat-grid">
-            <div class="admin-stat-card"><i class="fas fa-clock"></i><div><strong id="pendingCount">@pendingRooms.Count</strong><span>Bài đang chờ duyệt</span></div></div>
-            <div class="admin-stat-card"><i class="fas fa-circle-check"></i><div><strong id="approvedCount">@approvalHistory.Count(x => x.Action == "Approved" || x.Action == "ImportedApproved")</strong><span>Bài đã duyệt</span></div></div>
-            <div class="admin-stat-card"><i class="fas fa-circle-xmark"></i><div><strong id="rejectedCount">@approvalHistory.Count(x => x.Action == "Rejected")</strong><span>Bài đã từ chối</span></div></div>
+        <div class="row g-4 mb-4">
+            <div class="col-md-3">
+                <div class="card bg-primary text-white border-0 shadow-sm rounded-4 h-100">
+                    <div class="card-body p-4 d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-uppercase fw-bold opacity-75 mb-1">Tổng Người Dùng</h6>
+                            <h2 class="fw-bold mb-0">@ViewBag.TotalUsers</h2>
+                        </div>
+                        <i class="fas fa-users fa-3x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-success text-white border-0 shadow-sm rounded-4 h-100">
+                    <div class="card-body p-4 d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-uppercase fw-bold opacity-75 mb-1">Phòng Đã Duyệt</h6>
+                            <h2 class="fw-bold mb-0" id="approvedCount">@ViewBag.ApprovedRooms</h2>
+                        </div>
+                        <i class="fas fa-home fa-3x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-warning text-dark border-0 shadow-sm rounded-4 h-100">
+                    <div class="card-body p-4 d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-uppercase fw-bold opacity-75 mb-1">Đang Chờ Duyệt</h6>
+                            <h2 class="fw-bold mb-0" id="pendingCount">@ViewBag.PendingRooms</h2>
+                        </div>
+                        <i class="fas fa-clipboard-check fa-3x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-danger text-white border-0 shadow-sm rounded-4 h-100">
+                    <div class="card-body p-4 d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-uppercase fw-bold opacity-75 mb-1">Tổng Tin Đăng</h6>
+                            <h2 class="fw-bold mb-0">@ViewBag.TotalRooms</h2>
+                        </div>
+                        <i class="fas fa-layer-group fa-3x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <ul class="nav nav-tabs admin-approval-tabs" role="tablist">
-            <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#pendingApproval" type="button">Chờ duyệt <span id="pendingTabCount">@pendingRooms.Count</span></button></li>
-            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#approvalHistory" type="button">Lịch sử duyệt <span id="historyTabCount">@approvalHistory.Count</span></button></li>
+        <ul class="nav nav-tabs admin-approval-tabs mb-4 print-hide" role="tablist">
+            <li class="nav-item">
+                <button class="nav-link active fw-bold px-4" data-bs-toggle="tab" data-bs-target="#activityLog" type="button">
+                    <i class="fas fa-bolt text-warning me-1"></i> Hoạt động mới
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link fw-bold px-4" data-bs-toggle="tab" data-bs-target="#pendingApproval" type="button">
+                    <i class="fas fa-clipboard-list text-primary me-1"></i> Cần duyệt ngay 
+                    <span class="badge bg-danger ms-1 rounded-pill" id="pendingTabCount">@pendingRooms.Count</span>
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link fw-bold px-4" data-bs-toggle="tab" data-bs-target="#approvalHistory" type="button">
+                    <i class="fas fa-history text-secondary me-1"></i> Lịch sử xử lý 
+                    <span class="badge bg-secondary ms-1 rounded-pill" id="historyTabCount">@approvalHistory.Count</span>
+                </button>
+            </li>
         </ul>
 
         <div class="tab-content admin-approval-content">
-            <div class="tab-pane fade show active" id="pendingApproval">
-                <div class="table-responsive">
-                    <table class="table align-middle admin-approval-table">
-                        <thead><tr><th>Ngày gửi</th><th>Người cho thuê</th><th>Bài đăng</th><th>Giá thuê</th><th class="text-end">Xử lý</th></tr></thead>
-                        <tbody id="pendingTableBody">
-                            @foreach (var item in pendingRooms)
-                            {
-                                <tr id="pending-room-@item.Id">
-                                    <td><span class="admin-table-muted">@item.CreatedAt.ToString("dd/MM/yyyy HH:mm")</span></td>
-                                    <td><strong>@item.Owner?.FullName</strong><small>@item.Owner?.Email</small></td>
-                                    <td><strong>@item.Title</strong><small>@item.District?.Name, @item.City?.Name</small></td>
-                                    <td class="admin-table-price">@item.Price.ToString("N0") VNĐ</td>
-                                    <td class="text-end">
-                                        <a href="/Accommodation/Details/@item.Id" class="btn btn-sm btn-outline-primary" target="_blank">Xem trước</a>
-                                        <a href="/Admin/Documents/@item.Id" class="btn btn-sm btn-outline-secondary" target="_blank">Giấy tờ</a>
-                                        <form action="/Admin/Approve" method="post" class="d-inline approval-action-form" data-room-id="@item.Id" data-action="Approved"><input type="hidden" name="id" value="@item.Id" /><button class="btn btn-sm btn-success">Duyệt</button></form>
-                                        <form action="/Admin/Delete" method="post" class="d-inline approval-action-form" data-room-id="@item.Id" data-action="Rejected"><input type="hidden" name="id" value="@item.Id" /><button class="btn btn-sm btn-outline-danger">Từ chối</button></form>
-                                    </td>
-                                </tr>
-                            }
-                            @if (!pendingRooms.Any()) { <tr id="pendingEmptyRow"><td colspan="5" class="admin-empty-row">Hiện không có bài đăng nào đang chờ duyệt.</td></tr> }
-                        </tbody>
-                    </table>
+            
+            <div class="tab-pane fade show active" id="activityLog">
+                <div class="card shadow-sm border-0 rounded-4">
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="ps-4">Tài khoản</th>
+                                        <th>Hành động</th>
+                                        <th>Thời gian thực</th>
+                                        <th class="text-center">Trạng thái</th>
+                                        <th class="text-center print-hide">Công cụ</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @if (Model != null && Model.Any())
+                                    {
+                                        foreach (var item in Model)
+                                        {
+                                            var timeSpan = DateTime.Now - item.CreatedAt;
+                                            string timeAgo = "";
+                                            if (timeSpan.TotalDays >= 1) { timeAgo = $"{(int)timeSpan.TotalDays} ngày trước"; }
+                                            else if (timeSpan.TotalHours >= 1) { timeAgo = $"{(int)timeSpan.TotalHours} giờ {(int)timeSpan.Minutes} phút trước"; }
+                                            else if (timeSpan.TotalMinutes >= 1) { timeAgo = $"{(int)timeSpan.TotalMinutes} phút trước"; }
+                                            else { timeAgo = "Vừa xong"; }
+
+                                            <tr>
+                                                <td class="ps-4">
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="bg-dark text-white rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px; font-weight: bold;">
+                                                            @(!string.IsNullOrEmpty(item.Owner?.FullName) ? item.Owner.FullName.Substring(0, 1).ToUpper() : "U")
+                                                        </div>
+                                                        <div>
+                                                            <h6 class="mb-0 fw-bold">@item.Owner?.FullName</h6>
+                                                            <small class="text-muted">@item.Owner?.Email</small>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    Vừa tải lên phòng: <br>
+                                                    <a href="/Accommodation/Details/@item.Id" class="text-primary text-decoration-none fw-medium text-truncate d-inline-block" style="max-width: 250px;">
+                                                        @item.Title
+                                                    </a>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-light text-dark border border-secondary border-opacity-25 py-2 px-3">
+                                                        <i class="far fa-clock text-muted me-1"></i> @timeAgo
+                                                    </span>
+                                                </td>
+                                                <td class="text-center">
+                                                    @if (item.IsApproved) { <span class="badge bg-success-subtle text-success px-3 py-2 rounded-pill">Đã xuất bản</span> }
+                                                    else { <span class="badge bg-warning-subtle text-warning px-3 py-2 rounded-pill">Chờ kiểm duyệt</span> }
+                                                </td>
+                                                <td class="text-center print-hide">
+                                                    <div class="d-flex justify-content-center gap-1">
+                                                        <a href="/Accommodation/Details/@item.Id" target="_blank" class="btn btn-sm btn-outline-primary" title="Xem bài đăng">
+                                                            <i class="fas fa-eye"></i>
+                                                        </a>
+                                                        
+                                                        <a href="/Admin/EditRoom/@item.Id" class="btn btn-sm btn-outline-warning" title="Chỉnh sửa bài đăng">
+                                                            <i class="fas fa-edit"></i>
+                                                        </a>
+
+                                                        <form action="/Admin/DeleteRoom" method="post" class="d-inline" onsubmit="return confirm('⚠️ Chú ý: Bạn có chắc chắn muốn XÓA VĨNH VIỄN phòng trọ này khỏi hệ thống không? Hành động này không thể hoàn tác!');">
+                                                            <input type="hidden" name="id" value="@item.Id" />
+                                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Xóa bài đăng">
+                                                                <i class="fas fa-trash-alt"></i>
+                                                            </button>
+                                                        </form>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <tr><td colspan="5" class="text-center py-4 text-muted">Hệ thống chưa ghi nhận hoạt động nào.</td></tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
+
+            <div class="tab-pane fade" id="pendingApproval">
+                <div class="card shadow-sm border-0 rounded-4">
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table align-middle table-hover mb-0 admin-approval-table">
+                                <thead class="table-light"><tr><th class="ps-4">Ngày gửi</th><th>Người cho thuê</th><th>Bài đăng</th><th>Giá thuê</th><th class="text-end pe-4 print-hide">Xử lý</th></tr></thead>
+                                <tbody id="pendingTableBody">
+                                    @foreach (var item in pendingRooms)
+                                    {
+                                        <tr id="pending-room-@item.Id">
+                                            <td class="ps-4"><span class="text-muted small fw-medium">@item.CreatedAt.ToString("dd/MM/yyyy HH:mm")</span></td>
+                                            <td><h6 class="mb-0 fw-bold">@item.Owner?.FullName</h6><small class="text-muted">@item.Owner?.Email</small></td>
+                                            <td><h6 class="mb-0 fw-bold text-truncate" style="max-width: 250px;">@item.Title</h6><small class="text-muted">@item.District?.Name, @item.City?.Name</small></td>
+                                            <td class="text-danger fw-bold">@item.Price.ToString("N0") đ</td>
+                                            <td class="text-end pe-4 print-hide">
+                                                <a href="/Accommodation/Details/@item.Id" class="btn btn-sm btn-outline-primary" target="_blank">Xem</a>
+                                                <a href="/Admin/Documents/@item.Id" class="btn btn-sm btn-outline-secondary" target="_blank">Giấy tờ</a>
+                                                <form action="/Admin/Approve" method="post" class="d-inline approval-action-form" data-room-id="@item.Id" data-action="Approved"><input type="hidden" name="id" value="@item.Id" /><button class="btn btn-sm btn-success">Duyệt</button></form>
+                                                <form action="/Admin/Delete" method="post" class="d-inline approval-action-form" data-room-id="@item.Id" data-action="Rejected"><input type="hidden" name="id" value="@item.Id" /><button class="btn btn-sm btn-danger">Từ chối</button></form>
+                                            </td>
+                                        </tr>
+                                    }
+                                    @if (!pendingRooms.Any()) { <tr id="pendingEmptyRow"><td colspan="5" class="text-center py-4 text-muted">Hiện không có bài đăng nào đang chờ duyệt.</td></tr> }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="tab-pane fade" id="approvalHistory">
-                <div class="table-responsive">
-                    <table class="table align-middle admin-approval-table">
-                        <thead><tr><th>Thời gian xử lý</th><th>Bài đăng</th><th>Người cho thuê</th><th>Người xử lý</th><th>Trạng thái</th></tr></thead>
-                        <tbody id="approvalHistoryBody">
-                            @foreach (var item in approvalHistory)
-                            {
-                                <tr id="history-@item.Id">
-                                    <td><span class="admin-table-muted">@item.ProcessedAt.ToString("dd/MM/yyyy HH:mm")</span></td>
-                                    <td><strong>@item.AccommodationTitle</strong><small>@item.Price.ToString("N0") VNĐ</small></td>
-                                    <td><strong>@item.OwnerName</strong><small>@item.OwnerEmail</small></td>
-                                    <td>@item.ProcessedBy</td>
-                                    <td><span class="admin-status @(item.Action == "Rejected" ? "admin-status--rejected" : item.Action == "ImportedApproved" ? "admin-status--imported" : "admin-status--approved")">@(item.Action == "Rejected" ? "Đã từ chối" : item.Action == "ImportedApproved" ? "Đã duyệt trước đó" : "Đã duyệt")</span></td>
-                                </tr>
-                            }
-                            @if (!approvalHistory.Any()) { <tr id="historyEmptyRow"><td colspan="5" class="admin-empty-row">Chưa có lịch sử xử lý bài đăng.</td></tr> }
-                        </tbody>
-                    </table>
+                <div class="card shadow-sm border-0 rounded-4">
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table align-middle table-hover mb-0 admin-approval-table">
+                                <thead class="table-light"><tr><th class="ps-4">Thời gian xử lý</th><th>Bài đăng</th><th>Người cho thuê</th><th>Người xử lý</th><th class="text-center pe-4">Trạng thái</th></tr></thead>
+                                <tbody id="approvalHistoryBody">
+                                    @foreach (var item in approvalHistory)
+                                    {
+                                        <tr id="history-@item.Id">
+                                            <td class="ps-4"><span class="text-muted small fw-medium">@item.ProcessedAt.ToString("dd/MM/yyyy HH:mm")</span></td>
+                                            <td><h6 class="mb-0 fw-bold text-truncate" style="max-width: 250px;">@item.AccommodationTitle</h6><small class="text-muted">@item.Price.ToString("N0") VNĐ</small></td>
+                                            <td><h6 class="mb-0 fw-bold">@item.OwnerName</h6><small class="text-muted">@item.OwnerEmail</small></td>
+                                            <td><span class="badge bg-light text-dark border">@item.ProcessedBy</span></td>
+                                            <td class="text-center pe-4">
+                                                @if(item.Action == "Rejected") { <span class="badge bg-danger rounded-pill px-3">Đã từ chối</span> }
+                                                else if(item.Action == "ImportedApproved") { <span class="badge bg-info rounded-pill px-3">Đã duyệt trước đó</span> }
+                                                else { <span class="badge bg-success rounded-pill px-3">Đã duyệt</span> }
+                                            </td>
+                                        </tr>
+                                    }
+                                    @if (!approvalHistory.Any()) { <tr id="historyEmptyRow"><td colspan="5" class="text-center py-4 text-muted">Chưa có lịch sử xử lý bài đăng.</td></tr> }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
+
         </div>
     </div>
 </div>
 
+<style>
+    /* CSS hỗ trợ in báo cáo gọn gàng, loại bỏ các nút thừa */
+    @@media print {
+        .print-hide, header, footer, .nav, .approval-action-form, .btn { display: none !important; }
+        body { background-color: white !important; margin: 0; padding: 0; }
+        .card { border: 1px solid #ddd !important; box-shadow: none !important; break-inside: avoid; }
+        .admin-approval-page { margin: 0 !important; }
+    }
+</style>
+
 @section Scripts {
-<script>
-    const pendingBody = document.getElementById("pendingTableBody");
-    const historyBody = document.getElementById("approvalHistoryBody");
-    const counts = {
-        pending: document.getElementById("pendingCount"),
-        pendingTab: document.getElementById("pendingTabCount"),
-        historyTab: document.getElementById("historyTabCount"),
-        approved: document.getElementById("approvedCount"),
-        rejected: document.getElementById("rejectedCount")
-    };
-    const escapeHtml = value => { const el = document.createElement("div"); el.textContent = value ?? ""; return el.innerHTML; };
-    const setPendingCount = value => {
-        const count = Math.max(0, Number(value) || 0);
-        counts.pending.textContent = counts.pendingTab.textContent = count;
-        if (!count && !document.getElementById("pendingEmptyRow")) pendingBody.innerHTML = '<tr id="pendingEmptyRow"><td colspan="5" class="admin-empty-row">Hiện không có bài đăng nào đang chờ duyệt.</td></tr>';
-    };
-    const removePending = id => {
-        const row = document.getElementById(`pending-room-${id}`);
-        if (!row) return;
-        row.remove();
-        setPendingCount(Number(counts.pending.textContent) - 1);
-    };
-    const addHistory = item => {
-        if (!item.historyId || document.getElementById(`history-${item.historyId}`)) return;
-        document.getElementById("historyEmptyRow")?.remove();
-        const rejected = item.status === "Rejected";
-        const row = document.createElement("tr");
-        row.id = `history-${item.historyId}`;
-        row.innerHTML = `<td><span class="admin-table-muted">${escapeHtml(item.processedAt)}</span></td><td><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.price)} VNĐ</small></td><td><strong>${escapeHtml(item.ownerName)}</strong><small>${escapeHtml(item.ownerEmail)}</small></td><td>${escapeHtml(item.processedBy)}</td><td><span class="admin-status ${rejected ? "admin-status--rejected" : "admin-status--approved"}">${rejected ? "Đã từ chối" : "Đã duyệt"}</span></td>`;
-        historyBody.prepend(row);
-        counts.historyTab.textContent = Number(counts.historyTab.textContent) + 1;
-        const statusCount = rejected ? counts.rejected : counts.approved;
-        statusCount.textContent = Number(statusCount.textContent) + 1;
-    };
-    const bindForm = form => form.addEventListener("submit", async event => {
-        event.preventDefault();
-        if (form.dataset.action === "Rejected" && !confirm("Bạn có chắc chắn muốn từ chối bài đăng này không?")) return;
-        const response = await fetch(form.action, { method: "POST", headers: { "X-Requested-With": "XMLHttpRequest" }, body: new FormData(form) });
-        if (response.ok) removePending(form.dataset.roomId);
-    });
-    document.querySelectorAll(".approval-action-form").forEach(bindForm);
-    document.addEventListener("pendingAccommodationProcessed", event => { removePending(event.detail.id); addHistory(event.detail); });
-    document.addEventListener("pendingAccommodationCreated", async event => {
-        if (document.getElementById(`pending-room-${event.detail.id}`)) return;
-        const response = await fetch(`/Admin/PendingRoom?id=${event.detail.id}`);
-        if (!response.ok) return;
-        const room = await response.json();
-        document.getElementById("pendingEmptyRow")?.remove();
-        const row = document.createElement("tr");
-        row.id = `pending-room-${room.id}`;
-        row.innerHTML = `<td><span class="admin-table-muted">${escapeHtml(room.createdAt)}</span></td><td><strong>${escapeHtml(room.ownerName)}</strong><small>${escapeHtml(room.ownerEmail)}</small></td><td><strong>${escapeHtml(room.title)}</strong><small>${escapeHtml(room.location)}</small></td><td class="admin-table-price">${escapeHtml(room.price)} VNĐ</td><td class="text-end"><a href="/Accommodation/Details/${room.id}" class="btn btn-sm btn-outline-primary" target="_blank">Xem trước</a> <a href="/Admin/Documents/${room.id}" class="btn btn-sm btn-outline-secondary" target="_blank">Giấy tờ</a> <form action="/Admin/Approve" method="post" class="d-inline approval-action-form" data-room-id="${room.id}" data-action="Approved"><input type="hidden" name="id" value="${room.id}"><button class="btn btn-sm btn-success">Duyệt</button></form> <form action="/Admin/Delete" method="post" class="d-inline approval-action-form" data-room-id="${room.id}" data-action="Rejected"><input type="hidden" name="id" value="${room.id}"><button class="btn btn-sm btn-outline-danger">Từ chối</button></form></td>`;
-        pendingBody.prepend(row);
-        row.querySelectorAll(".approval-action-form").forEach(bindForm);
-        setPendingCount(Number(counts.pending.textContent) + 1);
-    });
-</script>
+    <script>
+        const pendingBody = document.getElementById("pendingTableBody");
+        const historyBody = document.getElementById("approvalHistoryBody");
+        const counts = {
+            pending: document.getElementById("pendingCount"),
+            pendingTab: document.getElementById("pendingTabCount"),
+            historyTab: document.getElementById("historyTabCount"),
+            approved: document.getElementById("approvedCount")
+        };
+        
+        const escapeHtml = value => { const el = document.createElement("div"); el.textContent = value ?? ""; return el.innerHTML; };
+        
+        const setPendingCount = value => {
+            const count = Math.max(0, Number(value) || 0);
+            if(counts.pending) counts.pending.textContent = count;
+            if(counts.pendingTab) counts.pendingTab.textContent = count;
+            if (!count && !document.getElementById("pendingEmptyRow")) pendingBody.innerHTML = '<tr id="pendingEmptyRow"><td colspan="5" class="text-center py-4 text-muted">Hiện không có bài đăng nào đang chờ duyệt.</td></tr>';
+        };
+        
+        const removePending = id => {
+            const row = document.getElementById(`pending-room-${id}`);
+            if (!row) return;
+            row.remove();
+            setPendingCount(Number(counts.pending?.textContent || 0) - 1);
+        };
+        
+        const addHistory = item => {
+            if (!item.historyId || document.getElementById(`history-${item.historyId}`)) return;
+            document.getElementById("historyEmptyRow")?.remove();
+            const rejected = item.status === "Rejected";
+            const row = document.createElement("tr");
+            row.id = `history-${item.historyId}`;
+            row.innerHTML = `<td class="ps-4"><span class="text-muted small fw-medium">${escapeHtml(item.processedAt)}</span></td><td><h6 class="mb-0 fw-bold text-truncate" style="max-width: 250px;">${escapeHtml(item.title)}</h6><small class="text-muted">${escapeHtml(item.price)} VNĐ</small></td><td><h6 class="mb-0 fw-bold">${escapeHtml(item.ownerName)}</h6><small class="text-muted">${escapeHtml(item.ownerEmail)}</small></td><td><span class="badge bg-light text-dark border">${escapeHtml(item.processedBy)}</span></td><td class="text-center pe-4"><span class="badge ${rejected ? "bg-danger" : "bg-success"} rounded-pill px-3">${rejected ? "Đã từ chối" : "Đã duyệt"}</span></td>`;
+            historyBody.prepend(row);
+            if(counts.historyTab) counts.historyTab.textContent = Number(counts.historyTab.textContent) + 1;
+            
+            if(!rejected && counts.approved) counts.approved.textContent = Number(counts.approved.textContent) + 1;
+        };
+        
+        const bindForm = form => form.addEventListener("submit", async event => {
+            event.preventDefault();
+            if (form.dataset.action === "Rejected" && !confirm("Bạn có chắc chắn muốn từ chối bài đăng này không?")) return;
+            const response = await fetch(form.action, { method: "POST", headers: { "X-Requested-With": "XMLHttpRequest" }, body: new FormData(form) });
+            if (response.ok) removePending(form.dataset.roomId);
+        });
+        
+        document.querySelectorAll(".approval-action-form").forEach(bindForm);
+        document.addEventListener("pendingAccommodationProcessed", event => { removePending(event.detail.id); addHistory(event.detail); });
+        
+        document.addEventListener("pendingAccommodationCreated", async event => {
+            if (document.getElementById(`pending-room-${event.detail.id}`)) return;
+            const response = await fetch(`/Admin/PendingRoom?id=${event.detail.id}`);
+            if (!response.ok) return;
+            const room = await response.json();
+            document.getElementById("pendingEmptyRow")?.remove();
+            const row = document.createElement("tr");
+            row.id = `pending-room-${room.id}`;
+            row.innerHTML = `<td class="ps-4"><span class="text-muted small fw-medium">${escapeHtml(room.createdAt)}</span></td><td><h6 class="mb-0 fw-bold">${escapeHtml(room.ownerName)}</h6><small class="text-muted">${escapeHtml(room.ownerEmail)}</small></td><td><h6 class="mb-0 fw-bold text-truncate" style="max-width: 250px;">${escapeHtml(room.title)}</h6><small class="text-muted">${escapeHtml(room.location)}</small></td><td class="text-danger fw-bold">${escapeHtml(room.price)} đ</td><td class="text-end pe-4 print-hide"><a href="/Accommodation/Details/${room.id}" class="btn btn-sm btn-outline-primary" target="_blank">Xem</a> <a href="/Admin/Documents/${room.id}" class="btn btn-sm btn-outline-secondary" target="_blank">Giấy tờ</a> <form action="/Admin/Approve" method="post" class="d-inline approval-action-form" data-room-id="${room.id}" data-action="Approved"><input type="hidden" name="id" value="${room.id}"><button class="btn btn-sm btn-success">Duyệt</button></form> <form action="/Admin/Delete" method="post" class="d-inline approval-action-form" data-room-id="${room.id}" data-action="Rejected"><input type="hidden" name="id" value="${room.id}"><button class="btn btn-sm btn-danger">Từ chối</button></form></td>`;
+            pendingBody.prepend(row);
+            row.querySelectorAll(".approval-action-form").forEach(bindForm);
+            setPendingCount(Number(counts.pending?.textContent || 0) + 1);
+        });
+    </script>
 }

@@ -186,7 +186,7 @@ namespace DoAnLapTrinhWeb.Controllers
 
                 oldImagePaths = room.Images?
                     .Where(image => !string.IsNullOrWhiteSpace(image.ImageUrl))
-                    .Select(image => Path.Combine(uploadsFolder, Path.GetFileName(image.ImageUrl)))
+                    .Select(image => Path.Combine(uploadsFolder, Path.GetFileName(image.ImageUrl!)))
                     .ToList() ?? new();
 
                 if (room.Images != null)

@@ -254,5 +254,32 @@
     <script src="~/js/notifications.js" asp-append-version="true"></script>
     
     @await RenderSectionAsync("Scripts", required: false)
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+        // Hiệu ứng Dynamic Active cho Header
+        const navLinks = document.querySelectorAll('.navbar-nav .nav-link');
+
+        navLinks.forEach(link => {
+        link.addEventListener('click', function (e) {
+        // Xóa trạng thái active của tất cả các nút khác
+        navLinks.forEach(l => l.classList.remove('active'));
+
+        // Gắn trạng thái active cho nút vừa được bấm (kích hoạt animation CSS)
+        this.classList.add('active');
+
+        // Nếu link có chứa dấu # (chuyển hướng trong cùng 1 trang), tự động cuộn mượt xuống
+        if (this.getAttribute('href').startsWith('#')) {
+        e.preventDefault();
+        const targetId = this.getAttribute('href');
+        const targetSection = document.querySelector(targetId);
+        if(targetSection) {
+        targetSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        }
+        });
+        });
+        });
+    </script>
 </body>
 </html>

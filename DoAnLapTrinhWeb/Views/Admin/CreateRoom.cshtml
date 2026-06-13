@@ -1,0 +1,128 @@
+﻿@model DoAnLapTrinhWeb.Models.Accommodation
+@{
+    ViewData["Title"] = "Đăng hộ phòng trọ";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container mt-4 mb-5">
+    <div class="d-flex align-items-center mb-4 pb-2 border-bottom">
+        <a href="/Admin/Index" class="btn btn-light rounded-circle me-3 shadow-sm"><i class="fas fa-arrow-left"></i></a>
+        <h2 class="fw-bold text-dark mb-0"><i class="fas fa-plus-circle text-success me-2"></i> Đăng tin hộ khách hàng</h2>
+    </div>
+
+    <form asp-action="CreateRoom" method="post" enctype="multipart/form-data" class="bg-white p-4 p-md-5 rounded-4 shadow-sm border">
+        <div class="row g-4">
+            <div class="col-12">
+                <h5 class="fw-bold text-primary border-bottom pb-2">1. Thông tin cơ bản</h5>
+            </div>
+            <div class="col-md-12">
+                <label class="form-label fw-bold">Tiêu đề bài đăng <span class="text-danger">*</span></label>
+                <input type="text" asp-for="Title" class="form-control" required placeholder="VD: Phòng trọ cao cấp trung tâm quận 1..." />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label fw-bold">Giá thuê (VNĐ/tháng) <span class="text-danger">*</span></label>
+                <input type="number" asp-for="Price" class="form-control" required placeholder="VD: 3000000" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label fw-bold">Diện tích (m²) <span class="text-danger">*</span></label>
+                <input type="number" asp-for="Area" class="form-control" required placeholder="VD: 25" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label fw-bold">Đối tượng ưu tiên <span class="text-danger">*</span></label>
+                <select asp-for="TargetAudience" class="form-select" required>
+                    <option value="" selected disabled>-- Chọn đối tượng --</option>
+                    <option value="All">Tất cả mọi người</option>
+                    <option value="Student">Chỉ Sinh viên</option>
+                    <option value="Worker">Chỉ Người đi làm</option>
+                </select>
+            </div>
+
+            <div class="col-12 mt-4">
+                <h5 class="fw-bold text-primary border-bottom pb-2">2. Vị trí & Liên hệ</h5>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-bold">Tỉnh/Thành phố <span class="text-danger">*</span></label>
+                <select asp-for="CityId" class="form-select" id="citySelect" required>
+                    <option value="" selected disabled>-- Chọn Thành phố --</option>
+                    @if (ViewBag.Cities != null)
+                    {
+                        foreach (var city in ViewBag.Cities)
+                        {
+                            <option value="@city.Id">@city.Name</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-bold">Quận/Huyện <span class="text-danger">*</span></label>
+                <select asp-for="DistrictId" class="form-select" id="districtSelect" required disabled>
+                    <option value="" selected disabled>-- Vui lòng chọn Thành phố trước --</option>
+                </select>
+            </div>
+            <div class="col-md-8">
+                <label class="form-label fw-bold">Địa chỉ chi tiết <span class="text-danger">*</span></label>
+                <input type="text" asp-for="SpecificAddress" class="form-control" required placeholder="Số nhà, Tên đường, Phường/Xã..." />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label fw-bold">Số điện thoại liên hệ <span class="text-danger">*</span></label>
+                <input type="text" asp-for="ContactPhone" class="form-control" required placeholder="Nhập SĐT chủ trọ..." />
+            </div>
+
+            <div class="col-12 mt-4">
+                <h5 class="fw-bold text-primary border-bottom pb-2">3. Tiện ích & Hình ảnh</h5>
+            </div>
+            <div class="col-md-6">
+                <div class="form-check form-switch fs-5 mb-2">
+                    <input class="form-check-input" type="checkbox" asp-for="HasParking" id="HasParking">
+                    <label class="form-check-label ms-2" for="HasParking">Có bãi giữ xe an toàn</label>
+                </div>
+                <div class="form-check form-switch fs-5">
+                    <input class="form-check-input" type="checkbox" asp-for="AllowsPets" id="AllowsPets">
+                    <label class="form-check-label ms-2" for="AllowsPets">Cho phép nuôi thú cưng</label>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-bold">Tải lên hình ảnh phòng (Nhiều ảnh) <span class="text-danger">*</span></label>
+                <input type="file" name="uploadImages" class="form-control" accept="image/*" multiple required />
+                <small class="text-muted">Có thể chọn nhiều tệp cùng lúc.</small>
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-bold">Mô tả chi tiết <span class="text-danger">*</span></label>
+                <textarea asp-for="Description" class="form-control" rows="5" required placeholder="Mô tả về điện nước, giờ giấc, nội thất..."></textarea>
+            </div>
+
+            <div class="col-12 text-end mt-4 pt-3 border-top">
+                <button type="button" class="btn btn-secondary rounded-pill px-4 me-2" onclick="history.back()">Hủy bỏ</button>
+                <button type="submit" class="btn btn-success rounded-pill px-5 fw-bold"><i class="fas fa-check-circle me-2"></i> Đăng Tin & Duyệt Ngay</button>
+            </div>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <script>
+        document.getElementById('citySelect').addEventListener('change', async function () {
+            const cityId = this.value;
+            const districtSelect = document.getElementById('districtSelect');
+            districtSelect.innerHTML = '<option value="" selected disabled>Đang tải...</option>';
+            districtSelect.disabled = true;
+
+            if (cityId) {
+                try {
+                    // [Inference] Giả định bạn có endpoint chung để lấy toàn bộ Quận theo Thành phố (không lọc phòng duyệt)
+                    // Nếu bạn dùng chung hàm cũ thì thay URL thành `/Home/GetDistrictsWithRooms?cityId=${cityId}`
+                    const response = await fetch(`/Home/GetDistrictsWithRooms?cityId=${cityId}`);
+                    const districts = await response.json();
+
+                    districtSelect.innerHTML = '<option value="" selected disabled>-- Chọn Quận/Huyện --</option>';
+                    districts.forEach(d => {
+                        districtSelect.innerHTML += `<option value="${d.id}">${d.name}</option>`;
+                    });
+                    districtSelect.disabled = false;
+                } catch (error) {
+                    districtSelect.innerHTML = '<option value="" selected disabled>Lỗi tải dữ liệu</option>';
+                }
+            }
+        });
+    </script>
+}

@@ -12,6 +12,9 @@ namespace DoAnLapTrinhWeb.Models
         public decimal Price { get; set; }
         public double Area { get; set; }
 
+        // Đối tượng ưu tiên (VD: All, Student, Worker)
+        public string? TargetAudience { get; set; }
+
         [Range(1, 20)]
         public int MaxOccupants { get; set; } = 1;
 

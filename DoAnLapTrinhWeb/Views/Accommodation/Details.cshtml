@@ -30,6 +30,22 @@
             <i class="fas fa-arrow-left"></i> Quay lại
         </button>
 
+        @if (ViewBag.UserDestination != null)
+        {
+            <div class="card border-0 shadow-sm rounded-4 p-3 mb-4" style="background-color: rgba(13, 110, 253, 0.08);">
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                    <div>
+                        <h6 class="fw-bold text-dark mb-1"><i class="fas fa-route text-primary me-2"></i> Đường đến trường học / nơi làm việc của bạn</h6>
+                        <p class="text-muted small mb-0">Từ vị trí trọ đến: <strong class="text-dark">@ViewBag.UserDestination</strong></p>
+                    </div>
+                    <a href="https://www.google.com/maps/dir/?api=1&origin=@(Uri.EscapeDataString(fullAddress))&destination=@Uri.EscapeDataString(ViewBag.UserDestination)" 
+                       target="_blank" class="btn btn-primary rounded-pill shadow-sm px-4 fw-medium">
+                        <i class="fas fa-map-marked-alt me-1"></i> Xem lộ trình chi tiết <i class="fas fa-external-link-alt ms-1 small"></i>
+                    </a>
+                </div>
+            </div>
+        }
+
         <div class="room-detail-layout">
             <main class="room-detail-main">
                 <section class="room-gallery">
@@ -74,6 +90,11 @@
                         <span><i class="fas fa-user-group"></i><strong>@Model.MaxOccupants người</strong> Tối đa</span>
                         <span><i class="fas fa-calendar-day"></i><strong>@Model.CreatedAt.ToString("dd/MM/yyyy")</strong> Ngày đăng</span>
                         <span><i class="fas fa-circle-check"></i><strong>@(Model.IsApproved ? "Đã duyệt" : "Chờ duyệt")</strong> Trạng thái</span>
+                        
+                        @if (!string.IsNullOrEmpty(Model.TargetAudience) && Model.TargetAudience != "All")
+                        {
+                            <span><i class="fas fa-user-check text-info"></i><strong>@(Model.TargetAudience == "Student" ? "Sinh viên" : "Người đi làm")</strong> Ưu tiên</span>
+                        }
                     </div>
 
                     <button type="button" class="room-map-button" id="roomMapToggle" aria-expanded="false" aria-controls="roomMapPanel">
@@ -83,12 +104,7 @@
                     </button>
 
                     <div class="room-map-panel" id="roomMapPanel">
-                        <iframe id="roomMapFrame"
-                                class="room-map-frame"
-                                src="@googleMapsEmbedUrl"
-                                title="Vị trí @Model.Title"
-                                loading="lazy"
-                                referrerpolicy="no-referrer-when-downgrade"></iframe>
+                        <iframe id="roomMapFrame" class="room-map-frame" src="@googleMapsEmbedUrl" title="Vị trí @Model.Title" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
                         <a href="@googleMapsLink" target="_blank" rel="noopener noreferrer" class="room-map-external">
                             Mở bằng Google Maps <i class="fas fa-arrow-up-right-from-square"></i>
                         </a>
@@ -137,6 +153,22 @@
 
             <aside class="room-detail-sidebar">
                 <div class="room-detail-card room-contact-card">
+                    
+                    <div class="mb-3 text-center border-bottom pb-3">
+                        @if (Model.IsApproved)
+                        {
+                            <span class="badge bg-success-subtle text-success border border-success border-opacity-25 px-3 py-2 rounded-pill fs-6 w-100">
+                                <i class="fas fa-check-circle me-1"></i> Đã kiểm duyệt
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-warning-subtle text-warning border border-warning border-opacity-25 px-3 py-2 rounded-pill fs-6 w-100">
+                                <i class="fas fa-clock me-1"></i> Đang chờ duyệt
+                            </span>
+                        }
+                    </div>
+
                     <h2>Thông tin thuê phòng</h2>
 
                     <div class="room-occupant-section">
@@ -202,8 +234,8 @@
                         }
                         else
                         {
-                            <a href="/Auth/Login?returnUrl=@Uri.EscapeDataString(Context.Request.Path)" class="room-favorite-button">
-                                <i class="far fa-heart"></i> Đăng nhập để lưu tin
+                            <a href="/Auth/Login?returnUrl=@Uri.EscapeDataString(Context.Request.Path)" class="room-favorite-button text-decoration-none d-flex justify-content-center align-items-center">
+                                <i class="far fa-heart me-2"></i> Đăng nhập để lưu tin
                             </a>
                         }
                     }
@@ -275,7 +307,6 @@
         mapToggle?.addEventListener("click", () => {
             const willOpen = !mapPanel?.classList.contains("is-open");
             if (willOpen && mapFrame) {
-                // Luôn trở về đúng ghim phòng trọ khi người dùng bấm xem bản đồ.
                 mapFrame.src = roomMapEmbedUrl;
             }
             setMapOpen(willOpen);
