@@ -19,9 +19,20 @@ namespace DoAnLapTrinhWeb.Models
         public string? SpecificAddress { get; set; } // Số nhà, tên đường chi tiết
         public string? GoogleMapsUrl { get; set; } // Link vị trí chính xác được sao chép từ Google Maps
 
+        // Đối tượng ưu tiên (VD: All, Student, Worker)
+        public string? TargetAudience { get; set; }
+
+        // Phân loại hình thức cho thuê
+        // Các giá trị đề xuất: "PhongTro" (Phòng trọ), "NhaNguyenCan" (Nhà nguyên căn), "CanHo" (Căn hộ mini), "SleepBox" (Ký túc xá/Sleepbox)
+        public string? AccommodationType { get; set; } = "PhongTro"; // Mặc định là Phòng trọ để không lỗi dữ liệu cũ
+
         // Khóa ngoại lưu mã ID
         public int CityId { get; set; }
         public int DistrictId { get; set; }
+
+        public int AvailableRooms { get; set; } = 1; // Dành cho Phòng trọ/Ký túc xá (Mặc định là 1)
+
+        public bool IsRented { get; set; } = false;  // Dành cho Nhà nguyên căn/Căn hộ (false = Đang cho thuê)
 
         // Navigation Properties giúp EF Core JOIN bảng
         public virtual City? City { get; set; }
@@ -44,8 +55,6 @@ namespace DoAnLapTrinhWeb.Models
         public DateTime CreatedAt { get; set; }
 
         // --- CHO THUÊ / TRẠNG THÁI ---
-        public string AccommodationType { get; set; } = "Phòng trọ"; // Dãy trọ, Phòng trọ, Nhà nguyên căn
-        public int AvailableRooms { get; set; } = 1; // Số lượng phòng trống (Dãy trọ / Phòng trọ)
         public bool IsRentedOut { get; set; } = false; // true = Hết phòng / Đã có người thuê
 
         // --- THÔNG TIN CHỦ TRỌ ---

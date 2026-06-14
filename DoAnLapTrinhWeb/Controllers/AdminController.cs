@@ -301,5 +301,33 @@ namespace DoAnLapTrinhWeb.Controllers
             }
             return RedirectToAction(nameof(SupportTickets));
         }
+
+        // [GET]: Hiển thị form đăng tin hộ cho Admin
+        [HttpGet]
+        public async Task<IActionResult> CreateRoom()
+        {
+            // Lấy danh sách Tỉnh/Thành phố từ Database để nạp vào thẻ Select (Combo box)
+            ViewBag.Cities = await _context.Cities.ToListAsync();
+
+            // Trả về giao diện CreateRoom.cshtml
+            return View();
+        }
+
+        // [GET]: Hiển thị form chỉnh sửa tin cho Admin
+        [HttpGet]
+        public async Task<IActionResult> EditRoom(int id)
+        {
+            var room = await _context.Accommodations
+                .Include(a => a.Images)
+                .FirstOrDefaultAsync(a => a.Id == id);
+
+            if (room == null) return NotFound();
+
+            // Tải danh sách Thành phố và Quận huyện tương ứng
+            ViewBag.Cities = await _context.Cities.ToListAsync();
+            ViewBag.Districts = await _context.Districts.Where(d => d.CityId == room.CityId).ToListAsync();
+
+            return View(room);
+        }
     }
 }

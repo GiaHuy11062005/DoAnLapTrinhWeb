@@ -21,6 +21,8 @@ namespace DoAnLapTrinhWeb.Models
         [Url]
         public string? GoogleMapsUrl { get; set; }
 
+        public string? AccommodationType { get; set; }
+
         [Range(1, int.MaxValue)]
         public int CityId { get; set; }
 

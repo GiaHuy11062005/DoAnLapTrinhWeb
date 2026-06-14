@@ -67,9 +67,10 @@ namespace DoAnLapTrinhWeb.Controllers
 
             // 2. Xử lý Accommodation logic
             var acc = request.Accommodation!;
-            if (acc.AccommodationType == "Nhà nguyên căn")
+            if (acc.AccommodationType == "NhaNguyenCan" || acc.AccommodationType == "CanHo")
             {
                 acc.IsRentedOut = true;
+                acc.IsRented = true;
             }
             else
             {

@@ -30,6 +30,7 @@
                     <textarea asp-for="Description" class="form-control" rows="5"></textarea>
                     <span asp-validation-for="Description" class="text-danger small"></span>
                 </div>
+
                 <div class="col-md-6">
                     <label asp-for="MaxOccupants" class="form-label fw-bold">Giới hạn số người ở</label>
                     <select asp-for="MaxOccupants" class="form-select">
@@ -39,6 +40,16 @@
                         }
                     </select>
                     <span asp-validation-for="MaxOccupants" class="text-danger small"></span>
+                </div>
+
+                <div class="col-md-6">
+                    <label asp-for="AccommodationType" class="form-label fw-bold">Loại hình cho thuê</label>
+                    <select asp-for="AccommodationType" class="form-select">
+                        <option value="PhongTro">Phòng trọ thường</option>
+                        <option value="NhaNguyenCan">Nhà nguyên căn</option>
+                        <option value="CanHo">Căn hộ Mini / Chung cư</option>
+                        <option value="SleepBox">Ký túc xá / Sleepbox</option>
+                    </select>
                 </div>
 
                 <div class="col-md-6">
