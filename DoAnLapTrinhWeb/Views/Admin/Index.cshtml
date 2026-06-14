@@ -1,12 +1,12 @@
-@model IEnumerable<DoAnLapTrinhWeb.Models.Accommodation>
 @using DoAnLapTrinhWeb.Models
 @{
     ViewData["Title"] = "Dashboard Quản Trị";
     Layout = "~/Views/Shared/_Layout.cshtml";
 
-    // Lấy dữ liệu danh sách chờ duyệt và lịch sử từ ViewBag mà Controller đã truyền sang
+    var currentFilter = ViewBag.CurrentFilter as string ?? "new";
+    var recentActivities = ViewBag.RecentActivities as List<Accommodation> ?? new List<Accommodation>();
     var pendingRooms = ViewBag.PendingRoomsList as List<Accommodation> ?? new List<Accommodation>();
-    var approvalHistory = ViewBag.ApprovalHistory as List<ApprovalHistory> ?? new List<ApprovalHistory>();
+    var approvalHistory = ViewBag.ApprovalHistoryList as List<ApprovalHistory> ?? new List<ApprovalHistory>();
 }
 
 <div class="admin-approval-page container mt-4 mb-5">
@@ -77,26 +77,27 @@
 
         <ul class="nav nav-tabs admin-approval-tabs mb-4 print-hide" role="tablist">
             <li class="nav-item">
-                <button class="nav-link active fw-bold px-4" data-bs-toggle="tab" data-bs-target="#activityLog" type="button">
+                <a href="/Admin/Index?filter=new" class="nav-link @(currentFilter == "new" ? "active" : "") fw-bold px-4">
                     <i class="fas fa-bolt text-warning me-1"></i> Hoạt động mới
-                </button>
+                </a>
             </li>
             <li class="nav-item">
-                <button class="nav-link fw-bold px-4" data-bs-toggle="tab" data-bs-target="#pendingApproval" type="button">
+                <a href="/Admin/Index?filter=pending" class="nav-link @(currentFilter == "pending" ? "active" : "") fw-bold px-4">
                     <i class="fas fa-clipboard-list text-primary me-1"></i> Cần duyệt ngay
-                    <span class="badge bg-danger ms-1 rounded-pill" id="pendingTabCount">@pendingRooms.Count</span>
-                </button>
+                    <span class="badge bg-danger ms-1 rounded-pill" id="pendingTabCount">@ViewBag.PendingRoomsCount</span>
+                </a>
             </li>
             <li class="nav-item">
-                <button class="nav-link fw-bold px-4" data-bs-toggle="tab" data-bs-target="#approvalHistory" type="button">
+                <a href="/Admin/Index?filter=history" class="nav-link @(currentFilter == "history" ? "active" : "") fw-bold px-4">
                     <i class="fas fa-history text-secondary me-1"></i> Lịch sử xử lý
-                    <span class="badge bg-secondary ms-1 rounded-pill" id="historyTabCount">@approvalHistory.Count</span>
-                </button>
+                    <span class="badge bg-secondary ms-1 rounded-pill" id="historyTabCount">@ViewBag.ApprovalHistoryCount</span>
+                </a>
             </li>
         </ul>
 
         <div class="tab-content admin-approval-content">
-
+            @if (currentFilter == "new")
+            {
             <div class="tab-pane fade show active" id="activityLog">
                 <div class="card shadow-sm border-0 rounded-4">
                     <div class="card-body p-0">
@@ -112,9 +113,9 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @if (Model != null && Model.Any())
+                                    @if (recentActivities != null && recentActivities.Any())
                                     {
-                                        foreach (var item in Model)
+                                        foreach (var item in recentActivities)
                                         {
                                             var timeSpan = DateTime.Now - item.CreatedAt;
                                             string timeAgo = "";
@@ -207,8 +208,11 @@
                     </div>
                 </div>
             </div>
+            }
 
-            <div class="tab-pane fade" id="pendingApproval">
+            @if (currentFilter == "pending")
+            {
+            <div class="tab-pane fade show active" id="pendingApproval">
                 <div class="card shadow-sm border-0 rounded-4">
                     <div class="card-body p-0">
                         <div class="table-responsive">
@@ -248,8 +252,11 @@
                     </div>
                 </div>
             </div>
+            }
 
-            <div class="tab-pane fade" id="approvalHistory">
+            @if (currentFilter == "history")
+            {
+            <div class="tab-pane fade show active" id="approvalHistory">
                 <div class="card shadow-sm border-0 rounded-4">
                     <div class="card-body p-0">
                         <div class="table-responsive">
@@ -291,6 +298,7 @@
                     </div>
                 </div>
             </div>
+            }
 
         </div>
     </div>

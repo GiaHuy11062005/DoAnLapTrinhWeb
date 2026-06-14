@@ -40,7 +40,7 @@ namespace DoAnLapTrinhWeb.Controllers
         // =======================================================
         [HttpGet]
         [Authorize(Roles = "Landlord")] // Bảo mật: Chỉ chủ trọ mới vào được trang quản lý của họ
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(string tab = "all")
         {
             // 1. Lấy ID của chủ trọ đang đăng nhập từ Cookie Claims
             var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -49,15 +49,42 @@ namespace DoAnLapTrinhWeb.Controllers
             int currentUserId = int.Parse(userIdString);
 
             // 2. Tải danh sách phòng của chủ trọ này kèm các bảng liên kết để hiện tên Tỉnh, Quận và Ảnh đại diện
-            var myRooms = await _context.Accommodations
+            var myRoomsQuery = _context.Accommodations
                 .Include(a => a.City)
                 .Include(a => a.District)
                 .Include(a => a.Images)
-                .Where(a => a.OwnerId == currentUserId)
+                .Where(a => a.OwnerId == currentUserId);
+
+            // 3. Lọc theo Tab
+            ViewBag.CurrentTab = tab;
+            switch (tab)
+            {
+                case "phongtro":
+                    myRoomsQuery = myRoomsQuery.Where(a => a.AccommodationType != "NhaNguyenCan");
+                    break;
+                case "nhanguyencan":
+                    myRoomsQuery = myRoomsQuery.Where(a => a.AccommodationType == "NhaNguyenCan");
+                    break;
+                case "conphong":
+                    myRoomsQuery = myRoomsQuery.Where(a => 
+                        (a.AccommodationType != "NhaNguyenCan" && a.AvailableRooms > 0) ||
+                        (a.AccommodationType == "NhaNguyenCan" && !a.IsRented));
+                    break;
+                case "hetphong":
+                    myRoomsQuery = myRoomsQuery.Where(a => 
+                        (a.AccommodationType != "NhaNguyenCan" && a.AvailableRooms <= 0) ||
+                        (a.AccommodationType == "NhaNguyenCan" && a.IsRented));
+                    break;
+                case "choduyet":
+                    myRoomsQuery = myRoomsQuery.Where(a => !a.IsApproved);
+                    break;
+            }
+
+            var myRooms = await myRoomsQuery
                 .OrderByDescending(a => a.CreatedAt) // Phòng mới đăng hiển thị lên đầu danh sách
                 .ToListAsync();
 
-            // 3. Trả dữ liệu về giao diện View
+            // 4. Trả dữ liệu về giao diện View
             return View(myRooms);
         }
 
@@ -73,11 +100,9 @@ namespace DoAnLapTrinhWeb.Controllers
                 .FirstOrDefaultAsync(a => a.Id == id && a.OwnerId == currentUserId);
 
             if (room == null) return NotFound();
-            if (!room.IsApproved)
-            {
-                TempData["Error"] = "Chỉ có thể chỉnh sửa bài đăng sau khi Admin đã duyệt.";
-                return RedirectToAction(nameof(Index));
-            }
+
+            // Lưu trạng thái duyệt để View biết có nên disable các input gốc hay không
+            ViewBag.IsApproved = room.IsApproved;
 
             await LoadEditLocations(room.CityId);
             return View(new EditAccommodationViewModel
@@ -85,8 +110,12 @@ namespace DoAnLapTrinhWeb.Controllers
                 Id = room.Id,
                 Title = room.Title,
                 Description = room.Description,
+                Price = room.Price,
+                AvailableRooms = room.AvailableRooms,
+                IsRented = room.IsRented,
                 SpecificAddress = room.SpecificAddress,
                 GoogleMapsUrl = room.GoogleMapsUrl,
+                AccommodationType = room.AccommodationType,
                 CityId = room.CityId,
                 DistrictId = room.DistrictId,
                 MaxOccupants = room.MaxOccupants,
@@ -112,8 +141,6 @@ namespace DoAnLapTrinhWeb.Controllers
             var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (!int.TryParse(userIdString, out int currentUserId)) return Unauthorized();
 
-            // Một số trình duyệt vẫn bind danh sách tệp nhưng chứa phần tử rỗng khi người dùng
-            // không chọn ảnh mới. Chỉ coi các tệp thực sự có dữ liệu là yêu cầu thay ảnh.
             var replacementImages = model.UploadImages?
                 .Where(file => file != null && file.Length > 0)
                 .ToList() ?? new List<IFormFile>();
@@ -123,23 +150,7 @@ namespace DoAnLapTrinhWeb.Controllers
                 .FirstOrDefaultAsync(a => a.Id == model.Id && a.OwnerId == currentUserId);
 
             if (room == null) return NotFound();
-            if (!room.IsApproved)
-            {
-                TempData["Error"] = "Chỉ có thể chỉnh sửa bài đăng sau khi Admin đã duyệt.";
-                return RedirectToAction(nameof(Index));
-            }
-
-            var districtIsValid = await _context.Districts
-                .AnyAsync(d => d.Id == model.DistrictId && d.CityId == model.CityId);
-            if (!districtIsValid)
-            {
-                ModelState.AddModelError(nameof(model.DistrictId), "Quận/Huyện không thuộc Tỉnh/Thành phố đã chọn.");
-            }
-
-            if (!IsGoogleMapsUrl(model.GoogleMapsUrl))
-            {
-                ModelState.AddModelError(nameof(model.GoogleMapsUrl), "Vui lòng dán đúng liên kết vị trí được sao chép từ Google Maps.");
-            }
+            ViewBag.IsApproved = room.IsApproved;
 
             var allowedImageTypes = new[] { "image/jpeg", "image/png", "image/webp" };
             if (replacementImages.Count > 5)
@@ -153,19 +164,58 @@ namespace DoAnLapTrinhWeb.Controllers
                 ModelState.AddModelError(nameof(model.UploadImages), "Ảnh chỉ nhận JPG, PNG hoặc WEBP và tối đa 10MB mỗi ảnh.");
             }
 
+            // Nếu chưa duyệt, kiểm tra District và Google Maps hợp lệ
+            if (!room.IsApproved)
+            {
+                var districtIsValid = await _context.Districts
+                    .AnyAsync(d => d.Id == model.DistrictId && d.CityId == model.CityId);
+                if (!districtIsValid)
+                {
+                    ModelState.AddModelError(nameof(model.DistrictId), "Quận/Huyện không thuộc Tỉnh/Thành phố đã chọn.");
+                }
+
+                if (!IsGoogleMapsUrl(model.GoogleMapsUrl))
+                {
+                    ModelState.AddModelError(nameof(model.GoogleMapsUrl), "Vui lòng dán đúng liên kết vị trí được sao chép từ Google Maps.");
+                }
+            }
+
             if (!ModelState.IsValid)
             {
                 model.ExistingImages = room.Images?.ToList() ?? new();
-                await LoadEditLocations(model.CityId);
+                await LoadEditLocations(!room.IsApproved ? model.CityId : room.CityId);
                 return View(model);
             }
 
-            room.Title = model.Title?.Trim();
+            // --- BẢO MẬT: KIỂM TRA QUYỀN CẬP NHẬT GỐC DỰA TRÊN TRẠNG THÁI DUYỆT ---
+            if (!room.IsApproved)
+            {
+                // Chưa duyệt: Chủ trọ được phép sửa thông tin định danh
+                room.Title = model.Title?.Trim();
+                room.SpecificAddress = model.SpecificAddress?.Trim();
+                room.GoogleMapsUrl = await NormalizeGoogleMapsUrlAsync(model.GoogleMapsUrl);
+                room.CityId = model.CityId;
+                room.DistrictId = model.DistrictId;
+                room.AccommodationType = model.AccommodationType;
+            }
+            // Nếu đã duyệt, bỏ qua các thay đổi về Title, SpecificAddress, GoogleMapsUrl, City, District, AccommodationType
+
+            // Các thông tin vận hành luôn được phép sửa
             room.Description = model.Description?.Trim();
-            room.SpecificAddress = model.SpecificAddress?.Trim();
-            room.GoogleMapsUrl = await NormalizeGoogleMapsUrlAsync(model.GoogleMapsUrl);
-            room.CityId = model.CityId;
-            room.DistrictId = model.DistrictId;
+            room.Price = model.Price;
+            
+            // Logic tách biệt Nhà nguyên căn và Phòng trọ
+            if (room.AccommodationType == "NhaNguyenCan")
+            {
+                room.IsRented = model.IsRented;
+                room.IsRentedOut = room.IsRented; // Đồng bộ
+            }
+            else
+            {
+                room.AvailableRooms = model.AvailableRooms;
+                room.IsRentedOut = room.AvailableRooms <= 0; // Hết phòng nếu <= 0
+            }
+
             room.MaxOccupants = model.MaxOccupants;
             room.AllowsPets = model.AllowsPets;
             room.HasParking = model.HasParking;

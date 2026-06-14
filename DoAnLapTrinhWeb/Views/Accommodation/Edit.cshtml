@@ -8,8 +8,17 @@
 <div class="container py-4 mb-5">
     <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
         <div>
-            <h2 class="fw-bold mb-1"><i class="fas fa-pen-to-square text-warning me-2"></i>Chỉnh sửa phòng trọ</h2>
-            <p class="text-muted mb-0">Chỉ cập nhật tên, mô tả, địa chỉ, hình ảnh và tiện ích. Giấy tờ đất vẫn được giữ nguyên.</p>
+            <h2 class="fw-bold mb-1"><i class="fas fa-pen-to-square text-warning me-2"></i>Chỉnh sửa thông tin</h2>
+            @if (ViewBag.IsApproved)
+            {
+                <div class="alert alert-warning py-2 px-3 mt-2 mb-0 d-inline-block">
+                    <i class="fas fa-lock me-1"></i> Bài đã duyệt. Thông tin định danh (Tên, Địa chỉ, Loại bài) đã bị khóa. Chỉ có thể chỉnh Giá, Trạng thái, và Ảnh.
+                </div>
+            }
+            else
+            {
+                <p class="text-muted mb-0">Bài đăng đang chờ duyệt, bạn có thể chỉnh sửa toàn bộ thông tin.</p>
+            }
         </div>
         <a asp-action="Index" class="btn btn-outline-secondary">Quay lại</a>
     </div>
@@ -20,14 +29,20 @@
             <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
             <div class="row g-3">
                 <div class="col-12">
-                    <label asp-for="Title" class="form-label fw-bold">Tên phòng trọ</label>
-                    <input asp-for="Title" class="form-control" />
+                    <label asp-for="Title" class="form-label fw-bold">Tên bài đăng</label>
+                    <input asp-for="Title" class="form-control" readonly="@ViewBag.IsApproved" />
                     <span asp-validation-for="Title" class="text-danger small"></span>
                 </div>
 
-                <div class="col-12">
-                    <label asp-for="Description" class="form-label fw-bold">Mô tả</label>
-                    <textarea asp-for="Description" class="form-control" rows="5"></textarea>
+                <div class="col-md-6">
+                    <label asp-for="Price" class="form-label fw-bold">Giá thuê (VNĐ)</label>
+                    <input asp-for="Price" type="number" class="form-control" />
+                    <span asp-validation-for="Price" class="text-danger small"></span>
+                </div>
+
+                <div class="col-md-6">
+                    <label asp-for="Description" class="form-label fw-bold">Mô tả / Ghi chú</label>
+                    <textarea asp-for="Description" class="form-control" rows="1"></textarea>
                     <span asp-validation-for="Description" class="text-danger small"></span>
                 </div>
 
@@ -44,41 +59,95 @@
 
                 <div class="col-md-6">
                     <label asp-for="AccommodationType" class="form-label fw-bold">Loại hình cho thuê</label>
-                    <select asp-for="AccommodationType" class="form-select">
-                        <option value="PhongTro">Phòng trọ thường</option>
-                        <option value="NhaNguyenCan">Nhà nguyên căn</option>
-                        <option value="CanHo">Căn hộ Mini / Chung cư</option>
-                        <option value="SleepBox">Ký túc xá / Sleepbox</option>
+                    @if (ViewBag.IsApproved)
+                    {
+                        <input type="hidden" asp-for="AccommodationType" />
+                        <select asp-for="AccommodationType" class="form-select bg-light" disabled id="editAccommodationTypeSelect">
+                            <option value="PhongTro">Phòng trọ thường</option>
+                            <option value="NhaNguyenCan">Nhà nguyên căn</option>
+                            <option value="CanHo">Căn hộ Mini / Chung cư</option>
+                            <option value="SleepBox">Ký túc xá / Sleepbox</option>
+                        </select>
+                    }
+                    else
+                    {
+                        <select asp-for="AccommodationType" class="form-select" id="editAccommodationTypeSelect">
+                            <option value="PhongTro">Phòng trọ thường</option>
+                            <option value="NhaNguyenCan">Nhà nguyên căn</option>
+                            <option value="CanHo">Căn hộ Mini / Chung cư</option>
+                            <option value="SleepBox">Ký túc xá / Sleepbox</option>
+                        </select>
+                    }
+                </div>
+
+                <div class="col-md-6" id="roomCountDiv">
+                    <label asp-for="AvailableRooms" class="form-label fw-bold text-success">Số phòng còn trống</label>
+                    <input asp-for="AvailableRooms" type="number" min="0" class="form-control border-success" />
+                    <span asp-validation-for="AvailableRooms" class="text-danger small"></span>
+                    <small class="text-muted">Nhập 0 hệ thống sẽ chuyển thành "Hết phòng".</small>
+                </div>
+
+                <div class="col-md-6" id="houseStatusDiv" style="display: none;">
+                    <label asp-for="IsRented" class="form-label fw-bold text-success">Tình trạng nhà</label>
+                    <select asp-for="IsRented" class="form-select border-success">
+                        <option value="false">Đang cho thuê</option>
+                        <option value="true">Đã có người thuê</option>
                     </select>
                 </div>
 
                 <div class="col-md-6">
                     <label asp-for="CityId" class="form-label fw-bold">Tỉnh / Thành phố</label>
-                    <select asp-for="CityId" id="editCitySelect" class="form-select">
-                        @foreach (var city in cities)
-                        {
-                            <option value="@city.Id">@city.Name</option>
-                        }
-                    </select>
+                    @if (ViewBag.IsApproved)
+                    {
+                        <input type="hidden" asp-for="CityId" />
+                        <select asp-for="CityId" id="editCitySelect" class="form-select bg-light" disabled>
+                            @foreach (var city in cities)
+                            {
+                                <option value="@city.Id">@city.Name</option>
+                            }
+                        </select>
+                    }
+                    else
+                    {
+                        <select asp-for="CityId" id="editCitySelect" class="form-select">
+                            @foreach (var city in cities)
+                            {
+                                <option value="@city.Id">@city.Name</option>
+                            }
+                        </select>
+                    }
                 </div>
                 <div class="col-md-6">
                     <label asp-for="DistrictId" class="form-label fw-bold">Quận / Huyện</label>
-                    <select asp-for="DistrictId" id="editDistrictSelect" class="form-select">
-                        @foreach (var district in districts)
-                        {
-                            <option value="@district.Id">@district.Name</option>
-                        }
-                    </select>
+                    @if (ViewBag.IsApproved)
+                    {
+                        <input type="hidden" asp-for="DistrictId" />
+                        <select asp-for="DistrictId" id="editDistrictSelect" class="form-select bg-light" disabled>
+                            @foreach (var district in districts)
+                            {
+                                <option value="@district.Id">@district.Name</option>
+                            }
+                        </select>
+                    }
+                    else
+                    {
+                        <select asp-for="DistrictId" id="editDistrictSelect" class="form-select">
+                            @foreach (var district in districts)
+                            {
+                                <option value="@district.Id">@district.Name</option>
+                            }
+                        </select>
+                    }
                     <span asp-validation-for="DistrictId" class="text-danger small"></span>
                 </div>
                 <div class="col-12">
                     <label asp-for="SpecificAddress" class="form-label fw-bold">Số nhà, tên đường cụ thể</label>
-                    <input asp-for="SpecificAddress" class="form-control" />
+                    <input asp-for="SpecificAddress" class="form-control" readonly="@ViewBag.IsApproved" />
                     <span asp-validation-for="SpecificAddress" class="text-danger small"></span>
                 </div>
                 <div class="col-12">
                     <label asp-for="GoogleMapsUrl" class="form-label fw-bold">Link vị trí chính xác trên Google Maps</label>
-                    <input asp-for="GoogleMapsUrl" type="url" class="form-control" placeholder="https://maps.app.goo.gl/..." />
+                    <input asp-for="GoogleMapsUrl" type="url" class="form-control" placeholder="https://maps.app.goo.gl/..." readonly="@ViewBag.IsApproved" />
                     <small class="text-muted">Mở đúng vị trí trọ trên Google Maps, chọn Chia sẻ, rồi sao chép và dán liên kết vào đây.</small>
                     <span asp-validation-for="GoogleMapsUrl" class="text-danger small d-block"></span>
                 </div>
@@ -137,6 +206,20 @@
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script>
+        // Logic ẩn/hiện tùy loại hình
+        function toggleTypeFields() {
+            var type = document.getElementById("editAccommodationTypeSelect").value;
+            if (type === "NhaNguyenCan") {
+                document.getElementById("roomCountDiv").style.display = "none";
+                document.getElementById("houseStatusDiv").style.display = "block";
+            } else {
+                document.getElementById("roomCountDiv").style.display = "block";
+                document.getElementById("houseStatusDiv").style.display = "none";
+            }
+        }
+        document.getElementById("editAccommodationTypeSelect")?.addEventListener("change", toggleTypeFields);
+        toggleTypeFields(); // Chạy lúc load
+
         document.getElementById("editCitySelect")?.addEventListener("change", async function () {
             const districtSelect = document.getElementById("editDistrictSelect");
             districtSelect.innerHTML = '<option value="">-- Đang tải... --</option>';

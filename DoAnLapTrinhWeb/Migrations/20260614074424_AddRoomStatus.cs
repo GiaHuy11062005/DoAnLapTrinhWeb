@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
@@ -10,13 +10,6 @@ namespace DoAnLapTrinhWeb.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<int>(
-                name: "AvailableRooms",
-                table: "Accommodations",
-                type: "int",
-                nullable: false,
-                defaultValue: 0);
-
             migrationBuilder.AddColumn<bool>(
                 name: "IsRented",
                 table: "Accommodations",
@@ -28,10 +21,6 @@ namespace DoAnLapTrinhWeb.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropColumn(
-                name: "AvailableRooms",
-                table: "Accommodations");
-
             migrationBuilder.DropColumn(
                 name: "IsRented",
                 table: "Accommodations");

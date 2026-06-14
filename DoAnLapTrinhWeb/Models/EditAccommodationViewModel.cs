@@ -23,6 +23,15 @@ namespace DoAnLapTrinhWeb.Models
 
         public string? AccommodationType { get; set; }
 
+        [Required]
+        [Range(0, 1000000000, ErrorMessage = "Giá thuê không hợp lệ")]
+        public decimal Price { get; set; }
+
+        [Range(0, 1000)]
+        public int AvailableRooms { get; set; } = 1;
+
+        public bool IsRented { get; set; } = false;
+
         [Range(1, int.MaxValue)]
         public int CityId { get; set; }
 

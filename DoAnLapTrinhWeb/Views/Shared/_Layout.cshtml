@@ -37,10 +37,13 @@
                         else if (User.IsInRole("Landlord"))
                         {
                             <li class="nav-item">
-                                <a class="nav-link app-nav-link" href="/Accommodation/Index">Danh sách trọ đang cho thuê</a>
+                                <a class="nav-link app-nav-link fw-bold text-success" href="/Landlord/Dashboard"><i class="fas fa-tachometer-alt me-1"></i> Dashboard chủ trọ</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link app-nav-link" href="/Accommodation/Index">Quản lý trọ</a>
                             </li>
                         }
-                        @if (User.Identity != null && User.Identity.IsAuthenticated)
+                        @if (User.Identity != null && User.Identity.IsAuthenticated && !User.IsInRole("Landlord") && !User.IsInRole("Admin"))
                         {
                             <li class="nav-item">
                                 <a class="nav-link app-nav-link" href="/Home/SearchHistory">Lịch sử tìm phòng</a>

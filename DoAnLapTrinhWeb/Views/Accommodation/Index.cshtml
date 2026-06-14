@@ -1,4 +1,4 @@
-﻿@model IEnumerable<DoAnLapTrinhWeb.Models.Accommodation>
+@model IEnumerable<DoAnLapTrinhWeb.Models.Accommodation>
 
 @{
     ViewData["Title"] = "Quản lý phòng trọ của tôi";
@@ -27,18 +27,27 @@
         </button>
     </div>
 
-    <div class="row mb-3 g-2">
-        <div class="col-md-4">
-            <input type="text" class="form-control" placeholder="Tìm theo tiêu đề hoặc địa chỉ...">
-        </div>
-        <div class="col-md-2">
-            <select class="form-select">
-                <option value="">-- Tất cả trạng thái --</option>
-                <option value="approved">Đã duyệt</option>
-                <option value="pending">Chờ duyệt</option>
-            </select>
-        </div>
-    </div>
+    <!-- TABS LỌC -->
+    <ul class="nav nav-pills mb-4">
+        <li class="nav-item">
+            <a class="nav-link @(ViewBag.CurrentTab == "all" ? "active" : "")" href="?tab=all">Tất cả</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link @(ViewBag.CurrentTab == "phongtro" ? "active" : "")" href="?tab=phongtro">Phòng trọ / Ký túc xá</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link @(ViewBag.CurrentTab == "nhanguyencan" ? "active" : "")" href="?tab=nhanguyencan">Nhà nguyên căn</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link text-success @(ViewBag.CurrentTab == "conphong" ? "active fw-bold" : "")" href="?tab=conphong">Đang trống</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link text-danger @(ViewBag.CurrentTab == "hetphong" ? "active fw-bold" : "")" href="?tab=hetphong">Hết phòng / Đã thuê</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link text-warning @(ViewBag.CurrentTab == "choduyet" ? "active fw-bold" : "")" href="?tab=choduyet">Chờ duyệt</a>
+        </li>
+    </ul>
 
     @if (Model != null && Model.Any())
     {
@@ -100,31 +109,54 @@
                                         @item.Price.ToString("N0") VNĐ
                                     </td>
                                     <td class="text-center" data-room-status="@item.Id">
-                                        @if (item.IsApproved)
-                                        {
-                                            <span class="badge bg-success rounded-pill px-3 py-2"><i class="fas fa-check-circle me-1"></i> Đã duyệt</span>
-                                        }
-                                        else
-                                        {
-                                            <span class="badge bg-warning text-dark rounded-pill px-3 py-2"><i class="fas fa-clock me-1"></i> Chờ duyệt</span>
-                                        }
+                                        <!-- Duyệt bài -->
+                                        <div class="mb-2">
+                                            @if (item.IsApproved)
+                                            {
+                                                <span class="badge bg-success rounded-pill px-3 py-1"><i class="fas fa-check-circle me-1"></i> Đã duyệt</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-warning text-dark rounded-pill px-3 py-1"><i class="fas fa-clock me-1"></i> Chờ duyệt</span>
+                                            }
+                                        </div>
+                                        
+                                        <!-- Tình trạng phòng -->
+                                        <div>
+                                            @if (item.AccommodationType == "NhaNguyenCan")
+                                            {
+                                                if (item.IsRented)
+                                                {
+                                                    <span class="badge bg-danger rounded-pill px-2 py-1"><i class="fas fa-home me-1"></i> Đã thuê</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge border border-success text-success rounded-pill px-2 py-1"><i class="fas fa-door-open me-1"></i> Đang trống</span>
+                                                }
+                                            }
+                                            else
+                                            {
+                                                if (item.AvailableRooms > 0)
+                                                {
+                                                    <span class="badge border border-success text-success rounded-pill px-2 py-1"><i class="fas fa-bed me-1"></i> Còn @item.AvailableRooms phòng</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-danger rounded-pill px-2 py-1"><i class="fas fa-ban me-1"></i> Hết phòng</span>
+                                                }
+                                            }
+                                        </div>
                                     </td>
                                     <td class="text-center">
                                         <div class="d-flex justify-content-center gap-2">
                                             <a href="/Accommodation/Details/@item.Id" class="btn btn-sm btn-outline-primary" title="Xem chi tiết">
                                                 <i class="fas fa-eye"></i>
                                             </a>
-                                            @if (item.IsApproved)
+                                            @if (item.IsApproved || !item.IsApproved)
                                             {
-                                                <a href="/Accommodation/Edit/@item.Id" class="btn btn-sm btn-outline-warning" title="Sửa thông tin bài đã duyệt">
+                                                <a href="/Accommodation/Edit/@item.Id" class="btn btn-sm btn-outline-warning" title="Chỉnh sửa thông tin/số phòng">
                                                     <i class="fas fa-edit"></i>
                                                 </a>
-                                            }
-                                            else
-                                            {
-                                                <button type="button" class="btn btn-sm btn-outline-secondary" title="Chỉ sửa được sau khi Admin duyệt" disabled>
-                                                    <i class="fas fa-edit"></i>
-                                                </button>
                                             }
                                             <button class="btn btn-sm btn-outline-danger" title="Xóa bài">
                                                 <i class="fas fa-trash-alt"></i>

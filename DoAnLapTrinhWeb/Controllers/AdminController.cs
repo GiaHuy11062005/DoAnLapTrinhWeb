@@ -29,24 +29,46 @@ namespace DoAnLapTrinhWeb.Controllers
             _environment = environment;
         }
 
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(string filter = "new")
         {
-            // Lấy danh sách các bài ĐANG CHỜ DUYỆT (IsApproved = false)
-            var pendingRooms = await _context.Accommodations
-                .Include(a => a.Owner)
-                .Include(a => a.City)
-                .Include(a => a.District)
-                .Include(a => a.Documents)
-                .Where(a => a.IsApproved == false)
-                .OrderByDescending(a => a.CreatedAt)
-                .ToListAsync();
+            ViewBag.CurrentFilter = filter;
 
-            ViewBag.ApprovalHistory = await _context.ApprovalHistories
-                .OrderByDescending(history => history.ProcessedAt)
-                .Take(100)
-                .ToListAsync();
+            // Đếm thống kê
+            ViewBag.TotalUsers = await _context.Users.CountAsync();
+            ViewBag.ApprovedRooms = await _context.Accommodations.CountAsync(a => a.IsApproved);
+            ViewBag.PendingRoomsCount = await _context.Accommodations.CountAsync(a => !a.IsApproved);
+            ViewBag.TotalRooms = await _context.Accommodations.CountAsync();
+            ViewBag.ApprovalHistoryCount = await _context.ApprovalHistories.CountAsync();
 
-            return View(pendingRooms);
+            if (filter == "pending")
+            {
+                var pendingRooms = await _context.Accommodations
+                    .Include(a => a.Owner)
+                    .Include(a => a.City)
+                    .Include(a => a.District)
+                    .Where(a => !a.IsApproved)
+                    .OrderByDescending(a => a.CreatedAt)
+                    .ToListAsync();
+                ViewBag.PendingRoomsList = pendingRooms;
+            }
+            else if (filter == "history")
+            {
+                var approvalHistory = await _context.ApprovalHistories
+                    .OrderByDescending(history => history.ProcessedAt)
+                    .ToListAsync();
+                ViewBag.ApprovalHistoryList = approvalHistory;
+            }
+            else // "new"
+            {
+                var recentActivities = await _context.Accommodations
+                    .Include(a => a.Owner)
+                    .OrderByDescending(a => a.CreatedAt)
+                    .Take(50)
+                    .ToListAsync();
+                ViewBag.RecentActivities = recentActivities;
+            }
+
+            return View();
         }
 
         [HttpGet]
