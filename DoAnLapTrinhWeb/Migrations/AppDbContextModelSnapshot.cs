@@ -30,11 +30,17 @@ namespace DoAnLapTrinhWeb.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("AccommodationType")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<bool>("AllowsPets")
                         .HasColumnType("bit");
 
                     b.Property<double>("Area")
                         .HasColumnType("float");
+
+                    b.Property<int>("AvailableRooms")
+                        .HasColumnType("int");
 
                     b.Property<int>("CityId")
                         .HasColumnType("int");
@@ -84,6 +90,9 @@ namespace DoAnLapTrinhWeb.Migrations
                     b.Property<bool>("IsApproved")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("IsRented")
+                        .HasColumnType("bit");
+
                     b.Property<int>("MaxOccupants")
                         .HasColumnType("int");
 
@@ -94,6 +103,9 @@ namespace DoAnLapTrinhWeb.Migrations
                         .HasColumnType("decimal(18,0)");
 
                     b.Property<string>("SpecificAddress")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("TargetAudience")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Title")
