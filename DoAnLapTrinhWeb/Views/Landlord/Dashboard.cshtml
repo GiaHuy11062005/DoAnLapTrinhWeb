@@ -1,11 +1,13 @@
+@using DoAnLapTrinhWeb.Models
 @{
     ViewData["Title"] = "Dashboard Chủ Trọ";
     Layout = "~/Views/Shared/_Layout.cshtml";
 
-    var recentPosts = ViewBag.RecentPosts as List<DoAnLapTrinhWeb.Models.Accommodation> ?? new List<DoAnLapTrinhWeb.Models.Accommodation>();
-    var recentRequests = ViewBag.RecentRequests as List<DoAnLapTrinhWeb.Models.RentalRequest> ?? new List<DoAnLapTrinhWeb.Models.RentalRequest>();
-    string timeFilter = ViewBag.CurrentTimeFilter;
-
+    var recentPosts = ViewBag.RecentPosts as List<Accommodation> ?? new();
+    var recentRequests = ViewBag.RecentRequests as List<RentalRequest> ?? new();
+    var notifications = ViewBag.RecentNotifications as List<AppNotification> ?? new();
+    string timeFilter = ViewBag.CurrentTimeFilter ?? "all";
+    string typeFilter = ViewBag.CurrentTypeFilter ?? "all";
     int totalPosts = ViewBag.TotalPosts ?? 0;
     int approvedPosts = ViewBag.ApprovedPosts ?? 0;
     int pendingPosts = ViewBag.PendingPosts ?? 0;
@@ -15,574 +17,154 @@
     int negotiatingRequests = ViewBag.NegotiatingRequests ?? 0;
     int successRequests = ViewBag.SuccessRequests ?? 0;
     int cancelledRequests = ViewBag.CancelledRequests ?? 0;
-    int totalAvailableRooms = ViewBag.TotalAvailableRooms ?? 0;
-    int totalConversations = ViewBag.TotalConversations ?? 0;
+    int availableRooms = ViewBag.TotalAvailableRooms ?? 0;
+    int conversations = ViewBag.TotalConversations ?? 0;
     int unreadMessages = ViewBag.UnreadMessages ?? 0;
-    int rentedOutPosts = ViewBag.RentedOutPosts ?? 0;
+    int rentedOut = ViewBag.RentedOutPosts ?? 0;
+    int unreadNotifications = ViewBag.UnreadNotifications ?? 0;
+    var actionableRequests = recentRequests.Where(item => item.Status == "Pending" || item.Status == "Negotiating").Take(4).ToList();
 }
 
-<div class="container mt-4 mb-5">
+<div class="dashboard-page">
+    <div class="dashboard-shell">
+        <header class="dashboard-heading">
+            <div>
+                <span class="dashboard-heading__label"><i class="fas fa-key"></i> Không gian chủ trọ</span>
+                <h1>Tổng quan cho thuê</h1>
+                <p>Theo dõi yêu cầu mới, phòng trống và công việc vận hành trong một màn hình gọn gàng.</p>
+            </div>
+            <div class="dashboard-heading__actions">
+                <a href="/RentalProcess/Index" class="btn btn-outline-primary"><i class="fas fa-clipboard-check"></i> Xử lý cho thuê</a>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#postAccommodationModal"><i class="fas fa-plus"></i> Đăng tin mới</button>
+            </div>
+        </header>
 
-    <!-- ═══════ PHẦN 1: TIÊU ĐỀ ═══════ -->
-    <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom">
-        <div>
-            <h2 class="fw-bold text-dark mb-1"><i class="fas fa-tachometer-alt text-primary me-2"></i> Dashboard Chủ Trọ</h2>
-            <p class="text-muted mb-0">Theo dõi thống kê bài đăng, tình trạng phòng và truy cập nhanh các chức năng quản lý.</p>
+        <form id="filterForm" method="get" action="/Landlord/Dashboard" class="dashboard-filter">
+            <span><i class="fas fa-sliders"></i> Phạm vi dữ liệu</span>
+            <select name="timeFilter" onchange="this.form.submit()">
+                <option value="all" selected="@(timeFilter == "all")">Tất cả thời gian</option>
+                <option value="today" selected="@(timeFilter == "today")">Hôm nay</option>
+                <option value="7days" selected="@(timeFilter == "7days")">7 ngày qua</option>
+                <option value="30days" selected="@(timeFilter == "30days")">30 ngày qua</option>
+            </select>
+            <select name="typeFilter" onchange="this.form.submit()">
+                <option value="all" selected="@(typeFilter == "all")">Tất cả loại hình</option>
+                <option value="PhongTro" selected="@(typeFilter == "PhongTro")">Phòng trọ</option>
+                <option value="NhaNguyenCan" selected="@(typeFilter == "NhaNguyenCan")">Nhà nguyên căn</option>
+                <option value="CanHo" selected="@(typeFilter == "CanHo")">Căn hộ</option>
+                <option value="SleepBox" selected="@(typeFilter == "SleepBox")">Ký túc xá / Sleepbox</option>
+            </select>
+        </form>
+
+        <section class="dashboard-metrics dashboard-metrics--landlord" aria-label="Số liệu tổng quan">
+            <a href="/Accommodation/Index" class="dashboard-metric">
+                <span class="dashboard-metric__icon is-blue"><i class="fas fa-building"></i></span>
+                <span><small>Tổng bài đăng</small><strong>@totalPosts</strong><em>@approvedPosts đã duyệt · @pendingPosts chờ duyệt</em></span>
+            </a>
+            <a href="/RentalProcess/Index" class="dashboard-metric is-urgent">
+                <span class="dashboard-metric__icon is-orange"><i class="fas fa-handshake"></i></span>
+                <span><small>Đang xử lý cho thuê</small><strong>@(pendingRequests + negotiatingRequests)</strong><em>@pendingRequests chờ · @negotiatingRequests thương lượng</em></span>
+            </a>
+            <a href="/Chat/Inbox" class="dashboard-metric">
+                <span class="dashboard-metric__icon is-dark"><i class="fas fa-comments"></i></span>
+                <span><small>Tin nhắn</small><strong>@conversations</strong><em>@(unreadMessages > 0 ? $"{unreadMessages} chưa đọc" : "Tất cả đã đọc")</em></span>
+            </a>
+        </section>
+
+        <div class="dashboard-priority-grid">
+            <section class="dashboard-priority dashboard-priority--rental">
+                <div class="dashboard-section-heading">
+                    <div>
+                        <span class="dashboard-section-heading__icon is-orange"><i class="fas fa-bolt"></i></span>
+                        <div><h2>Đang xử lý cho thuê</h2><p>Yêu cầu mới nhất cần bạn phản hồi hoặc xác nhận.</p></div>
+                    </div>
+                    <a href="/RentalProcess/Index" class="dashboard-primary-link">Xem và xử lý ngay <i class="fas fa-arrow-right"></i></a>
+                </div>
+                <div class="dashboard-rental-list">
+                    @foreach (var request in actionableRequests)
+                    {
+                        <a href="/RentalProcess/Index?status=@request.Status" class="dashboard-rental-item">
+                            <span class="dashboard-rental-item__avatar">@(!string.IsNullOrEmpty(request.Renter?.FullName) ? request.Renter.FullName[..1].ToUpper() : "U")</span>
+                            <span><strong>@request.Renter?.FullName</strong><small>@request.Accommodation?.Title</small><time>@request.CreatedAt.ToString("dd/MM/yyyy HH:mm")</time></span>
+                            <span class="dashboard-status @(request.Status == "Pending" ? "is-warning" : "is-info")">@(request.Status == "Pending" ? "Chờ phản hồi" : "Đang thương lượng")</span>
+                        </a>
+                    }
+                    @if (!actionableRequests.Any())
+                    {
+                        <div class="dashboard-empty"><i class="fas fa-circle-check"></i><p>Không có yêu cầu nào đang chờ. Mọi việc đã được xử lý.</p></div>
+                    }
+                </div>
+            </section>
+
+            <section class="dashboard-latest">
+                <div class="dashboard-section-heading">
+                    <div>
+                        <span class="dashboard-section-heading__icon is-blue"><i class="fas fa-bell"></i></span>
+                        <div><h2>Thông báo mới nhất</h2><p id="dashboardUnreadNotificationCount">@(unreadNotifications == 0 ? "Tất cả thông báo đã đọc" : $"{unreadNotifications} thông báo chưa đọc")</p></div>
+                    </div>
+                    <button type="button" class="dashboard-icon-button" onclick="document.getElementById('notificationDropdownButton')?.click()" aria-label="Mở tất cả thông báo"><i class="fas fa-arrow-up-right-from-square"></i></button>
+                </div>
+                <div class="dashboard-notification-list">
+                    @foreach (var item in notifications)
+                    {
+                        <a href="@(item.Url ?? "#")" data-notification-id="@item.Id" class="dashboard-notification @(!item.IsRead ? "is-unread" : "")">
+                            <span><i class="fas @(item.Type == "RentalRequest" ? "fa-handshake" : item.Type == "Approval" ? "fa-circle-check" : item.Type == "Rejected" ? "fa-circle-xmark" : "fa-bell")"></i></span>
+                            <span><strong>@item.Title</strong><small>@item.Message</small><time>@item.CreatedAt.ToString("dd/MM/yyyy HH:mm")</time></span>
+                        </a>
+                    }
+                    @if (!notifications.Any()) { <div class="dashboard-empty"><i class="far fa-bell"></i><p>Chưa có thông báo mới.</p></div> }
+                </div>
+            </section>
         </div>
-        <div class="d-flex gap-2">
-            <a href="/Accommodation/Index" class="btn btn-outline-primary rounded-pill"><i class="fas fa-list me-1"></i> Quản lý trọ</a>
-            <a href="/RentalProcess/Index" class="btn btn-outline-warning rounded-pill"><i class="fas fa-clipboard-check me-1"></i> Xử lý thuê</a>
-            <button class="btn btn-primary rounded-pill shadow-sm" data-bs-toggle="modal" data-bs-target="#postAccommodationModal">
-                <i class="fas fa-plus me-1"></i> Đăng tin mới
+
+        <section class="dashboard-accordion">
+            <button class="dashboard-accordion__toggle" type="button" data-bs-toggle="collapse" data-bs-target="#landlordOperations" aria-expanded="false" aria-controls="landlordOperations">
+                <span><i class="fas fa-table-cells-large"></i><span><strong>Quản lý & vận hành</strong><small>Các mục dashboard cũ được sắp xếp gọn tại đây</small></span></span>
+                <i class="fas fa-chevron-down dashboard-accordion__chevron"></i>
             </button>
-        </div>
-    </div>
-
-    <!-- ═══════ BỘ LỌC ═══════ -->
-    <div class="card border-0 shadow-sm rounded-4 mb-4">
-        <div class="card-body py-3">
-            <form id="filterForm" method="get" action="/Landlord/Dashboard" class="row g-3 align-items-center">
-                <div class="col-auto">
-                    <span class="fw-bold me-2"><i class="fas fa-filter text-muted"></i> Lọc dữ liệu:</span>
-                </div>
-                <div class="col-md-3">
-                    <select name="timeFilter" class="form-select rounded-pill" onchange="document.getElementById('filterForm').submit()">
-                        <option value="all" selected="@(timeFilter == "all")">Tất cả thời gian</option>
-                        <option value="today" selected="@(timeFilter == "today")">Hôm nay</option>
-                        <option value="7days" selected="@(timeFilter == "7days")">7 ngày qua</option>
-                        <option value="30days" selected="@(timeFilter == "30days")">30 ngày qua</option>
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <select name="typeFilter" class="form-select rounded-pill" onchange="document.getElementById('filterForm').submit()">
-                        <option value="all" selected="@(ViewBag.CurrentTypeFilter == "all")">Tất cả loại bài đăng</option>
-                        <option value="PhongTro" selected="@(ViewBag.CurrentTypeFilter == "PhongTro")">Phòng trọ</option>
-                        <option value="NhaNguyenCan" selected="@(ViewBag.CurrentTypeFilter == "NhaNguyenCan")">Nhà nguyên căn</option>
-                        <option value="CanHo" selected="@(ViewBag.CurrentTypeFilter == "CanHo")">Căn hộ</option>
-                    </select>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- ═══════ PHẦN 2: THẺ THỐNG KÊ BẤM ĐƯỢC ═══════ -->
-    <div class="row g-3 mb-4">
-        <div class="col-6 col-lg-3">
-            <a href="/Accommodation/Index" class="text-decoration-none">
-                <div class="card bg-primary text-white border-0 shadow-sm rounded-4 h-100 landlord-stat-card">
-                    <div class="card-body p-3 d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="opacity-75 mb-1 small text-uppercase fw-bold">Tổng Bài Đăng</h6>
-                            <h2 class="fw-bold mb-0">@totalPosts</h2>
-                            <small class="opacity-75">@approvedPosts đã duyệt · @pendingPosts chờ duyệt</small>
-                        </div>
-                        <i class="fas fa-layer-group fa-2x opacity-50"></i>
-                    </div>
-                </div>
-            </a>
-        </div>
-        <div class="col-6 col-lg-3">
-            <a href="/RentalProcess/Index" class="text-decoration-none">
-                <div class="card bg-info text-white border-0 shadow-sm rounded-4 h-100 landlord-stat-card">
-                    <div class="card-body p-3 d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="opacity-75 mb-1 small text-uppercase fw-bold">Tổng Yêu Cầu Thuê</h6>
-                            <h2 class="fw-bold mb-0">@totalRequests</h2>
-                            <small class="opacity-75">@pendingRequests đang chờ · @negotiatingRequests thương lượng</small>
-                        </div>
-                        <i class="fas fa-handshake fa-2x opacity-50"></i>
-                    </div>
-                </div>
-            </a>
-        </div>
-        <div class="col-6 col-lg-3">
-            <a href="/Accommodation/Index" class="text-decoration-none">
-                <div class="card bg-success text-white border-0 shadow-sm rounded-4 h-100 landlord-stat-card">
-                    <div class="card-body p-3 d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="opacity-75 mb-1 small text-uppercase fw-bold">Phòng Còn Trống</h6>
-                            <h2 class="fw-bold mb-0">@totalAvailableRooms</h2>
-                            <small class="opacity-75">Phòng trọ / Ký túc xá</small>
-                        </div>
-                        <i class="fas fa-door-open fa-2x opacity-50"></i>
-                    </div>
-                </div>
-            </a>
-        </div>
-        <div class="col-6 col-lg-3">
-            <a href="/Chat/Inbox" class="text-decoration-none">
-                <div class="card bg-dark text-white border-0 shadow-sm rounded-4 h-100 landlord-stat-card">
-                    <div class="card-body p-3 d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="opacity-75 mb-1 small text-uppercase fw-bold">Tin Nhắn</h6>
-                            <h2 class="fw-bold mb-0">@totalConversations</h2>
-                            <small class="opacity-75">@(unreadMessages > 0 ? $"{unreadMessages} chưa đọc" : "Tất cả đã đọc")</small>
-                        </div>
-                        <i class="fas fa-comments fa-2x opacity-50"></i>
-                    </div>
-                </div>
-            </a>
-        </div>
-    </div>
-
-    <!-- ═══════ PHẦN 3: TRUY CẬP NHANH ═══════ -->
-    <div class="mb-4">
-        <h5 class="fw-bold mb-3"><i class="fas fa-rocket text-primary me-2"></i> Truy cập nhanh</h5>
-        <div class="row g-3">
-
-            <!-- Quản lý trọ -->
-            <div class="col-6 col-md-4 col-lg-2">
-                <a href="/Accommodation/Index" class="text-decoration-none">
-                    <div class="card border-0 shadow-sm rounded-4 h-100 text-center landlord-quick-card">
-                        <div class="card-body p-3 position-relative">
-                            <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-2" style="width:52px;height:52px;background:rgba(var(--bs-primary-rgb),0.15);">
-                                <i class="fas fa-building fa-lg text-primary"></i>
-                            </div>
-                            <span class="position-absolute top-0 end-0 translate-middle badge rounded-pill bg-primary" style="margin-top:12px;margin-right:6px;">@totalPosts</span>
-                            <h6 class="fw-bold mb-1 text-dark" style="font-size:.85rem;">Quản lý trọ</h6>
-                            <small class="text-muted" style="font-size:.72rem;">Xem và chỉnh sửa tất cả bài đăng của bạn</small>
-                        </div>
-                    </div>
-                </a>
-            </div>
-
-            <!-- Xử lý yêu cầu thuê -->
-            <div class="col-6 col-md-4 col-lg-2">
-                <a href="/RentalProcess/Index" class="text-decoration-none">
-                    <div class="card border-0 shadow-sm rounded-4 h-100 text-center landlord-quick-card">
-                        <div class="card-body p-3 position-relative">
-                            <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-2" style="width:52px;height:52px;background:rgba(var(--bs-warning-rgb),0.15);">
-                                <i class="fas fa-clipboard-check fa-lg text-warning"></i>
-                            </div>
-                            @if (pendingRequests > 0)
-                            {
-                                <span class="position-absolute top-0 end-0 translate-middle badge rounded-pill bg-danger" style="margin-top:12px;margin-right:6px;">@pendingRequests</span>
-                            }
-                            <h6 class="fw-bold mb-1 text-dark" style="font-size:.85rem;">Xử lý thuê</h6>
-                            <small class="text-muted" style="font-size:.72rem;">Duyệt, thương lượng và xác nhận yêu cầu thuê</small>
-                        </div>
-                    </div>
-                </a>
-            </div>
-
-            <!-- Tin nhắn -->
-            <div class="col-6 col-md-4 col-lg-2">
-                <a href="/Chat/Inbox" class="text-decoration-none">
-                    <div class="card border-0 shadow-sm rounded-4 h-100 text-center landlord-quick-card">
-                        <div class="card-body p-3 position-relative">
-                            <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-2" style="width:52px;height:52px;background:rgba(var(--bs-info-rgb),0.15);">
-                                <i class="fas fa-comments fa-lg text-info"></i>
-                            </div>
-                            @if (unreadMessages > 0)
-                            {
-                                <span class="position-absolute top-0 end-0 translate-middle badge rounded-pill bg-danger" style="margin-top:12px;margin-right:6px;">@unreadMessages</span>
-                            }
-                            <h6 class="fw-bold mb-1 text-dark" style="font-size:.85rem;">Tin nhắn</h6>
-                            <small class="text-muted" style="font-size:.72rem;">Trả lời tin nhắn từ người thuê quan tâm</small>
-                        </div>
-                    </div>
-                </a>
-            </div>
-
-            <!-- Đăng tin mới -->
-            <div class="col-6 col-md-4 col-lg-2">
-                <a href="#" class="text-decoration-none" data-bs-toggle="modal" data-bs-target="#postAccommodationModal">
-                    <div class="card border-0 shadow-sm rounded-4 h-100 text-center landlord-quick-card">
-                        <div class="card-body p-3">
-                            <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-2" style="width:52px;height:52px;background:rgba(var(--bs-success-rgb),0.15);">
-                                <i class="fas fa-plus-circle fa-lg text-success"></i>
-                            </div>
-                            <h6 class="fw-bold mb-1 text-dark" style="font-size:.85rem;">Đăng tin mới</h6>
-                            <small class="text-muted" style="font-size:.72rem;">Tạo bài đăng cho thuê phòng trọ hoặc nhà</small>
-                        </div>
-                    </div>
-                </a>
-            </div>
-
-            <!-- Liên hệ hỗ trợ -->
-            <div class="col-6 col-md-4 col-lg-2">
-                <a href="/Support/Create" class="text-decoration-none">
-                    <div class="card border-0 shadow-sm rounded-4 h-100 text-center landlord-quick-card">
-                        <div class="card-body p-3">
-                            <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-2" style="width:52px;height:52px;background:rgba(var(--bs-danger-rgb),0.15);">
-                                <i class="fas fa-headset fa-lg text-danger"></i>
-                            </div>
-                            <h6 class="fw-bold mb-1 text-dark" style="font-size:.85rem;">Liên hệ hỗ trợ</h6>
-                            <small class="text-muted" style="font-size:.72rem;">Gửi yêu cầu hỗ trợ hoặc khiếu nại đến Admin</small>
-                        </div>
-                    </div>
-                </a>
-            </div>
-
-            <!-- Về trang chủ -->
-            <div class="col-6 col-md-4 col-lg-2">
-                <a href="/" class="text-decoration-none">
-                    <div class="card border-0 shadow-sm rounded-4 h-100 text-center landlord-quick-card">
-                        <div class="card-body p-3">
-                            <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-2" style="width:52px;height:52px;background:rgba(var(--bs-secondary-rgb),0.15);">
-                                <i class="fas fa-home fa-lg text-secondary"></i>
-                            </div>
-                            <h6 class="fw-bold mb-1 text-dark" style="font-size:.85rem;">Về trang chủ</h6>
-                            <small class="text-muted" style="font-size:.72rem;">Xem giao diện công khai của hệ thống</small>
-                        </div>
-                    </div>
-                </a>
-            </div>
-
-        </div>
-    </div>
-
-    <!-- ═══════ PHẦN 4: CHI TIẾT THỐNG KÊ ═══════ -->
-    <div class="row g-4 mb-4">
-        <!-- Thống kê bài đăng -->
-        <div class="col-md-6">
-            <h5 class="fw-bold mb-3"><i class="fas fa-bullhorn text-warning me-2"></i> Thống Kê Bài Đăng</h5>
-            <div class="row g-3">
-                <div class="col-6">
-                    <a href="/Accommodation/Index" class="text-decoration-none">
-                        <div class="card bg-success text-white border-0 shadow-sm rounded-4 h-100 landlord-stat-card">
-                            <div class="card-body p-3 d-flex justify-content-between align-items-center">
-                                <div><h6 class="opacity-75 mb-1 small">Đã Duyệt</h6><h3 class="fw-bold mb-0">@approvedPosts</h3></div>
-                                <i class="fas fa-check-circle fa-2x opacity-50"></i>
-                            </div>
-                        </div>
-                    </a>
-                </div>
-                <div class="col-6">
-                    <div class="card bg-warning text-dark border-0 shadow-sm rounded-4 h-100">
-                        <div class="card-body p-3 d-flex justify-content-between align-items-center">
-                            <div><h6 class="opacity-75 mb-1 small">Đang Chờ Duyệt</h6><h3 class="fw-bold mb-0">@pendingPosts</h3></div>
-                            <i class="fas fa-hourglass-half fa-2x opacity-50"></i>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-6">
-                    <div class="card bg-danger text-white border-0 shadow-sm rounded-4 h-100">
-                        <div class="card-body p-3 d-flex justify-content-between align-items-center">
-                            <div><h6 class="opacity-75 mb-1 small">Bị Từ Chối</h6><h3 class="fw-bold mb-0">@rejectedPosts</h3></div>
-                            <i class="fas fa-ban fa-2x opacity-50"></i>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-6">
-                    <div class="card bg-secondary text-white border-0 shadow-sm rounded-4 h-100">
-                        <div class="card-body p-3 d-flex justify-content-between align-items-center">
-                            <div><h6 class="opacity-75 mb-1 small">Đã Hết Phòng</h6><h3 class="fw-bold mb-0">@rentedOutPosts</h3></div>
-                            <i class="fas fa-door-closed fa-2x opacity-50"></i>
-                        </div>
-                    </div>
+            <div class="collapse" id="landlordOperations">
+                <div class="dashboard-operation-grid">
+                    <a href="/RentalProcess/Index" class="is-highlight"><i class="fas fa-clipboard-check is-orange"></i><span><strong>Xử lý cho thuê</strong><small>@pendingRequests chờ · @negotiatingRequests thương lượng</small></span></a>
+                    <a href="/Accommodation/Index"><i class="fas fa-building is-blue"></i><span><strong>Quản lý trọ</strong><small>@totalPosts bài đăng · @availableRooms phòng trống</small></span></a>
+                    <a href="/Chat/Inbox"><i class="fas fa-comments is-blue"></i><span><strong>Tin nhắn</strong><small>@unreadMessages tin chưa đọc</small></span></a>
+                    <button type="button" data-bs-toggle="modal" data-bs-target="#postAccommodationModal"><i class="fas fa-plus-circle is-green"></i><span><strong>Đăng tin mới</strong><small>Tạo bài đăng cho thuê</small></span></button>
+                    <a href="/Support/Create"><i class="fas fa-headset is-red"></i><span><strong>Liên hệ hỗ trợ</strong><small>Gửi yêu cầu đến Admin</small></span></a>
+                    <a href="/"><i class="fas fa-house is-dark"></i><span><strong>Về trang chủ</strong><small>Xem giao diện công khai</small></span></a>
                 </div>
             </div>
-        </div>
+        </section>
 
-        <!-- Thống kê yêu cầu thuê -->
-        <div class="col-md-6">
-            <h5 class="fw-bold mb-3"><i class="fas fa-handshake text-info me-2"></i> Yêu Cầu Thuê</h5>
-            <div class="row g-3">
-                <div class="col-6">
-                    <a href="/RentalProcess/Index" class="text-decoration-none">
-                        <div class="card bg-warning text-dark border-0 shadow-sm rounded-4 h-100 landlord-stat-card">
-                            <div class="card-body p-3 d-flex justify-content-between align-items-center">
-                                <div><h6 class="opacity-75 mb-1 small">Đang Chờ Xử Lý</h6><h3 class="fw-bold mb-0">@pendingRequests</h3></div>
-                                <i class="fas fa-clock fa-2x opacity-50"></i>
-                            </div>
-                        </div>
-                    </a>
-                </div>
-                <div class="col-6">
-                    <a href="/RentalProcess/Index" class="text-decoration-none">
-                        <div class="card border-0 shadow-sm rounded-4 h-100 landlord-stat-card" style="background-color: #8e44ad; color: white;">
-                            <div class="card-body p-3 d-flex justify-content-between align-items-center">
-                                <div><h6 class="opacity-75 mb-1 small">Đang Thương Lượng</h6><h3 class="fw-bold mb-0">@negotiatingRequests</h3></div>
-                                <i class="fas fa-comments-dollar fa-2x opacity-50"></i>
-                            </div>
-                        </div>
-                    </a>
-                </div>
-                <div class="col-6">
-                    <div class="card bg-success text-white border-0 shadow-sm rounded-4 h-100">
-                        <div class="card-body p-3 d-flex justify-content-between align-items-center">
-                            <div><h6 class="opacity-75 mb-1 small">Thuê Thành Công</h6><h3 class="fw-bold mb-0">@successRequests</h3></div>
-                            <i class="fas fa-check-double fa-2x opacity-50"></i>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-6">
-                    <div class="card bg-secondary text-white border-0 shadow-sm rounded-4 h-100">
-                        <div class="card-body p-3 d-flex justify-content-between align-items-center">
-                            <div><h6 class="opacity-75 mb-1 small">Đã Hủy</h6><h3 class="fw-bold mb-0">@cancelledRequests</h3></div>
-                            <i class="fas fa-times-circle fa-2x opacity-50"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+        <section class="dashboard-detail-strip">
+            <div><small>Bài đã duyệt</small><strong>@approvedPosts</strong></div>
+            <div><small>Bài chờ duyệt</small><strong>@pendingPosts</strong></div>
+            <div><small>Bài bị từ chối</small><strong>@rejectedPosts</strong></div>
+            <div><small>Thuê thành công</small><strong>@successRequests</strong></div>
+            <div><small>Yêu cầu đã hủy</small><strong>@cancelledRequests</strong></div>
+        </section>
 
-    <!-- ═══════ PHẦN 5: TÌNH TRẠNG PHÒNG ═══════ -->
-    <div class="row g-4 mb-4">
-        <div class="col-12">
-            <h5 class="fw-bold mb-3"><i class="fas fa-home text-success me-2"></i> Tình Trạng Hiện Tại</h5>
-            <div class="row g-3">
-                <div class="col-md-3">
-                    <div class="card border border-success-subtle shadow-sm rounded-4">
-                        <div class="card-body p-3 text-center">
-                            <h6 class="text-muted fw-bold mb-1">Phòng Đang Trống</h6>
-                            <h2 class="text-success fw-bold mb-0">@totalAvailableRooms</h2>
-                            <small class="text-muted">(Phòng trọ / Ký túc xá)</small>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card border border-primary-subtle shadow-sm rounded-4">
-                        <div class="card-body p-3 text-center">
-                            <h6 class="text-muted fw-bold mb-1">Nhà Nguyên Căn (Trống)</h6>
-                            <h2 class="text-primary fw-bold mb-0">@(ViewBag.TotalHouses - ViewBag.RentedHouses)</h2>
-                            <small class="text-muted">Đang cho thuê</small>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card border border-danger-subtle shadow-sm rounded-4">
-                        <div class="card-body p-3 text-center">
-                            <h6 class="text-muted fw-bold mb-1">Nhà Đã Cho Thuê</h6>
-                            <h2 class="text-danger fw-bold mb-0">@ViewBag.RentedHouses</h2>
-                            <small class="text-muted">Đã giao chìa khóa</small>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card border border-warning-subtle shadow-sm rounded-4">
-                        <div class="card-body p-3 text-center">
-                            <h6 class="text-muted fw-bold mb-1">Bài Viết Đã Hết Phòng</h6>
-                            <h2 class="text-warning fw-bold mb-0">@rentedOutPosts</h2>
-                            <small class="text-muted">Tổng số tin đã đóng</small>
-                        </div>
-                    </div>
-                </div>
+        <section class="dashboard-table-panel">
+            <div class="dashboard-section-heading">
+                <div><span class="dashboard-section-heading__icon is-blue"><i class="fas fa-clock-rotate-left"></i></span><div><h2>Bài đăng gần đây</h2><p>Theo dõi trạng thái các tin mới nhất của bạn</p></div></div>
+                <a href="/Accommodation/Index">Quản lý tất cả <i class="fas fa-arrow-right"></i></a>
             </div>
-        </div>
-    </div>
-
-    <!-- ═══════ PHẦN 6: BIỂU ĐỒ ═══════ -->
-    <div class="row g-4 mb-4">
-        <div class="col-md-8">
-            <div class="card shadow-sm border-0 rounded-4 h-100">
-                <div class="card-header bg-white border-0 pt-4 pb-0">
-                    <h5 class="fw-bold"><i class="fas fa-chart-bar text-primary me-2"></i> Lượt yêu cầu thuê (7 ngày qua)</h5>
-                </div>
-                <div class="card-body">
-                    <canvas id="requestsChart" height="100"></canvas>
-                </div>
+            <div class="table-responsive">
+                <table class="table dashboard-table align-middle mb-0">
+                    <thead><tr><th>Bài đăng</th><th>Giá thuê</th><th>Loại hình</th><th>Duyệt bài</th><th>Tình trạng</th></tr></thead>
+                    <tbody>
+                    @foreach (var post in recentPosts)
+                    {
+                        <tr>
+                            <td><a href="/Accommodation/Details/@post.Id">@post.Title</a><small>@post.CreatedAt.ToString("dd/MM/yyyy HH:mm")</small></td>
+                            <td><strong>@post.Price.ToString("N0")đ</strong></td>
+                            <td>@(post.AccommodationType == "NhaNguyenCan" ? "Nhà nguyên căn" : post.AccommodationType == "CanHo" ? "Căn hộ" : post.AccommodationType == "SleepBox" ? "Ký túc xá" : "Phòng trọ")</td>
+                            <td><span class="dashboard-status @(post.IsApproved ? "is-success" : post.IsRejected ? "is-danger" : "is-warning")">@(post.IsApproved ? "Đã duyệt" : post.IsRejected ? "Từ chối" : "Chờ duyệt")</span></td>
+                            <td>@(post.IsRentedOut || post.IsRented ? "Đã cho thuê" : post.AccommodationType == "NhaNguyenCan" ? "Đang trống" : $"Còn {post.AvailableRooms} phòng")</td>
+                        </tr>
+                    }
+                    @if (!recentPosts.Any()) { <tr><td colspan="5"><div class="dashboard-empty">Bạn chưa có bài đăng nào.</div></td></tr> }
+                    </tbody>
+                </table>
             </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card shadow-sm border-0 rounded-4 h-100">
-                <div class="card-header bg-white border-0 pt-4 pb-0">
-                    <h5 class="fw-bold"><i class="fas fa-chart-pie text-success me-2"></i> Tỷ lệ xử lý</h5>
-                </div>
-                <div class="card-body d-flex justify-content-center align-items-center">
-                    <canvas id="statusChart" height="200"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ═══════ PHẦN 7: BẢNG HOẠT ĐỘNG ═══════ -->
-    <div class="row g-4">
-        <!-- Yêu cầu thuê gần đây -->
-        <div class="col-md-12">
-            <div class="card shadow-sm border-0 rounded-4">
-                <div class="card-header bg-white border-bottom pt-4 pb-3 d-flex justify-content-between align-items-center">
-                    <h5 class="fw-bold mb-0"><i class="fas fa-bolt text-warning me-2"></i> Yêu cầu thuê mới nhất</h5>
-                    <a href="/RentalProcess/Index" class="btn btn-sm btn-outline-primary rounded-pill"><i class="fas fa-list me-1"></i> Xem tất cả</a>
-                </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0">
-                            <thead class="table-light">
-                                <tr>
-                                    <th class="ps-4">Người liên hệ</th>
-                                    <th>Bài đăng</th>
-                                    <th>Thời gian</th>
-                                    <th class="text-center">Trạng thái</th>
-                                    <th class="text-end pe-4">Thao tác</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach(var req in recentRequests)
-                                {
-                                    <tr>
-                                        <td class="ps-4">
-                                            <div class="d-flex align-items-center">
-                                                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2 fw-bold" style="width: 32px; height: 32px;">
-                                                    @(!string.IsNullOrEmpty(req.Renter?.FullName) ? req.Renter.FullName.Substring(0,1).ToUpper() : "U")
-                                                </div>
-                                                <span class="fw-medium">@req.Renter?.FullName</span>
-                                            </div>
-                                        </td>
-                                        <td><a href="/Accommodation/Details/@req.AccommodationId" target="_blank" class="text-dark text-decoration-none fw-medium text-truncate d-inline-block" style="max-width:250px;">@req.Accommodation?.Title</a></td>
-                                        <td><span class="text-muted small">@req.CreatedAt.ToString("dd/MM/yyyy HH:mm")</span></td>
-                                        <td class="text-center">
-                                            @if (req.Status == "Pending") { <span class="badge bg-warning text-dark px-3 py-2 rounded-pill">Đang chờ</span> }
-                                            else if (req.Status == "Negotiating") { <span class="badge bg-info text-white px-3 py-2 rounded-pill">Thương lượng</span> }
-                                            else if (req.Status == "Success") { <span class="badge bg-success px-3 py-2 rounded-pill">Thành công</span> }
-                                            else { <span class="badge bg-secondary px-3 py-2 rounded-pill">Đã hủy</span> }
-                                        </td>
-                                        <td class="text-end pe-4">
-                                            <a href="/RentalProcess/Index" class="btn btn-sm btn-primary">Xử lý</a>
-                                        </td>
-                                    </tr>
-                                }
-                                @if(!recentRequests.Any())
-                                {
-                                    <tr><td colspan="5" class="text-center py-4 text-muted">Chưa có yêu cầu thuê nào gần đây.</td></tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Bài đăng gần đây -->
-        <div class="col-md-12">
-            <div class="card shadow-sm border-0 rounded-4">
-                <div class="card-header bg-white border-bottom pt-4 pb-3 d-flex justify-content-between align-items-center">
-                    <h5 class="fw-bold mb-0"><i class="fas fa-list-alt text-primary me-2"></i> Bài đăng gần đây của bạn</h5>
-                    <a href="/Accommodation/Index" class="btn btn-sm btn-outline-primary rounded-pill"><i class="fas fa-building me-1"></i> Quản lý</a>
-                </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0">
-                            <thead class="table-light">
-                                <tr>
-                                    <th class="ps-4">Tên bài đăng</th>
-                                    <th>Giá thuê</th>
-                                    <th>Loại hình</th>
-                                    <th class="text-center">Trạng thái duyệt</th>
-                                    <th class="text-end pe-4">Tình trạng</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach(var post in recentPosts)
-                                {
-                                    <tr>
-                                        <td class="ps-4">
-                                            <a href="/Accommodation/Details/@post.Id" target="_blank" class="text-dark text-decoration-none fw-medium text-truncate d-inline-block" style="max-width:300px;">
-                                                @post.Title
-                                            </a>
-                                            <br/><small class="text-muted">@post.CreatedAt.ToString("dd/MM/yyyy HH:mm")</small>
-                                        </td>
-                                        <td class="text-danger fw-bold">@post.Price.ToString("N0")đ</td>
-                                        <td>
-                                            <span class="badge bg-light text-dark border">
-                                                @(post.AccommodationType == "NhaNguyenCan" ? "Nhà nguyên căn" : post.AccommodationType == "CanHo" ? "Căn hộ" : post.AccommodationType == "SleepBox" ? "Ký túc xá" : "Phòng trọ")
-                                            </span>
-                                        </td>
-                                        <td class="text-center">
-                                            @if(post.IsApproved) { <span class="badge bg-success-subtle text-success px-2 py-1"><i class="fas fa-check"></i> Đã duyệt</span> }
-                                            else if(post.IsRejected) { <span class="badge bg-danger-subtle text-danger px-2 py-1"><i class="fas fa-times"></i> Từ chối</span> }
-                                            else { <span class="badge bg-warning-subtle text-warning px-2 py-1"><i class="fas fa-clock"></i> Chờ duyệt</span> }
-                                        </td>
-                                        <td class="text-end pe-4">
-                                            @if (post.AccommodationType == "NhaNguyenCan")
-                                            {
-                                                if (post.IsRented) { <span class="text-danger fw-bold small">Đã cho thuê</span> }
-                                                else { <span class="text-success fw-bold small">Đang trống</span> }
-                                            }
-                                            else
-                                            {
-                                                if (post.IsRentedOut) { <span class="text-danger fw-bold small">Đã hết phòng</span> }
-                                                else { <span class="text-success fw-bold small">Còn @post.AvailableRooms phòng</span> }
-                                            }
-                                        </td>
-                                    </tr>
-                                }
-                                @if(!recentPosts.Any())
-                                {
-                                    <tr><td colspan="5" class="text-center py-4 text-muted">Bạn chưa có bài đăng nào.</td></tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
+        </section>
     </div>
 </div>
-
-<style>
-    .landlord-stat-card {
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-        cursor: pointer;
-    }
-    .landlord-stat-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 8px 25px rgba(0,0,0,.18) !important;
-    }
-    .landlord-quick-card {
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-        cursor: pointer;
-        border: 1px solid #eee !important;
-    }
-    .landlord-quick-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 6px 20px rgba(0,0,0,.12) !important;
-        border-color: var(--bs-primary) !important;
-    }
-</style>
-
-@section Scripts {
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            // Chart Yêu cầu theo ngày
-            var datesRaw = '@Html.Raw(ViewBag.ChartRequestDates)';
-            var countsRaw = '@Html.Raw(ViewBag.ChartRequestCounts)';
-            
-            var ctxLine = document.getElementById('requestsChart').getContext('2d');
-            new Chart(ctxLine, {
-                type: 'bar',
-                data: {
-                    labels: datesRaw ? datesRaw.split(',') : [],
-                    datasets: [{
-                        label: 'Số yêu cầu mới',
-                        data: countsRaw ? countsRaw.split(',').map(Number) : [],
-                        backgroundColor: 'rgba(13, 110, 253, 0.2)',
-                        borderColor: 'rgba(13, 110, 253, 1)',
-                        borderWidth: 2,
-                        borderRadius: 4,
-                        fill: true,
-                        tension: 0.4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: { legend: { display: false } },
-                    scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
-                }
-            });
-
-            // Chart Tỷ lệ trạng thái
-            var ctxPie = document.getElementById('statusChart').getContext('2d');
-            new Chart(ctxPie, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Đang chờ', 'Thương lượng', 'Thành công', 'Đã hủy'],
-                    datasets: [{
-                        data: [@ViewBag.PendingRequests, @ViewBag.NegotiatingRequests, @ViewBag.SuccessRequests, @ViewBag.CancelledRequests],
-                        backgroundColor: ['#ffc107', '#0dcaf0', '#198754', '#6c757d'],
-                        borderWidth: 0,
-                        hoverOffset: 4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { position: 'bottom' } }
-                }
-            });
-        });
-    </script>
-}

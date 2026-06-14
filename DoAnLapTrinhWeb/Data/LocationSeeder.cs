@@ -16,7 +16,10 @@ namespace DoAnLapTrinhWeb.Data
             // Kiểm tra xem database đã có dữ liệu chưa. Nếu có rồi thì bỏ qua không load lại.
             if (await context.Cities.AnyAsync()) return;
 
-            using HttpClient client = new HttpClient();
+            using HttpClient client = new HttpClient
+            {
+                Timeout = TimeSpan.FromSeconds(10)
+            };
 
             try
             {
@@ -77,4 +80,3 @@ namespace DoAnLapTrinhWeb.Data
         }
     }
 }
-//hehehe 

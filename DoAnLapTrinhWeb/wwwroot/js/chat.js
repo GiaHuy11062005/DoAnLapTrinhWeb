@@ -8,15 +8,24 @@
     let chatConnection = null;
     window.currentConversationId = 0; // Expose globally for Inbox page
     let myUserId = 0;
+    let joinedConversationId = 0;
 
     const popupContainer = document.getElementById("globalChatPopupContainer");
+    const headerUnreadMessageCount = document.getElementById("headerUnreadMessageCount");
+
+    window.updateHeaderUnreadMessageCount = function (delta) {
+        if (!headerUnreadMessageCount) return;
+        const nextCount = Math.max(0, (Number(headerUnreadMessageCount.textContent) || 0) + Number(delta || 0));
+        headerUnreadMessageCount.textContent = String(nextCount);
+        headerUnreadMessageCount.hidden = nextCount === 0;
+    };
 
     // =========================================================
     // MỞ POPUP (Global function)
     // =========================================================
     window.openChatPopup = async function (accommodationId, conversationId) {
         if (!popupContainer) {
-            alert("Chat popup container không tồn tại trên trang này.");
+            window.appAlert?.("Không thể mở khung trò chuyện trên trang này.");
             return;
         }
 
@@ -36,7 +45,7 @@
                 
                 const data = await res.json();
                 if (!data.success) {
-                    alert(data.message || "Không thể khởi tạo cuộc trò chuyện.");
+                    window.appAlert?.(data.message || "Không thể khởi tạo cuộc trò chuyện.");
                     return;
                 }
                 conversationId = data.conversationId;
@@ -48,7 +57,7 @@
             const htmlRes = await fetch(`/Chat/GetChatHistory?conversationId=${conversationId}`);
             if (!htmlRes.ok) {
                 if (htmlRes.status === 401) window.location.href = "/Auth/Login?returnUrl=" + encodeURIComponent(window.location.pathname);
-                else alert("Lỗi tải cuộc trò chuyện.");
+                else window.appAlert?.("Không thể tải cuộc trò chuyện.");
                 return;
             }
             const html = await htmlRes.text();
@@ -67,11 +76,11 @@
 
             scrollToBottom();
             initSignalR();
-            markAsRead();
+            joinCurrentConversation();
 
         } catch (error) {
             console.error("Lỗi khi mở popup:", error);
-            alert("Lỗi khi kết nối đến cuộc trò chuyện.");
+            window.appAlert?.("Lỗi khi kết nối đến cuộc trò chuyện.");
         }
     };
 
@@ -81,6 +90,10 @@
     window.closeChatPopup = function (e) {
         if (e) e.stopPropagation();
         popupContainer.classList.add("is-hidden");
+        if (chatConnection?.state === signalR.HubConnectionState.Connected && joinedConversationId) {
+            chatConnection.invoke("LeaveConversation", joinedConversationId).catch(() => {});
+        }
+        joinedConversationId = 0;
         window.currentConversationId = 0;
     };
 
@@ -144,13 +157,15 @@
             });
 
             if (res.ok) {
+                const data = await res.json().catch(() => null);
                 input.value = "";
+                window.updateHeaderUnreadMessageCount?.(-(data?.clearedUnreadCount || 0));
             } else {
                 const data = await res.json().catch(() => null);
-                alert(data?.message || "Không thể gửi tin nhắn.");
+                window.appAlert?.(data?.message || "Không thể gửi tin nhắn.");
             }
         } catch {
-            alert("Lỗi kết nối khi gửi tin nhắn.");
+            window.appAlert?.("Lỗi kết nối khi gửi tin nhắn.");
         } finally {
             input.disabled = false;
             sendBtn.disabled = false;
@@ -162,7 +177,7 @@
     // XÁC NHẬN / TỪ CHỐI THƯƠNG LƯỢNG
     // =========================================================
     window.confirmNegotiation = async function (conversationId) {
-        if (!confirm("Bạn muốn xác nhận yêu cầu thương lượng này và đưa vào danh sách xử lý?")) return;
+        if (!await window.appConfirm("Bạn muốn xác nhận yêu cầu thương lượng này và đưa vào danh sách xử lý?")) return;
         try {
             const res = await fetch("/Chat/ConfirmNegotiation", {
                 method: "POST",
@@ -174,15 +189,15 @@
                 const box = document.getElementById(`negotiationBox_${conversationId}`);
                 if (box) box.remove();
             } else {
-                alert(data.message || "Lỗi khi xác nhận.");
+                window.appAlert?.(data.message || "Lỗi khi xác nhận.");
             }
         } catch {
-            alert("Lỗi kết nối.");
+            window.appAlert?.("Lỗi kết nối.");
         }
     };
 
     window.rejectNegotiation = async function (conversationId) {
-        if (!confirm("Bạn muốn từ chối yêu cầu thương lượng này?")) return;
+        if (!await window.appConfirm("Bạn muốn từ chối yêu cầu thương lượng này?", { danger: true, icon: "fa-triangle-exclamation" })) return;
         try {
             const res = await fetch("/Chat/RejectNegotiation", {
                 method: "POST",
@@ -194,10 +209,10 @@
                 const box = document.getElementById(`negotiationBox_${conversationId}`);
                 if (box) box.remove();
             } else {
-                alert(data.message || "Lỗi khi từ chối.");
+                window.appAlert?.(data.message || "Lỗi khi từ chối.");
             }
         } catch {
-            alert("Lỗi kết nối.");
+            window.appAlert?.("Lỗi kết nối.");
         }
     };
 
@@ -228,22 +243,12 @@
         }
     }
 
-    function markAsRead() {
-        if (!window.currentConversationId) return;
-        fetch("/Chat/MarkAsRead", {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: `conversationId=${encodeURIComponent(window.currentConversationId)}`
-        }).catch(() => { });
-    }
-
     // =========================================================
     // KẾT NỐI SIGNALR
     // =========================================================
     function initSignalR() {
         if (chatConnection) {
-            // Đã kết nối, chỉ cần join group của conversation mới
-            chatConnection.invoke("JoinConversation", window.currentConversationId).catch(() => {});
+            joinCurrentConversation();
             return;
         }
 
@@ -267,13 +272,12 @@
                     scrollToBottom();
                 }
 
-                if (!isMine) {
-                    markAsRead();
-                }
-            } else {
-                // TODO: Xử lý hiển thị thông báo popup hoặc đỏ icon nếu chưa mở đúng box chat
-                // Hiện tại hệ thống Notification chung (chuông góc trên) đã xử lý việc này
             }
+        });
+
+        chatConnection.on("InboxMessageReceived", data => {
+            window.updateHeaderUnreadMessageCount?.(1);
+            document.dispatchEvent(new CustomEvent("chatMessageReceived", { detail: data }));
         });
 
         chatConnection.on("NegotiationConfirmed", (conversationId) => {
@@ -291,10 +295,34 @@
         });
 
         chatConnection.start().then(() => {
-            if (window.currentConversationId) {
-                chatConnection.invoke("JoinConversation", window.currentConversationId);
-            }
+            joinCurrentConversation();
         }).catch(err => console.error("Lỗi SignalR Chat: ", err));
+
+        chatConnection.onreconnected(() => joinCurrentConversation());
+    }
+
+    async function joinCurrentConversation() {
+        if (!chatConnection || chatConnection.state !== signalR.HubConnectionState.Connected || !window.currentConversationId) return;
+
+        if (joinedConversationId && joinedConversationId !== window.currentConversationId) {
+            await chatConnection.invoke("LeaveConversation", joinedConversationId).catch(() => {});
+        }
+
+        await chatConnection.invoke("JoinConversation", window.currentConversationId).catch(() => {});
+        joinedConversationId = window.currentConversationId;
+    }
+
+    window.activateChatConversation = function (conversationId, currentUserId) {
+        window.currentConversationId = Number(conversationId) || 0;
+        myUserId = Number(currentUserId) || parseInt(document.getElementById("miniChatInner")?.dataset.currentUserId) || 0;
+        initSignalR();
+        joinCurrentConversation();
+        scrollToBottom();
+    };
+
+    if (headerUnreadMessageCount) {
+        myUserId = Number(document.body.dataset.userId) || 0;
+        initSignalR();
     }
 
 })();

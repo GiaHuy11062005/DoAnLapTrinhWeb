@@ -93,7 +93,7 @@
                                     }
                                     @if (unreadCount > 0)
                                     {
-                                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-light">
+                                        <span class="chat-unread-count position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-light">
                                             @unreadCount
                                         </span>
                                     }
@@ -103,14 +103,14 @@
                                 <div class="flex-grow-1 overflow-hidden">
                                     <div class="d-flex justify-content-between align-items-center mb-1">
                                         <h6 class="mb-0 fw-bold text-truncate" style="max-width: 70%;">@otherName</h6>
-                                        <small class="text-muted" style="font-size: 0.75rem;">
+                                        <small class="chat-list-time text-muted" style="font-size: 0.75rem;">
                                             @(lastMessage != null ? lastMessage.CreatedAt.ToString("dd/MM HH:mm") : "")
                                         </small>
                                     </div>
                                     <div class="text-truncate small text-primary fw-medium mb-1" style="max-width: 95%;">
                                         <i class="fas fa-map-marker-alt me-1"></i> @accType: @conversation.Accommodation?.Title
                                     </div>
-                                    <div class="text-truncate small @(unreadCount > 0 ? "fw-bold text-dark" : "text-muted")">
+                                    <div class="chat-list-preview text-truncate small @(unreadCount > 0 ? "fw-bold text-dark" : "text-muted")">
                                         @if (lastMessage != null)
                                         {
                                             <span>@(lastMessage.SenderId == currentUserId ? "Bạn: " : "")@lastMessage.Content</span>
@@ -245,10 +245,6 @@
             document.querySelectorAll('.chat-list-item').forEach(el => el.classList.remove('active'));
             if (element) {
                 element.classList.add('active');
-                element.classList.remove('unread');
-                // Ẩn badge nếu có
-                const badge = element.querySelector('.badge.bg-danger');
-                if (badge) badge.style.display = 'none';
             }
 
             const contentArea = document.getElementById('chatContentArea');
@@ -278,14 +274,7 @@
                         header.prepend(backBtn);
                     }
 
-                    // Gán conversationId hiện tại cho global js (chat.js)
-                    window.currentConversationId = parseInt(conversationId);
-
-                    // Khởi tạo lại logic scroll
-                    const msgs = document.getElementById("chatMessages");
-                    if (msgs) {
-                        msgs.scrollTop = msgs.scrollHeight;
-                    }
+                    window.activateChatConversation?.(conversationId, @currentUserId);
 
                     // Tự xử lý nút Gửi trong 2-column layout (tránh xung đột với global popup)
                     setupInlineChatForm(conversationId);
@@ -329,19 +318,72 @@
                 method: "POST",
                 headers: { "Content-Type": "application/x-www-form-urlencoded" },
                 body: `conversationId=${encodeURIComponent(conversationId)}&content=${encodeURIComponent(content)}`
-            }).then(res => {
+            }).then(async res => {
+                const data = await res.json().catch(() => null);
                 if (res.ok) {
                     input.value = "";
+                    clearConversationUnread(conversationId);
+                    window.updateHeaderUnreadMessageCount?.(-(data?.clearedUnreadCount || 0));
+                    updateConversationPreview(conversationId, `Bạn: ${content}`, data?.createdAt);
                 } else {
-                    alert("Không thể gửi tin nhắn.");
+                    window.appAlert?.(data?.message || "Không thể gửi tin nhắn.");
                 }
             }).catch(() => {
-                alert("Lỗi kết nối.");
+                window.appAlert?.("Lỗi kết nối.");
             }).finally(() => {
                 input.disabled = false;
                 sendBtn.disabled = false;
                 input.focus();
             });
         }
+
+        function clearConversationUnread(conversationId) {
+            const item = document.querySelector(`.chat-list-item[data-conversation-id="${conversationId}"]`);
+            if (!item) return;
+            item.classList.remove("unread");
+            item.querySelector(".chat-unread-count")?.remove();
+            item.querySelector(".chat-list-preview")?.classList.remove("fw-bold", "text-dark");
+            item.querySelector(".chat-list-preview")?.classList.add("text-muted");
+        }
+
+        function increaseConversationUnread(conversationId) {
+            const item = document.querySelector(`.chat-list-item[data-conversation-id="${conversationId}"]`);
+            if (!item) return;
+            item.classList.add("unread");
+            let badge = item.querySelector(".chat-unread-count");
+            if (!badge) {
+                badge = document.createElement("span");
+                badge.className = "chat-unread-count position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-light";
+                item.querySelector(".position-relative.me-3")?.appendChild(badge);
+            }
+            badge.textContent = String((Number(badge.textContent) || 0) + 1);
+            item.querySelector(".chat-list-preview")?.classList.remove("text-muted");
+            item.querySelector(".chat-list-preview")?.classList.add("fw-bold", "text-dark");
+        }
+
+        function formatConversationTime(value) {
+            const match = String(value || "").match(/^(\d{2}\/\d{2})\/\d{4}\s+(\d{2}:\d{2})/);
+            return match ? `${match[1]} ${match[2]}` : String(value || "");
+        }
+
+        function updateConversationPreview(conversationId, preview, createdAt) {
+            const item = document.querySelector(`.chat-list-item[data-conversation-id="${conversationId}"]`);
+            if (!item) return;
+
+            const previewElement = item.querySelector(".chat-list-preview");
+            const timeElement = item.querySelector(".chat-list-time");
+            if (previewElement) {
+                previewElement.textContent = preview;
+            }
+            if (timeElement) timeElement.textContent = formatConversationTime(createdAt);
+            item.closest(".chat-list")?.prepend(item);
+        }
+
+        document.addEventListener("chatMessageReceived", event => {
+            const message = event.detail;
+            if (!message || Number(message.senderId) === @currentUserId) return;
+            updateConversationPreview(message.conversationId, `${message.senderName}: ${message.content}`, message.createdAt);
+            increaseConversationUnread(message.conversationId);
+        });
     </script>
 }

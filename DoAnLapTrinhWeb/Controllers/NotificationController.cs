@@ -27,7 +27,7 @@ namespace DoAnLapTrinhWeb.Controllers
             if (!TryGetUserId(out var userId)) return Unauthorized();
 
             var items = await _context.Notifications
-                .Where(item => item.UserId == userId)
+                .Where(item => item.UserId == userId && item.Type != "ChatMessage")
                 .OrderByDescending(item => item.CreatedAt)
                 .Take(30)
                 .Select(item => new
@@ -55,12 +55,30 @@ namespace DoAnLapTrinhWeb.Controllers
         }
 
         [HttpPost]
+        public async Task<IActionResult> MarkRead(int id)
+        {
+            if (!TryGetUserId(out var userId)) return Unauthorized();
+
+            var item = await _context.Notifications
+                .FirstOrDefaultAsync(notification => notification.Id == id && notification.UserId == userId);
+            if (item == null) return NotFound(new { success = false });
+
+            if (!item.IsRead)
+            {
+                item.IsRead = true;
+                await _context.SaveChangesAsync();
+            }
+
+            return Ok(new { success = true });
+        }
+
+        [HttpPost]
         public async Task<IActionResult> MarkAllRead()
         {
             if (!TryGetUserId(out var userId)) return Unauthorized();
 
             var unreadItems = await _context.Notifications
-                .Where(item => item.UserId == userId && !item.IsRead)
+                .Where(item => item.UserId == userId && item.Type != "ChatMessage" && !item.IsRead)
                 .ToListAsync();
 
             foreach (var item in unreadItems) item.IsRead = true;
@@ -99,7 +117,7 @@ namespace DoAnLapTrinhWeb.Controllers
                 Type = "RentalRequest",
                 Title = $"Có yêu cầu thuê: {room.Title}",
                 Message = $"{renter?.FullName ?? "Người thuê"} muốn thuê cho {occupants} người.",
-                Url = $"/Accommodation/Details/{room.Id}"
+                Url = "/RentalProcess/Index?status=Pending"
             };
             var renterNotification = new AppNotification
             {

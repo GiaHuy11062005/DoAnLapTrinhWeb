@@ -106,6 +106,13 @@ namespace DoAnLapTrinhWeb.Controllers
             // 7. Tin nhắn
             ViewBag.TotalConversations = await _context.ChatConversations.CountAsync(c => c.LandlordId == userId);
             ViewBag.UnreadMessages = await _context.ChatMessages.CountAsync(m => m.Conversation!.LandlordId == userId && m.SenderId != userId && !m.IsRead);
+            ViewBag.RecentNotifications = await _context.Notifications
+                .Where(item => item.UserId == userId && item.Type != "ChatMessage")
+                .OrderByDescending(item => item.CreatedAt)
+                .Take(5)
+                .ToListAsync();
+            ViewBag.UnreadNotifications = await _context.Notifications
+                .CountAsync(item => item.UserId == userId && item.Type != "ChatMessage" && !item.IsRead);
 
             return View();
         }

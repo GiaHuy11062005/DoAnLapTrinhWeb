@@ -3,373 +3,161 @@
     ViewData["Title"] = "Dashboard Quản Trị";
     Layout = "~/Views/Shared/_Layout.cshtml";
 
-    var recentActivities = ViewBag.RecentActivities as List<Accommodation> ?? new List<Accommodation>();
+    var recentActivities = ViewBag.RecentActivities as List<Accommodation> ?? new();
+    var notifications = ViewBag.RecentNotifications as List<AppNotification> ?? new();
     int totalUsers = ViewBag.TotalUsers ?? 0;
     int totalLandlords = ViewBag.TotalLandlords ?? 0;
     int totalTenants = ViewBag.TotalTenants ?? 0;
     int approvedRooms = ViewBag.ApprovedRooms ?? 0;
-    int pendingRoomsCount = ViewBag.PendingRoomsCount ?? 0;
+    int pendingRooms = ViewBag.PendingRoomsCount ?? 0;
     int rejectedRooms = ViewBag.RejectedRooms ?? 0;
     int totalRooms = ViewBag.TotalRooms ?? 0;
-    int totalSupportTickets = ViewBag.TotalSupportTickets ?? 0;
-    int pendingSupportTickets = ViewBag.PendingSupportTickets ?? 0;
-    int totalApprovalHistory = ViewBag.TotalApprovalHistory ?? 0;
+    int pendingTickets = ViewBag.PendingSupportTickets ?? 0;
+    int totalHistory = ViewBag.TotalApprovalHistory ?? 0;
     int lockedUsers = ViewBag.LockedUsers ?? 0;
+    int unreadNotifications = ViewBag.UnreadNotifications ?? 0;
+    int urgentCount = pendingRooms + pendingTickets;
 }
 
-<div class="admin-approval-page container mt-4 mb-5">
-    <div class="admin-approval-shell">
-
-        <!-- ═══════ PHẦN 1: TIÊU ĐỀ ═══════ -->
-        <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom print-hide">
+<div class="dashboard-page">
+    <div class="dashboard-shell">
+        <header class="dashboard-heading">
             <div>
-                <h2 class="fw-bold text-dark mb-1"><i class="fas fa-shield-halved text-primary me-2"></i> Bảng Điều Khiển Trung Tâm</h2>
-                <p class="text-muted mb-0">Theo dõi thống kê hệ thống và truy cập nhanh các chức năng quản trị.</p>
+                <span class="dashboard-heading__label"><i class="fas fa-shield-halved"></i> Trung tâm quản trị</span>
+                <h1>Tổng quan hệ thống</h1>
+                <p>Những việc cần xử lý được ưu tiên trước, các chức năng còn lại được gom gọn bên dưới.</p>
             </div>
-            <div class="d-flex gap-2">
-                <a href="/Admin/CreateRoom" class="btn btn-success rounded-pill shadow-sm fw-bold">
-                    <i class="fas fa-plus-circle me-1"></i> Đăng tin hộ
-                </a>
-                <button class="btn btn-outline-dark rounded-pill shadow-sm" onclick="window.print()">
-                    <i class="fas fa-print me-1"></i> In báo cáo
-                </button>
-                <a href="/" class="btn btn-primary rounded-pill shadow-sm">Về trang chủ</a>
+            <div class="dashboard-heading__actions">
+                <a href="/Admin/CreateRoom" class="btn btn-outline-primary"><i class="fas fa-plus"></i> Đăng tin hộ</a>
+                <a href="/Admin/PendingPosts" class="btn btn-primary"><i class="fas fa-list-check"></i> Duyệt bài ngay</a>
             </div>
+        </header>
+
+        <section class="dashboard-metrics" aria-label="Số liệu tổng quan">
+            <a href="/Admin/ManageUsers" class="dashboard-metric">
+                <span class="dashboard-metric__icon is-blue"><i class="fas fa-users"></i></span>
+                <span><small>Người dùng</small><strong>@totalUsers</strong><em>@totalLandlords chủ trọ · @totalTenants người thuê</em></span>
+            </a>
+            <a href="/Admin/ManagePosts?status=approved" class="dashboard-metric">
+                <span class="dashboard-metric__icon is-green"><i class="fas fa-circle-check"></i></span>
+                <span><small>Bài đã duyệt</small><strong id="approvedCount">@approvedRooms</strong><em>Đang hiển thị công khai</em></span>
+            </a>
+            <a href="/Admin/PendingPosts" class="dashboard-metric is-urgent">
+                <span class="dashboard-metric__icon is-orange"><i class="fas fa-hourglass-half"></i></span>
+                <span><small>Chờ duyệt</small><strong id="pendingCount">@pendingRooms</strong><em>Cần kiểm tra sớm</em></span>
+            </a>
+            <a href="/Admin/ManagePosts" class="dashboard-metric">
+                <span class="dashboard-metric__icon is-dark"><i class="fas fa-building"></i></span>
+                <span><small>Tổng tin đăng</small><strong>@totalRooms</strong><em>@rejectedRooms tin bị từ chối</em></span>
+            </a>
+        </section>
+
+        <div class="dashboard-priority-grid">
+            <section class="dashboard-priority">
+                <div class="dashboard-section-heading">
+                    <div>
+                        <span class="dashboard-section-heading__icon is-orange"><i class="fas fa-bolt"></i></span>
+                        <div><h2>Cần xử lý ngay</h2><p>Ưu tiên các mục mới để hệ thống vận hành trơn tru.</p></div>
+                    </div>
+                    @if (urgentCount > 0) { <span class="dashboard-count-badge">@urgentCount việc</span> }
+                </div>
+                <div class="dashboard-task-list">
+                    <a href="/Admin/PendingPosts" class="dashboard-task is-primary">
+                        <span class="dashboard-task__icon"><i class="fas fa-file-circle-check"></i></span>
+                        <span><strong>Duyệt bài đăng mới</strong><small>@pendingRooms bài đang chờ kiểm tra hồ sơ và nội dung</small></span>
+                        <b>@pendingRooms</b><i class="fas fa-chevron-right"></i>
+                    </a>
+                    <a href="/Admin/SupportTickets" class="dashboard-task">
+                        <span class="dashboard-task__icon"><i class="fas fa-headset"></i></span>
+                        <span><strong>Yêu cầu hỗ trợ chưa xử lý</strong><small>Phản hồi người dùng và khiếu nại mới</small></span>
+                        <b>@pendingTickets</b><i class="fas fa-chevron-right"></i>
+                    </a>
+                    <a href="/Admin/ManageUsers?status=locked" class="dashboard-task">
+                        <span class="dashboard-task__icon"><i class="fas fa-user-lock"></i></span>
+                        <span><strong>Tài khoản đang khóa</strong><small>Kiểm tra trạng thái và lý do khóa</small></span>
+                        <b>@lockedUsers</b><i class="fas fa-chevron-right"></i>
+                    </a>
+                </div>
+            </section>
+
+            <section class="dashboard-latest">
+                <div class="dashboard-section-heading">
+                    <div>
+                        <span class="dashboard-section-heading__icon is-blue"><i class="fas fa-bell"></i></span>
+                        <div><h2>Thông báo mới nhất</h2><p id="dashboardUnreadNotificationCount">@(unreadNotifications == 0 ? "Tất cả thông báo đã đọc" : $"{unreadNotifications} thông báo chưa đọc")</p></div>
+                    </div>
+                    <button type="button" class="dashboard-icon-button" onclick="document.getElementById('notificationDropdownButton')?.click()" aria-label="Mở tất cả thông báo"><i class="fas fa-arrow-up-right-from-square"></i></button>
+                </div>
+                <div class="dashboard-notification-list">
+                    @foreach (var item in notifications)
+                    {
+                        <a href="@(item.Url ?? "#")" data-notification-id="@item.Id" class="dashboard-notification @(!item.IsRead ? "is-unread" : "")">
+                            <span><i class="fas @(item.Type == "PendingApproval" ? "fa-list-check" : item.Type == "RentalRequest" ? "fa-handshake" : "fa-bell")"></i></span>
+                            <span><strong>@item.Title</strong><small>@item.Message</small><time>@item.CreatedAt.ToString("dd/MM/yyyy HH:mm")</time></span>
+                        </a>
+                    }
+                    @if (!notifications.Any()) { <div class="dashboard-empty"><i class="far fa-bell"></i><p>Chưa có thông báo mới.</p></div> }
+                </div>
+            </section>
         </div>
 
-        <!-- ═══════ PHẦN 2: THẺ THỐNG KÊ CÓ THỂ BẤM ═══════ -->
-        <div class="row g-3 mb-4">
-            <!-- Tổng Người Dùng -->
-            <div class="col-6 col-lg-3">
-                <a href="/Admin/ManageUsers" class="text-decoration-none">
-                    <div class="card bg-primary text-white border-0 shadow-sm rounded-4 h-100 admin-stat-card">
-                        <div class="card-body p-4 d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="text-uppercase fw-bold opacity-75 mb-1" style="font-size: 0.72rem;">Tổng Người Dùng</h6>
-                                <h2 class="fw-bold mb-0">@totalUsers</h2>
-                                <small class="opacity-75"><i class="fas fa-user-tie me-1"></i>@totalLandlords chủ trọ · @totalTenants người thuê</small>
-                            </div>
-                            <i class="fas fa-users fa-2x opacity-50"></i>
-                        </div>
-                    </div>
-                </a>
-            </div>
-            <!-- Phòng Đã Duyệt -->
-            <div class="col-6 col-lg-3">
-                <a href="/Admin/ManagePosts?status=approved" class="text-decoration-none">
-                    <div class="card bg-success text-white border-0 shadow-sm rounded-4 h-100 admin-stat-card">
-                        <div class="card-body p-4 d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="text-uppercase fw-bold opacity-75 mb-1" style="font-size: 0.72rem;">Phòng Đã Duyệt</h6>
-                                <h2 class="fw-bold mb-0" id="approvedCount">@approvedRooms</h2>
-                                <small class="opacity-75">Đang hiển thị công khai</small>
-                            </div>
-                            <i class="fas fa-check-double fa-2x opacity-50"></i>
-                        </div>
-                    </div>
-                </a>
-            </div>
-            <!-- Đang Chờ Duyệt -->
-            <div class="col-6 col-lg-3">
-                <a href="/Admin/PendingPosts" class="text-decoration-none">
-                    <div class="card bg-warning text-dark border-0 shadow-sm rounded-4 h-100 admin-stat-card">
-                        <div class="card-body p-4 d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="text-uppercase fw-bold opacity-75 mb-1" style="font-size: 0.72rem;">Đang Chờ Duyệt</h6>
-                                <h2 class="fw-bold mb-0" id="pendingCount">@pendingRoomsCount</h2>
-                                <small class="opacity-75">Cần xử lý ngay</small>
-                            </div>
-                            <i class="fas fa-clipboard-check fa-2x opacity-50"></i>
-                        </div>
-                    </div>
-                </a>
-            </div>
-            <!-- Tổng Tin Đăng -->
-            <div class="col-6 col-lg-3">
-                <a href="/Admin/ManagePosts" class="text-decoration-none">
-                    <div class="card bg-dark text-white border-0 shadow-sm rounded-4 h-100 admin-stat-card">
-                        <div class="card-body p-4 d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="text-uppercase fw-bold opacity-75 mb-1" style="font-size: 0.72rem;">Tổng Tin Đăng</h6>
-                                <h2 class="fw-bold mb-0">@totalRooms</h2>
-                                <small class="opacity-75">@rejectedRooms bị từ chối</small>
-                            </div>
-                            <i class="fas fa-layer-group fa-2x opacity-50"></i>
-                        </div>
-                    </div>
-                </a>
-            </div>
-        </div>
-
-        <!-- ═══════ PHẦN 3: TRUY CẬP NHANH ═══════ -->
-        <div class="mb-4">
-            <h5 class="fw-bold mb-3"><i class="fas fa-rocket text-primary me-2"></i> Truy cập nhanh</h5>
-            <div class="row g-3">
-
-                <!-- Duyệt bài đăng -->
-                <div class="col-6 col-md-4 col-lg-2">
-                    <a href="/Admin/PendingPosts" class="text-decoration-none">
-                        <div class="card border-0 shadow-sm rounded-4 h-100 text-center admin-quick-card">
-                            <div class="card-body p-3 position-relative">
-                                <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-2" style="width:52px;height:52px;background:rgba(var(--bs-warning-rgb),0.15);">
-                                    <i class="fas fa-clipboard-list fa-lg text-warning"></i>
-                                </div>
-                                @if (pendingRoomsCount > 0)
-                                {
-                                    <span class="position-absolute top-0 end-0 translate-middle badge rounded-pill bg-danger" style="margin-top:12px;margin-right:6px;">@pendingRoomsCount</span>
-                                }
-                                <h6 class="fw-bold mb-1 text-dark" style="font-size:.85rem;">Duyệt bài đăng</h6>
-                                <small class="text-muted" style="font-size:.72rem;">Xem và xử lý các bài đăng đang chờ kiểm duyệt</small>
-                            </div>
-                        </div>
-                    </a>
-                </div>
-
-                <!-- Quản lý bài đăng -->
-                <div class="col-6 col-md-4 col-lg-2">
-                    <a href="/Admin/ManagePosts" class="text-decoration-none">
-                        <div class="card border-0 shadow-sm rounded-4 h-100 text-center admin-quick-card">
-                            <div class="card-body p-3 position-relative">
-                                <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-2" style="width:52px;height:52px;background:rgba(var(--bs-primary-rgb),0.15);">
-                                    <i class="fas fa-building fa-lg text-primary"></i>
-                                </div>
-                                <span class="position-absolute top-0 end-0 translate-middle badge rounded-pill bg-dark" style="margin-top:12px;margin-right:6px;">@totalRooms</span>
-                                <h6 class="fw-bold mb-1 text-dark" style="font-size:.85rem;">Quản lý bài đăng</h6>
-                                <small class="text-muted" style="font-size:.72rem;">Quản lý toàn bộ bài đăng, trạng thái và loại trọ</small>
-                            </div>
-                        </div>
-                    </a>
-                </div>
-
-                <!-- Quản lý người dùng -->
-                <div class="col-6 col-md-4 col-lg-2">
-                    <a href="/Admin/ManageUsers" class="text-decoration-none">
-                        <div class="card border-0 shadow-sm rounded-4 h-100 text-center admin-quick-card">
-                            <div class="card-body p-3 position-relative">
-                                <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-2" style="width:52px;height:52px;background:rgba(var(--bs-info-rgb),0.15);">
-                                    <i class="fas fa-users-gear fa-lg text-info"></i>
-                                </div>
-                                <span class="position-absolute top-0 end-0 translate-middle badge rounded-pill bg-info" style="margin-top:12px;margin-right:6px;">@totalUsers</span>
-                                <h6 class="fw-bold mb-1 text-dark" style="font-size:.85rem;">Quản lý người dùng</h6>
-                                <small class="text-muted" style="font-size:.72rem;">Xem, khóa, mở khóa và phân loại tài khoản</small>
-                            </div>
-                        </div>
-                    </a>
-                </div>
-
-                <!-- Quản lý hỗ trợ -->
-                <div class="col-6 col-md-4 col-lg-2">
-                    <a href="/Admin/SupportTickets" class="text-decoration-none">
-                        <div class="card border-0 shadow-sm rounded-4 h-100 text-center admin-quick-card">
-                            <div class="card-body p-3 position-relative">
-                                <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-2" style="width:52px;height:52px;background:rgba(var(--bs-danger-rgb),0.15);">
-                                    <i class="fas fa-headset fa-lg text-danger"></i>
-                                </div>
-                                @if (pendingSupportTickets > 0)
-                                {
-                                    <span class="position-absolute top-0 end-0 translate-middle badge rounded-pill bg-danger" style="margin-top:12px;margin-right:6px;">@pendingSupportTickets</span>
-                                }
-                                <h6 class="fw-bold mb-1 text-dark" style="font-size:.85rem;">Quản lý hỗ trợ</h6>
-                                <small class="text-muted" style="font-size:.72rem;">Xem phản hồi, yêu cầu hỗ trợ và khiếu nại</small>
-                            </div>
-                        </div>
-                    </a>
-                </div>
-
-                <!-- Lịch sử xử lý -->
-                <div class="col-6 col-md-4 col-lg-2">
-                    <a href="/Admin/ApprovalHistory" class="text-decoration-none">
-                        <div class="card border-0 shadow-sm rounded-4 h-100 text-center admin-quick-card">
-                            <div class="card-body p-3 position-relative">
-                                <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-2" style="width:52px;height:52px;background:rgba(var(--bs-secondary-rgb),0.15);">
-                                    <i class="fas fa-clock-rotate-left fa-lg text-secondary"></i>
-                                </div>
-                                <span class="position-absolute top-0 end-0 translate-middle badge rounded-pill bg-secondary" style="margin-top:12px;margin-right:6px;">@totalApprovalHistory</span>
-                                <h6 class="fw-bold mb-1 text-dark" style="font-size:.85rem;">Lịch sử xử lý</h6>
-                                <small class="text-muted" style="font-size:.72rem;">Theo dõi các bài đã duyệt, từ chối và lịch sử Admin</small>
-                            </div>
-                        </div>
-                    </a>
-                </div>
-
-                <!-- Về trang chủ -->
-                <div class="col-6 col-md-4 col-lg-2">
-                    <a href="/" class="text-decoration-none">
-                        <div class="card border-0 shadow-sm rounded-4 h-100 text-center admin-quick-card">
-                            <div class="card-body p-3">
-                                <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-2" style="width:52px;height:52px;background:rgba(var(--bs-success-rgb),0.15);">
-                                    <i class="fas fa-home fa-lg text-success"></i>
-                                </div>
-                                <h6 class="fw-bold mb-1 text-dark" style="font-size:.85rem;">Về trang chủ</h6>
-                                <small class="text-muted" style="font-size:.72rem;">Xem giao diện công khai như người dùng bình thường</small>
-                            </div>
-                        </div>
-                    </a>
-                </div>
-
-            </div>
-        </div>
-
-        <!-- ═══════ PHẦN 4: HOẠT ĐỘNG MỚI NHẤT ═══════ -->
-        <div class="card shadow-sm border-0 rounded-4">
-            <div class="card-header bg-white border-bottom-0 pt-4 pb-0 d-flex justify-content-between align-items-center">
-                <h5 class="fw-bold mb-0"><i class="fas fa-bolt text-warning me-2"></i> Hoạt động mới nhất</h5>
-                <a href="/Admin/ManagePosts" class="btn btn-sm btn-outline-primary rounded-pill"><i class="fas fa-list me-1"></i> Xem tất cả bài đăng</a>
-            </div>
-            <div class="card-body p-0 mt-3">
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th class="ps-4">Tài khoản</th>
-                                <th>Hành động</th>
-                                <th>Thời gian thực</th>
-                                <th class="text-center">Trạng thái</th>
-                                <th class="text-center print-hide">Công cụ</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @if (recentActivities != null && recentActivities.Any())
-                            {
-                                foreach (var item in recentActivities)
-                                {
-                                    var timeSpan = DateTime.Now - item.CreatedAt;
-                                    string timeAgo = "";
-                                    if (timeSpan.TotalDays >= 1) { timeAgo = $"{(int)timeSpan.TotalDays} ngày trước"; }
-                                    else if (timeSpan.TotalHours >= 1) { timeAgo = $"{(int)timeSpan.TotalHours} giờ {(int)timeSpan.Minutes} phút trước"; }
-                                    else if (timeSpan.TotalMinutes >= 1) { timeAgo = $"{(int)timeSpan.TotalMinutes} phút trước"; }
-                                    else { timeAgo = "Vừa xong"; }
-
-                                    <tr>
-                                        <td class="ps-4">
-                                            <div class="d-flex align-items-center">
-                                                <div class="bg-dark text-white rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px; font-weight: bold;">
-                                                    @(!string.IsNullOrEmpty(item.Owner?.FullName) ? item.Owner.FullName.Substring(0, 1).ToUpper() : "U")
-                                                </div>
-                                                <div>
-                                                    <a href="/Admin/UserDetails/@item.OwnerId" class="text-decoration-none text-dark"><h6 class="mb-0 fw-bold">@item.Owner?.FullName</h6></a>
-                                                    <small class="text-muted">@item.Owner?.Email</small>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            Vừa tải lên <span class="fw-bold text-dark">@(item.AccommodationType == "NhaNguyenCan" ? "Nhà nguyên căn" : item.AccommodationType == "CanHo" ? "Căn hộ" : item.AccommodationType == "SleepBox" ? "Ký túc xá" : "Phòng trọ")</span>: <br>
-                                            <a href="/Accommodation/Details/@item.Id" class="text-primary text-decoration-none fw-medium text-truncate d-inline-block" style="max-width: 250px;">
-                                                @item.Title
-                                            </a>
-                                        </td>
-                                        <td>
-                                            <span class="badge bg-light text-dark border border-secondary border-opacity-25 py-2 px-3">
-                                                <i class="far fa-clock text-muted me-1"></i> @timeAgo
-                                            </span>
-                                        </td>
-                                        <td class="text-center">
-                                            @if (item.IsApproved)
-                                            {
-                                                <span class="badge bg-success-subtle text-success px-3 py-2 rounded-pill">Đã duyệt</span>
-                                            }
-                                            else if (item.IsRejected)
-                                            {
-                                                <span class="badge bg-danger-subtle text-danger px-3 py-2 rounded-pill">Đã từ chối</span>
-                                            }
-                                            else
-                                            {
-                                                <span class="badge bg-warning-subtle text-warning px-3 py-2 rounded-pill">Chờ duyệt</span>
-                                            }
-                                        </td>
-                                        <td class="text-center print-hide">
-                                            <div class="d-flex justify-content-center gap-1">
-                                                @* Nút xem chi tiết bài đăng *@
-                                                <a href="/Accommodation/Details/@item.Id" target="_blank" class="btn btn-sm btn-outline-primary" title="Xem chi tiết bài đăng">
-                                                    <i class="fas fa-eye"></i>
-                                                </a>
-
-                                                @* Nút xem hồ sơ chủ bài đăng *@
-                                                <a href="/Admin/UserDetails/@item.OwnerId" class="btn btn-sm btn-outline-secondary" title="Xem hồ sơ @item.Owner?.FullName">
-                                                    <i class="fas fa-user"></i>
-                                                </a>
-
-                                                @* Nút duyệt nhanh nếu bài chưa duyệt và chưa bị từ chối *@
-                                                @if (!item.IsApproved && !item.IsRejected)
-                                                {
-                                                    <a href="/Admin/PendingPosts" class="btn btn-sm btn-outline-warning" title="Đi đến trang Duyệt bài">
-                                                        <i class="fas fa-gavel"></i>
-                                                    </a>
-                                                }
-                                            </div>
-                                        </td>
-                                    </tr>
-                                }
-                            }
-                            else
-                            {
-                                <tr><td colspan="5" class="text-center py-4 text-muted">Hệ thống chưa ghi nhận hoạt động nào.</td></tr>
-                            }
-                        </tbody>
-                    </table>
+        <section class="dashboard-accordion">
+            <button class="dashboard-accordion__toggle" type="button" data-bs-toggle="collapse" data-bs-target="#adminOperations" aria-expanded="false" aria-controls="adminOperations">
+                <span><i class="fas fa-table-cells-large"></i><span><strong>Quản lý & vận hành</strong><small>Tất cả chức năng quản trị được sắp xếp trong một mục</small></span></span>
+                <i class="fas fa-chevron-down dashboard-accordion__chevron"></i>
+            </button>
+            <div class="collapse" id="adminOperations">
+                <div class="dashboard-operation-grid">
+                    <a href="/Admin/PendingPosts"><i class="fas fa-list-check is-orange"></i><span><strong>Duyệt bài đăng</strong><small>@pendingRooms bài đang chờ</small></span></a>
+                    <a href="/Admin/ManagePosts"><i class="fas fa-building is-blue"></i><span><strong>Quản lý bài đăng</strong><small>Toàn bộ @totalRooms tin đăng</small></span></a>
+                    <a href="/Admin/ManageUsers"><i class="fas fa-users-gear is-blue"></i><span><strong>Quản lý người dùng</strong><small>Khóa, mở khóa, phân loại</small></span></a>
+                    <a href="/Admin/SupportTickets"><i class="fas fa-headset is-red"></i><span><strong>Quản lý hỗ trợ</strong><small>@pendingTickets yêu cầu chưa xử lý</small></span></a>
+                    <a href="/Admin/ApprovalHistory"><i class="fas fa-clock-rotate-left is-green"></i><span><strong>Lịch sử xử lý</strong><small>@totalHistory lượt duyệt và từ chối</small></span></a>
+                    <a href="/"><i class="fas fa-house is-dark"></i><span><strong>Về trang chủ</strong><small>Xem giao diện công khai</small></span></a>
                 </div>
             </div>
-        </div>
+        </section>
+
+        <section class="dashboard-table-panel">
+            <div class="dashboard-section-heading">
+                <div><span class="dashboard-section-heading__icon is-blue"><i class="fas fa-clock-rotate-left"></i></span><div><h2>Hoạt động gần đây</h2><p>Các bài đăng mới nhất trên hệ thống</p></div></div>
+                <a href="/Admin/ManagePosts">Xem tất cả <i class="fas fa-arrow-right"></i></a>
+            </div>
+            <div class="table-responsive">
+                <table class="table dashboard-table align-middle mb-0">
+                    <thead><tr><th>Chủ trọ</th><th>Bài đăng</th><th>Thời gian</th><th>Trạng thái</th><th></th></tr></thead>
+                    <tbody>
+                    @foreach (var item in recentActivities)
+                    {
+                        <tr>
+                            <td><strong>@item.Owner?.FullName</strong><small>@item.Owner?.Email</small></td>
+                            <td><a href="/Accommodation/Details/@item.Id">@item.Title</a></td>
+                            <td>@item.CreatedAt.ToString("dd/MM/yyyy HH:mm")</td>
+                            <td><span class="dashboard-status @(item.IsApproved ? "is-success" : item.IsRejected ? "is-danger" : "is-warning")">@(item.IsApproved ? "Đã duyệt" : item.IsRejected ? "Từ chối" : "Chờ duyệt")</span></td>
+                            <td><a class="dashboard-row-action" href="@(!item.IsApproved && !item.IsRejected ? "/Admin/PendingPosts" : $"/Accommodation/Details/{item.Id}")">Xem <i class="fas fa-arrow-right"></i></a></td>
+                        </tr>
+                    }
+                    @if (!recentActivities.Any()) { <tr><td colspan="5"><div class="dashboard-empty">Chưa có hoạt động nào.</div></td></tr> }
+                    </tbody>
+                </table>
+            </div>
+        </section>
     </div>
 </div>
 
-<style>
-    .admin-stat-card {
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-        cursor: pointer;
-    }
-    .admin-stat-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 8px 25px rgba(0,0,0,.18) !important;
-    }
-    .admin-quick-card {
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-        cursor: pointer;
-        border: 1px solid #eee !important;
-    }
-    .admin-quick-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 6px 20px rgba(0,0,0,.12) !important;
-        border-color: var(--bs-primary) !important;
-    }
-
-    @@media print {
-        .print-hide, header, footer, .nav, .approval-action-form, .btn {
-            display: none !important;
-        }
-
-        body {
-            background-color: white !important;
-            margin: 0;
-            padding: 0;
-        }
-
-        .card {
-            border: 1px solid #ddd !important;
-            box-shadow: none !important;
-            break-inside: avoid;
-        }
-
-        .admin-approval-page {
-            margin: 0 !important;
-        }
-    }
-</style>
-
 @section Scripts {
     <script>
-        document.addEventListener("pendingAccommodationProcessed", event => { 
-            const pendingCountEl = document.getElementById("pendingCount");
-            if(pendingCountEl && event.detail.status === "Approved") {
-                pendingCountEl.textContent = Math.max(0, parseInt(pendingCountEl.textContent) - 1);
-                const approvedCountEl = document.getElementById("approvedCount");
-                if (approvedCountEl) approvedCountEl.textContent = parseInt(approvedCountEl.textContent) + 1;
+        document.addEventListener("pendingAccommodationProcessed", event => {
+            const pending = document.getElementById("pendingCount");
+            if (pending) pending.textContent = Math.max(0, Number(pending.textContent) - 1);
+            if (event.detail.status === "Approved") {
+                const approved = document.getElementById("approvedCount");
+                if (approved) approved.textContent = Number(approved.textContent) + 1;
             }
         });
-
-        document.addEventListener("pendingAccommodationCreated", async event => {
-            const pendingCountEl = document.getElementById("pendingCount");
-            if (pendingCountEl) pendingCountEl.textContent = parseInt(pendingCountEl.textContent) + 1;
+        document.addEventListener("pendingAccommodationCreated", () => {
+            const pending = document.getElementById("pendingCount");
+            if (pending) pending.textContent = Number(pending.textContent) + 1;
         });
     </script>
 }

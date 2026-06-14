@@ -31,6 +31,9 @@ namespace DoAnLapTrinhWeb.Controllers
 
         public async Task<IActionResult> Index()
         {
+            var adminIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            int.TryParse(adminIdValue, out var adminId);
+
             // Chỉ đếm thống kê cho Dashboard
             ViewBag.TotalUsers = await _context.Users.CountAsync(u => !u.IsDeleted);
             ViewBag.TotalAdmins = await _context.Users.CountAsync(u => u.Role == "Admin" && !u.IsDeleted);
@@ -58,6 +61,13 @@ namespace DoAnLapTrinhWeb.Controllers
                 .Take(10)
                 .ToListAsync();
             ViewBag.RecentActivities = recentActivities;
+            ViewBag.RecentNotifications = await _context.Notifications
+                .Where(item => item.UserId == adminId && item.Type != "ChatMessage")
+                .OrderByDescending(item => item.CreatedAt)
+                .Take(5)
+                .ToListAsync();
+            ViewBag.UnreadNotifications = await _context.Notifications
+                .CountAsync(item => item.UserId == adminId && item.Type != "ChatMessage" && !item.IsRead);
 
             return View();
         }

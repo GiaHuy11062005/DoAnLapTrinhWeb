@@ -124,7 +124,7 @@
                                         }
                                     </form>
 
-                                    <form action="/Admin/Delete" method="post" class="d-inline" onsubmit="return confirm('Cảnh báo: Bạn có chắc chắn muốn xóa bài đăng này không? Việc này không thể hoàn tác!');">
+                                    <form action="/Admin/Delete" method="post" class="d-inline" data-app-confirm="Bạn có chắc chắn muốn xóa bài đăng này? Việc này không thể hoàn tác.">
                                         <input type="hidden" name="id" value="@item.Id" />
                                         <button type="submit" class="btn btn-sm btn-outline-danger" title="Xóa bài đăng"><i class="fas fa-trash-alt"></i></button>
                                     </form>

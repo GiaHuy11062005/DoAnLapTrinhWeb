@@ -155,7 +155,7 @@
                                             </button>
                                         }
 
-                                        <form action="/Admin/SoftDeleteUser" method="post" class="d-inline" onsubmit="return confirm('Cảnh báo: Bạn có chắc chắn muốn xóa tài khoản này không? Mọi dữ liệu liên quan sẽ bị ẩn đi.');">
+                                        <form action="/Admin/SoftDeleteUser" method="post" class="d-inline" data-app-confirm="Bạn có chắc chắn muốn xóa tài khoản này không? Mọi dữ liệu liên quan sẽ bị ẩn đi.">
                                             <input type="hidden" name="id" value="@user.Id" />
                                             <button type="submit" class="btn btn-sm btn-danger" title="Xóa tài khoản"><i class="fas fa-trash-alt"></i></button>
                                         </form>

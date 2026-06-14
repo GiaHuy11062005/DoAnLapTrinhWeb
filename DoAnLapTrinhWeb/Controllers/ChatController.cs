@@ -14,16 +14,13 @@ namespace DoAnLapTrinhWeb.Controllers
     {
         private readonly AppDbContext _context;
         private readonly IHubContext<ChatHub> _chatHubContext;
-        private readonly IHubContext<AccommodationHub> _notificationHubContext;
 
         public ChatController(
             AppDbContext context,
-            IHubContext<ChatHub> chatHubContext,
-            IHubContext<AccommodationHub> notificationHubContext)
+            IHubContext<ChatHub> chatHubContext)
         {
             _context = context;
             _chatHubContext = chatHubContext;
-            _notificationHubContext = notificationHubContext;
         }
 
         // =========================================================
@@ -34,25 +31,6 @@ namespace DoAnLapTrinhWeb.Controllers
             userId = 0;
             var claim = User.FindFirstValue(ClaimTypes.NameIdentifier);
             return int.TryParse(claim, out userId);
-        }
-
-        // =========================================================
-        // GỬI THÔNG BÁO REALTIME QUA SIGNALR
-        // =========================================================
-        private async Task SendNotification(int userId, AppNotification notification)
-        {
-            await _notificationHubContext.Clients
-                .Group($"User_{userId}")
-                .SendAsync("NotificationReceived", new
-                {
-                    id = notification.Id,
-                    title = notification.Title,
-                    message = notification.Message,
-                    url = notification.Url,
-                    type = notification.Type,
-                    isRead = notification.IsRead,
-                    createdAt = notification.CreatedAt.ToString("dd/MM/yyyy HH:mm")
-                });
         }
 
         // =========================================================
@@ -239,20 +217,6 @@ namespace DoAnLapTrinhWeb.Controllers
             if (conversation.RenterId != currentUserId && conversation.LandlordId != currentUserId)
                 return Forbid();
 
-            // Đánh dấu tin nhắn của người kia là đã đọc
-            var unreadMessages = await _context.ChatMessages
-                .Where(m => m.ConversationId == conversationId &&
-                            m.SenderId != currentUserId &&
-                            !m.IsRead)
-                .ToListAsync();
-
-            if (unreadMessages.Any())
-            {
-                foreach (var msg in unreadMessages)
-                    msg.IsRead = true;
-                await _context.SaveChangesAsync();
-            }
-
             ViewBag.CurrentUserId = currentUserId;
             return PartialView("_ChatHistory", conversation);
         }
@@ -292,6 +256,13 @@ namespace DoAnLapTrinhWeb.Controllers
             };
 
             _context.ChatMessages.Add(message);
+            var repliedUnreadMessages = await _context.ChatMessages
+                .Where(item =>
+                    item.ConversationId == conversationId &&
+                    item.SenderId != currentUserId &&
+                    !item.IsRead)
+                .ToListAsync();
+            foreach (var unreadMessage in repliedUnreadMessages) unreadMessage.IsRead = true;
             conversation.UpdatedAt = DateTime.Now;
             await _context.SaveChangesAsync();
 
@@ -312,29 +283,19 @@ namespace DoAnLapTrinhWeb.Controllers
                     createdAt = message.CreatedAt.ToString("dd/MM/yyyy HH:mm")
                 });
 
-            // Xác định người nhận (người còn lại trong conversation)
             var otherUserId = currentUserId == conversation.RenterId
                 ? conversation.LandlordId
                 : conversation.RenterId;
-
-            // Tạo thông báo cho người nhận
-            var truncatedContent = content.Length > 100 ? content.Substring(0, 100) + "..." : content;
-            var notification = new AppNotification
-            {
-                UserId = otherUserId,
-                Title = "Tin nhắn mới",
-                Message = $"{senderName}: {truncatedContent}",
-                Url = $"/Chat/Inbox?openChat={conversationId}",
-                Type = "ChatMessage",
-                IsRead = false,
-                CreatedAt = DateTime.Now
-            };
-
-            _context.Notifications.Add(notification);
-            await _context.SaveChangesAsync();
-
-            // Gửi thông báo realtime
-            await SendNotification(otherUserId, notification);
+            await _chatHubContext.Clients
+                .Group($"ChatUser_{otherUserId}")
+                .SendAsync("InboxMessageReceived", new
+                {
+                    conversationId,
+                    senderId = currentUserId,
+                    senderName,
+                    content = message.Content,
+                    createdAt = message.CreatedAt.ToString("dd/MM/yyyy HH:mm")
+                });
 
             return Ok(new
             {
@@ -342,7 +303,8 @@ namespace DoAnLapTrinhWeb.Controllers
                 senderId = currentUserId,
                 senderName = senderName,
                 content = message.Content,
-                createdAt = message.CreatedAt.ToString("dd/MM/yyyy HH:mm")
+                createdAt = message.CreatedAt.ToString("dd/MM/yyyy HH:mm"),
+                clearedUnreadCount = repliedUnreadMessages.Count
             });
         }
 

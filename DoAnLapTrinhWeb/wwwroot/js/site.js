@@ -3,6 +3,93 @@
 
 // Write your JavaScript code.
 
+// Shared in-page dialog and toast feedback.
+(() => {
+    const escapeHtml = value => String(value || '').replace(/[&<>"']/g, character =>
+        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[character]);
+
+    const ensureToastArea = () => {
+        let area = document.getElementById('appToastArea');
+        if (!area) {
+            area = document.createElement('div');
+            area.id = 'appToastArea';
+            area.className = 'app-toast-area';
+            area.setAttribute('aria-live', 'polite');
+            document.body.appendChild(area);
+        }
+        return area;
+    };
+
+    window.appToast = (message, type = 'error') => {
+        const toast = document.createElement('div');
+        toast.className = `app-toast is-${type}`;
+        toast.innerHTML = `
+            <span class="app-toast__icon"><i class="fas ${type === 'success' ? 'fa-circle-check' : type === 'info' ? 'fa-circle-info' : 'fa-circle-exclamation'}"></i></span>
+            <span>${escapeHtml(message || 'Đã xảy ra lỗi.')}</span>
+            <button type="button" aria-label="Đóng"><i class="fas fa-xmark"></i></button>`;
+        const close = () => {
+            toast.classList.add('is-leaving');
+            setTimeout(() => toast.remove(), 220);
+        };
+        toast.querySelector('button').addEventListener('click', close);
+        ensureToastArea().appendChild(toast);
+        setTimeout(close, type === 'error' ? 5200 : 3600);
+    };
+
+    window.appAlert = (message, type = 'error') => window.appToast(message, type);
+
+    window.appConfirm = (message, options = {}) => new Promise(resolve => {
+        const overlay = document.createElement('div');
+        overlay.className = 'app-dialog';
+        overlay.innerHTML = `
+            <div class="app-dialog__backdrop"></div>
+            <div class="app-dialog__panel" role="dialog" aria-modal="true" aria-labelledby="appDialogTitle">
+                <span class="app-dialog__icon"><i class="fas ${options.icon || 'fa-circle-question'}"></i></span>
+                <div><h2 id="appDialogTitle">${escapeHtml(options.title || 'Xác nhận thao tác')}</h2><p></p></div>
+                <div class="app-dialog__actions">
+                    <button type="button" class="btn btn-light" data-dialog-cancel>${escapeHtml(options.cancelText || 'Quay lại')}</button>
+                    <button type="button" class="btn ${options.danger ? 'btn-danger' : 'btn-primary'}" data-dialog-confirm>${escapeHtml(options.confirmText || 'Xác nhận')}</button>
+                </div>
+            </div>`;
+        overlay.querySelector('p').textContent = message || 'Bạn có muốn tiếp tục?';
+        document.body.appendChild(overlay);
+        document.body.classList.add('app-dialog-open');
+
+        let finished = false;
+        const finish = value => {
+            if (finished) return;
+            finished = true;
+            overlay.classList.add('is-leaving');
+            document.body.classList.remove('app-dialog-open');
+            setTimeout(() => overlay.remove(), 180);
+            resolve(value);
+        };
+        overlay.querySelector('[data-dialog-confirm]').addEventListener('click', () => finish(true));
+        overlay.querySelector('[data-dialog-cancel]').addEventListener('click', () => finish(false));
+        overlay.querySelector('.app-dialog__backdrop').addEventListener('click', () => finish(false));
+        overlay.addEventListener('keydown', event => {
+            if (event.key === 'Escape') finish(false);
+        });
+        overlay.querySelector('[data-dialog-confirm]').focus();
+    });
+
+    document.addEventListener('submit', async event => {
+        const form = event.target.closest('form[data-app-confirm]');
+        if (!form || form.dataset.appConfirmed === 'true') return;
+
+        event.preventDefault();
+        const accepted = await window.appConfirm(form.dataset.appConfirm, {
+            danger: true,
+            icon: 'fa-triangle-exclamation',
+            confirmText: 'Tiếp tục'
+        });
+        if (!accepted) return;
+
+        form.dataset.appConfirmed = 'true';
+        form.requestSubmit(event.submitter || undefined);
+    }, true);
+})();
+
 // ==========================================
 // 1. HÀM DÙNG CHUNG CHO YÊU THÍCH PHÒNG TRỌ
 // ==========================================
@@ -136,6 +223,42 @@ $(document).ready(function () {
             });
         }
     });
+
+    const mapLinkInput = document.getElementById('modalGoogleMapsUrl');
+    const mapRadiusInput = document.getElementById('modalMapRadius');
+    const mapRadiusStatus = document.getElementById('modalMapRadiusStatus');
+    const mapPreview = document.getElementById('modalMapPreview');
+    let mapPreviewTimer;
+
+    const previewMapRadius = async () => {
+        const googleMapsUrl = mapLinkInput?.value.trim();
+        const cityId = modalCitySelect.val();
+        if (!googleMapsUrl || !cityId || !mapRadiusInput) return;
+
+        mapRadiusInput.value = 'Đang tính bán kính...';
+        try {
+            const response = await fetch(`/Accommodation/PreviewMapRadius?googleMapsUrl=${encodeURIComponent(googleMapsUrl)}&cityId=${encodeURIComponent(cityId)}`);
+            const data = await response.json();
+            if (!response.ok || !data.success) throw new Error(data.message || 'Không thể tính bán kính.');
+
+            mapRadiusInput.value = `${Number(data.distanceKm).toLocaleString('vi-VN')} km từ trung tâm ${data.centerName}`;
+            mapRadiusStatus.textContent = 'Đã đọc tọa độ thật từ liên kết Google Maps.';
+            mapRadiusStatus.classList.remove('text-danger');
+            mapPreview.src = data.mapUrl;
+            mapPreview.hidden = false;
+        } catch (error) {
+            mapRadiusInput.value = 'Chưa tính được bán kính';
+            mapRadiusStatus.textContent = error.message || 'Hãy kiểm tra lại liên kết Google Maps.';
+            mapRadiusStatus.classList.add('text-danger');
+            mapPreview.hidden = true;
+        }
+    };
+
+    mapLinkInput?.addEventListener('input', () => {
+        window.clearTimeout(mapPreviewTimer);
+        mapPreviewTimer = window.setTimeout(previewMapRadius, 550);
+    });
+    modalCitySelect.on('change', previewMapRadius);
 
     window.setupAccumulatingFileInput = ({ inputId, previewId, maxFiles, allowedTypes, maxSize, errorMessage }) => {
         const input = document.getElementById(inputId);

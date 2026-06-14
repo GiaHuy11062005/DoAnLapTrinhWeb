@@ -1,10 +1,15 @@
 @model IEnumerable<DoAnLapTrinhWeb.Models.Accommodation>
 @{
     ViewData["Title"] = "Kết quả tìm kiếm";
+    var distanceLookup = ViewBag.DistanceLookup as Dictionary<int, double> ?? new();
 }
 
 <div class="container mt-5 mb-5" style="min-height: 60vh;">
     <h3 class="fw-bold mb-4 border-bottom pb-2">Kết quả tìm kiếm (@(ViewBag.TotalCount ?? 0) phòng)</h3>
+    @if (ViewBag.RadiusError != null)
+    {
+        <div class="alert alert-warning"><i class="fas fa-location-dot me-2"></i>@ViewBag.RadiusError</div>
+    }
 
     @if (Model != null && Model.Any())
     {
@@ -23,6 +28,10 @@
                         <div class="card-body">
                             <h5 class="card-title text-truncate fw-bold">@room.Title</h5>
                             <p class="card-text text-danger fw-bold fs-5">@room.Price.ToString("N0") VNĐ</p>
+                            @if (distanceLookup.TryGetValue(room.Id, out var distance))
+                            {
+                                <span class="search-distance"><i class="fas fa-route"></i> @distance.ToString("0.0") km từ trung tâm thành phố</span>
+                            }
                         </div>
                         <div class="card-footer bg-white border-top-0 pb-3">
                             <a href="/Accommodation/Details/@room.Id" class="btn btn-outline-primary w-100 rounded-pill">Xem chi tiết</a>
@@ -40,16 +49,16 @@
             <nav aria-label="Page navigation" class="mt-5">
                 <ul class="pagination justify-content-center">
                     <li class="page-item @(currentPage == 1 ? "disabled" : "")">
-                        <a class="page-link" href="@Url.Action("Search", new { cityId = ViewBag.SearchCityId, districtId = ViewBag.SearchDistrictId, priceRange = ViewBag.SearchPriceRange, keyword = ViewBag.SearchKeyword, page = currentPage - 1 })">« Trang trước</a>
+                        <a class="page-link" href="@Url.Action("Search", new { cityId = ViewBag.SearchCityId, districtId = ViewBag.SearchDistrictId, priceRange = ViewBag.SearchPriceRange, radiusKm = ViewBag.SearchRadiusKm, keyword = ViewBag.SearchKeyword, page = currentPage - 1 })">« Trang trước</a>
                     </li>
                     @for (int i = 1; i <= totalPages; i++)
                     {
                         <li class="page-item @(currentPage == i ? "active" : "")">
-                            <a class="page-link" href="@Url.Action("Search", new { cityId = ViewBag.SearchCityId, districtId = ViewBag.SearchDistrictId, priceRange = ViewBag.SearchPriceRange, keyword = ViewBag.SearchKeyword, page = i })">@i</a>
+                            <a class="page-link" href="@Url.Action("Search", new { cityId = ViewBag.SearchCityId, districtId = ViewBag.SearchDistrictId, priceRange = ViewBag.SearchPriceRange, radiusKm = ViewBag.SearchRadiusKm, keyword = ViewBag.SearchKeyword, page = i })">@i</a>
                         </li>
                     }
                     <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
-                        <a class="page-link" href="@Url.Action("Search", new { cityId = ViewBag.SearchCityId, districtId = ViewBag.SearchDistrictId, priceRange = ViewBag.SearchPriceRange, keyword = ViewBag.SearchKeyword, page = currentPage + 1 })">Trang sau »</a>
+                        <a class="page-link" href="@Url.Action("Search", new { cityId = ViewBag.SearchCityId, districtId = ViewBag.SearchDistrictId, priceRange = ViewBag.SearchPriceRange, radiusKm = ViewBag.SearchRadiusKm, keyword = ViewBag.SearchKeyword, page = currentPage + 1 })">Trang sau »</a>
                     </li>
                 </ul>
             </nav>

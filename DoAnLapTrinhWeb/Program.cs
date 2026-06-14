@@ -14,7 +14,9 @@ builder.Services.AddHttpClient();
 
 // Đăng ký AppDbContext kết nối với SQL Server
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(
+        builder.Configuration.GetConnectionString("DefaultConnection"),
+        sqlOptions => sqlOptions.CommandTimeout(15)));
 
 // =========================================================
 // THÊM CẤU HÌNH COOKIE AUTHENTICATION CHO CHỨC NĂNG ĐĂNG NHẬP
@@ -125,12 +127,16 @@ app.MapControllerRoute(
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
+    var logger = services.GetRequiredService<ILogger<Program>>();
     try
     {
         var context = services.GetRequiredService<AppDbContext>();
 
         // 1. Gọi hàm Seed Data kéo 3 Thành phố từ API
-        await context.Database.MigrateAsync();
+        logger.LogInformation("Đang kết nối database và áp dụng migration...");
+        using var migrationTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+        await context.Database.MigrateAsync(migrationTimeout.Token);
+        logger.LogInformation("Kết nối database thành công.");
         await LocationSeeder.SeedLocationsAsync(context);
 
         // 2. Tự động tạo tài khoản Admin (Nếu chưa tồn tại)
@@ -166,8 +172,9 @@ using (var scope = app.Services.CreateScope())
     }
     catch (Exception ex)
     {
-        var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "Có lỗi xảy ra khi tạo dữ liệu khởi tạo (Seeding).");
+        logger.LogError(
+            ex,
+            "Không thể khởi tạo database. Kiểm tra dịch vụ SQL Server và ConnectionStrings:DefaultConnection.");
     }
 }
 

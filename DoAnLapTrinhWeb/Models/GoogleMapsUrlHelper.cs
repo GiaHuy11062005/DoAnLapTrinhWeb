@@ -40,11 +40,13 @@ namespace DoAnLapTrinhWeb.Models
             return $"https://www.google.com/maps?q={query}&z=19&output=embed";
         }
 
-        private static string? GetCoordinates(string? googleMapsUrl)
+        public static bool TryGetCoordinates(string? googleMapsUrl, out double latitude, out double longitude)
         {
+            latitude = 0;
+            longitude = 0;
             if (string.IsNullOrWhiteSpace(googleMapsUrl))
             {
-                return null;
+                return false;
             }
 
             var decodedUrl = Uri.UnescapeDataString(googleMapsUrl);
@@ -54,8 +56,15 @@ namespace DoAnLapTrinhWeb.Models
             if (!match.Success) match = QueryCoordinates.Match(decodedUrl);
             if (!match.Success) match = AtCoordinates.Match(decodedUrl);
 
-            return match.Success
-                ? $"{match.Groups[1].Value},{match.Groups[2].Value}"
+            return match.Success &&
+                   double.TryParse(match.Groups[1].Value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out latitude) &&
+                   double.TryParse(match.Groups[2].Value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out longitude);
+        }
+
+        private static string? GetCoordinates(string? googleMapsUrl)
+        {
+            return TryGetCoordinates(googleMapsUrl, out var latitude, out var longitude)
+                ? $"{latitude.ToString(System.Globalization.CultureInfo.InvariantCulture)},{longitude.ToString(System.Globalization.CultureInfo.InvariantCulture)}"
                 : null;
         }
     }

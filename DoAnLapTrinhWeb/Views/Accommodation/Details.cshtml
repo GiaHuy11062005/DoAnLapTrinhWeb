@@ -118,7 +118,7 @@
 
                     <div class="room-map-panel" id="roomMapPanel">
                         <iframe id="roomMapFrame" class="room-map-frame" src="@googleMapsEmbedUrl" title="Vị trí @Model.Title" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
-                        <a href="@googleMapsLink" target="_blank" rel="noopener noreferrer" class="room-map-external">
+                        <a id="roomMapExternal" href="@googleMapsLink" target="_blank" rel="noopener noreferrer" class="room-map-external">
                             Mở bằng Google Maps <i class="fas fa-arrow-up-right-from-square"></i>
                         </a>
                     </div>
@@ -145,25 +145,23 @@
                     </div>
 
                     <div class="room-distance-menu" id="roomNearbyMenu">
-                        <label class="fw-bold mb-2">Tìm kiếm quanh phòng trọ</label>
+                        <label class="fw-bold mb-2">Chọn tiện ích cần chỉ đường</label>
                         <select id="nearbyCategoryInput" class="form-select mb-2">
-                            <option value="Chợ, Siêu thị">🛒 Chợ & Siêu thị</option>
-                            <option value="Bệnh viện, Phòng khám">🏥 Bệnh viện & Y tế</option>
-                            <option value="Trạm xe buýt">🚌 Trạm xe buýt</option>
-                            <option value="Cửa hàng tiện lợi">🏪 Cửa hàng tiện lợi 24/7</option>
-                            <option value="Nhà hàng, Quán ăn">🍜 Ăn uống & Cafe</option>
-                            <option value="Phòng gym">🏋️ Phòng Gym & Thể thao</option>
+                            <option value="Chợ hoặc siêu thị gần nhất">Chợ & Siêu thị</option>
+                            <option value="Bệnh viện hoặc phòng khám gần nhất">Bệnh viện & Y tế</option>
+                            <option value="Trạm xe buýt gần nhất">Trạm xe buýt</option>
+                            <option value="Cửa hàng tiện lợi gần nhất">Cửa hàng tiện lợi 24/7</option>
+                            <option value="Nhà hàng hoặc quán ăn gần nhất">Ăn uống & Cafe</option>
+                            <option value="Phòng gym gần nhất">Phòng Gym & Thể thao</option>
                         </select>
-                        <label class="fw-bold mb-2 mt-2">Bán kính quét (Xoay quanh trọ)</label>
-                        <select id="nearbyRadiusInput" class="form-select mb-3">
-                            <option value="16">Trong vòng ~500 mét (Đi bộ)</option>
-                            <option value="15" selected>Trong vòng ~1 km (Rất gần)</option>
-                            <option value="14">Trong vòng ~2 km (Vừa phải)</option>
-                            <option value="13">Trong vòng ~5 km (Đi xe máy)</option>
-                        </select>
+                        <small class="room-nearby-hint"><i class="fas fa-wand-magic-sparkles"></i> Đổi lựa chọn để Google Maps tự tìm nơi gần trọ và vẽ đường đi.</small>
+                        <div class="room-nearby-divider"><span>hoặc chỉ đường chính xác</span></div>
+                        <label for="nearbyGoogleMapsUrl" class="fw-bold mb-2">Dán link Google Maps của tiện ích</label>
+                        <input type="url" id="nearbyGoogleMapsUrl" placeholder="https://maps.app.goo.gl/..." />
+                        <p id="nearbyMapError" class="room-distance-menu__error" hidden></p>
                         <div class="room-distance-menu__actions">
                             <button type="button" id="roomNearbyCancel">Hủy bỏ</button>
-                            <button type="button" id="roomNearbyConfirm" class="is-primary">Quét Bản Đồ</button>
+                            <button type="button" id="roomNearbyConfirm" class="is-primary"><i class="fas fa-route"></i> Vẽ đường đi</button>
                         </div>
                     </div>
                 </section>
@@ -367,8 +365,10 @@
         const mapToggle = document.getElementById("roomMapToggle");
         const mapPanel = document.getElementById("roomMapPanel");
         const mapFrame = document.getElementById("roomMapFrame");
+        const mapExternal = document.getElementById("roomMapExternal");
 
         const fullAddressText = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(fullAddress));
+        const roomMapExternalUrl = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(googleMapsLink));
 
         const distanceToggle = document.getElementById("roomDistanceToggle");
         const distanceMenu = document.getElementById("roomDistanceMenu");
@@ -382,7 +382,9 @@
         const nearbyCancel = document.getElementById("roomNearbyCancel");
         const nearbyConfirm = document.getElementById("roomNearbyConfirm");
         const nearbyCategory = document.getElementById("nearbyCategoryInput");
-        const nearbyRadius = document.getElementById("nearbyRadiusInput");
+        const nearbyGoogleMapsUrl = document.getElementById("nearbyGoogleMapsUrl");
+        const nearbyMapError = document.getElementById("nearbyMapError");
+        const roomMapDestination = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(roomMapDestination));
 
         function setMapOpen(isOpen) {
             mapPanel?.classList.toggle("is-open", isOpen);
@@ -406,6 +408,7 @@
             if (willOpen && mapFrame) {
                 const roomMapEmbedUrl = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(googleMapsEmbedUrl));
                 mapFrame.src = roomMapEmbedUrl;
+                mapExternal.href = roomMapExternalUrl;
             }
             setMapOpen(willOpen);
         });
@@ -427,6 +430,7 @@
 
         nearbyCancel?.addEventListener("click", () => {
             setNearbyMenuOpen(false);
+            nearbyMapError.hidden = true;
         });
 
         distanceConfirm?.addEventListener("click", () => {
@@ -448,15 +452,49 @@
         schoolInput?.addEventListener("input", () => { schoolError.hidden = true; });
         schoolInput?.addEventListener("keydown", event => { if (event.key === "Enter") distanceConfirm?.click(); });
 
-        nearbyConfirm?.addEventListener("click", () => {
-            const category = nearbyCategory.value;
-            const zoomLevel = nearbyRadius.value;
-
-            mapFrame.src = `https://maps.google.com/maps?q=${encodeURIComponent(category + " gần " + fullAddressText)}&t=m&z=${zoomLevel}&output=embed`;
-
+        function showNearbyRoute(destination, externalDestination = destination) {
+            mapFrame.src = `https://maps.google.com/maps?saddr=${encodeURIComponent(roomMapDestination)}&daddr=${encodeURIComponent(destination)}&dirflg=d&output=embed`;
+            mapExternal.href = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(roomMapDestination)}&destination=${encodeURIComponent(externalDestination)}&travelmode=driving`;
             setMapOpen(true);
             setNearbyMenuOpen(false);
             mapPanel?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        }
+
+        function showAutomaticNearbyRoute() {
+            nearbyMapError.hidden = true;
+            const destination = `${nearbyCategory.value} gần ${roomMapDestination}`;
+            showNearbyRoute(destination);
+        }
+
+        nearbyCategory?.addEventListener("change", () => {
+            nearbyGoogleMapsUrl.value = "";
+            showAutomaticNearbyRoute();
+        });
+
+        nearbyGoogleMapsUrl?.addEventListener("input", () => { nearbyMapError.hidden = true; });
+        nearbyGoogleMapsUrl?.addEventListener("keydown", event => { if (event.key === "Enter") nearbyConfirm?.click(); });
+
+        nearbyConfirm?.addEventListener("click", async () => {
+            const exactMapUrl = nearbyGoogleMapsUrl.value.trim();
+            if (!exactMapUrl) {
+                showAutomaticNearbyRoute();
+                return;
+            }
+
+            nearbyConfirm.disabled = true;
+            nearbyMapError.hidden = true;
+            try {
+                const response = await fetch(`/Accommodation/ResolveMapDestination?googleMapsUrl=${encodeURIComponent(exactMapUrl)}`);
+                const data = await response.json();
+                if (!response.ok || !data.success) throw new Error(data.message || "Không đọc được link tiện ích.");
+                showNearbyRoute(data.destination, data.destination);
+            } catch (error) {
+                nearbyMapError.textContent = error.message || "Không thể đọc link Google Maps của tiện ích.";
+                nearbyMapError.hidden = false;
+                nearbyGoogleMapsUrl.focus();
+            } finally {
+                nearbyConfirm.disabled = false;
+            }
         });
 
         const occupantControl = document.querySelector("[data-max-occupants]");

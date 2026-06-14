@@ -7,6 +7,7 @@
     const dropdownButton = document.getElementById("notificationDropdownButton");
     const homeButton = document.getElementById("homeLatestNotificationButton");
     const homeCount = document.getElementById("homeLatestNotificationCount");
+    const dashboardCount = document.getElementById("dashboardUnreadNotificationCount");
     let items = [];
 
     if (!list || !count) return;
@@ -34,6 +35,16 @@
             homeCount.textContent = unread.toString();
             homeCount.hidden = unread === 0;
         }
+        if (dashboardCount) {
+            dashboardCount.textContent = unread === 0
+                ? "Tất cả thông báo đã đọc"
+                : `${unread} thông báo chưa đọc`;
+        }
+        if (markRead) {
+            markRead.disabled = unread === 0;
+            if (unread === 0) markRead.innerHTML = '<i class="fas fa-check-double"></i> Đã đọc hết';
+            else markRead.innerHTML = '<i class="fas fa-check"></i> Đánh dấu tất cả';
+        }
 
         if (items.length === 0) {
             list.innerHTML = '<div class="app-notification__empty">Chưa có thông báo dành cho tài khoản này.</div>';
@@ -41,7 +52,7 @@
         }
 
         list.innerHTML = items.map(item => `
-            <a href="${escapeHtml(item.url || "#")}" class="app-notification__item ${item.isRead ? "" : "is-unread"}">
+            <a href="${escapeHtml(item.url || "#")}" data-notification-id="${escapeHtml(item.id)}" class="app-notification__item ${item.isRead ? "" : "is-unread"}">
                 <span class="app-notification__icon"><i class="fas ${iconFor(item.type)}"></i></span>
                 <span>
                     <strong>${escapeHtml(item.title)}</strong>
@@ -62,6 +73,32 @@
         dropdownButton?.classList.add("has-new");
     };
 
+    const markOneRead = async id => {
+        const item = items.find(current => String(current.id) === String(id));
+        if (!item || item.isRead) return true;
+
+        item.isRead = true;
+        render();
+        document.querySelectorAll(`[data-notification-id="${CSS.escape(String(id))}"]`)
+            .forEach(element => element.classList.remove("is-unread"));
+
+        try {
+            const response = await fetch(`/Notification/MarkRead?id=${encodeURIComponent(id)}`, {
+                method: "POST",
+                keepalive: true
+            });
+            if (!response.ok) throw new Error();
+            return true;
+        } catch {
+            item.isRead = false;
+            render();
+            document.querySelectorAll(`[data-notification-id="${CSS.escape(String(id))}"]`)
+                .forEach(element => element.classList.add("is-unread"));
+            window.appToast?.("Không thể cập nhật trạng thái thông báo lúc này.", "error");
+            return false;
+        }
+    };
+
     markRead?.addEventListener("click", async event => {
         event.stopPropagation();
         if (!items.some(item => !item.isRead)) return;
@@ -72,21 +109,34 @@
             if (!response.ok) throw new Error();
             items = items.map(item => ({ ...item, isRead: true }));
             render();
+            document.querySelectorAll("[data-notification-id].is-unread")
+                .forEach(element => element.classList.remove("is-unread"));
             markRead.classList.add("is-confirmed");
-            markRead.innerHTML = '<i class="fas fa-check-double"></i> Đã đánh dấu';
             setTimeout(() => {
                 markRead.classList.remove("is-confirmed");
-                markRead.innerHTML = '<i class="fas fa-check"></i> Đã đọc';
             }, 1400);
         } catch {
             markRead.classList.add("is-error");
             setTimeout(() => markRead.classList.remove("is-error"), 1200);
         } finally {
-            markRead.disabled = false;
+            markRead.disabled = !items.some(item => !item.isRead);
         }
     });
 
-    // Mở chuông chỉ để xem; số đỏ được giữ nguyên đến khi người dùng bấm "Đã đọc".
+    document.addEventListener("click", async event => {
+        const link = event.target.closest("[data-notification-id]");
+        if (!link) return;
+
+        const url = link.getAttribute("href");
+        const id = link.dataset.notificationId;
+        if (!id) return;
+
+        event.preventDefault();
+        const marked = await markOneRead(id);
+        if (marked && url && url !== "#") window.location.href = url;
+    });
+
+    // Mở chuông chỉ để xem; bấm từng thông báo sẽ đánh dấu riêng thông báo đó.
     homeButton?.addEventListener("click", () => dropdownButton?.click());
     document.addEventListener("notificationReceived", event => addOrReplace(event.detail));
 

@@ -16,7 +16,7 @@
             <div class="history-heading__actions">
                 @if (Model.Any())
                 {
-                    <form action="/Home/ClearSearchHistory" method="post" onsubmit="return confirm('Xóa toàn bộ lịch sử tìm phòng?');">
+                    <form action="/Home/ClearSearchHistory" method="post" data-app-confirm="Xóa toàn bộ lịch sử tìm phòng?">
                         @Html.AntiForgeryToken()
                         <button type="submit" class="btn btn-outline-danger"><i class="fas fa-trash"></i> Xóa tất cả</button>
                     </form>
@@ -41,7 +41,7 @@
                             </div>
                             <i class="fas fa-arrow-right"></i>
                         </a>
-                        <form action="/Home/DeleteSearchHistory" method="post" onsubmit="return confirm('Xóa mục lịch sử này?');">
+                        <form action="/Home/DeleteSearchHistory" method="post" data-app-confirm="Xóa mục lịch sử này?">
                             @Html.AntiForgeryToken()
                             <input type="hidden" name="id" value="@item.Id" />
                             <button type="submit" class="history-item__delete" aria-label="Xóa lịch sử"><i class="fas fa-trash"></i></button>

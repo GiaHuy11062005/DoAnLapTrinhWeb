@@ -54,6 +54,10 @@ namespace DoAnLapTrinhWeb.Controllers
                 .Include(a => a.District)
                 .Include(a => a.Images)
                 .Where(a => a.OwnerId == currentUserId);
+            ViewBag.TotalPosts = await _context.Accommodations.CountAsync(item => item.OwnerId == currentUserId);
+            ViewBag.PendingPosts = await _context.Accommodations.CountAsync(item => item.OwnerId == currentUserId && !item.IsApproved && !item.IsRejected);
+            ViewBag.ApprovedPosts = await _context.Accommodations.CountAsync(item => item.OwnerId == currentUserId && item.IsApproved);
+            ViewBag.RentedPosts = await _context.Accommodations.CountAsync(item => item.OwnerId == currentUserId && (item.IsRentedOut || item.IsRented));
 
             // 3. Lọc theo Tab
             ViewBag.CurrentTab = tab;
@@ -76,7 +80,7 @@ namespace DoAnLapTrinhWeb.Controllers
                         (a.AccommodationType == "NhaNguyenCan" && a.IsRented));
                     break;
                 case "choduyet":
-                    myRoomsQuery = myRoomsQuery.Where(a => !a.IsApproved);
+                    myRoomsQuery = myRoomsQuery.Where(a => !a.IsApproved && !a.IsRejected);
                     break;
             }
 
@@ -100,6 +104,11 @@ namespace DoAnLapTrinhWeb.Controllers
                 .FirstOrDefaultAsync(a => a.Id == id && a.OwnerId == currentUserId);
 
             if (room == null) return NotFound();
+            if (!room.IsApproved && !room.IsRejected)
+            {
+                TempData["Error"] = "Bài đăng đang chờ duyệt nên chưa thể chỉnh sửa.";
+                return RedirectToAction(nameof(Index), new { tab = "choduyet" });
+            }
 
             // Lưu trạng thái duyệt để View biết có nên disable các input gốc hay không
             ViewBag.IsApproved = room.IsApproved;
@@ -150,6 +159,11 @@ namespace DoAnLapTrinhWeb.Controllers
                 .FirstOrDefaultAsync(a => a.Id == model.Id && a.OwnerId == currentUserId);
 
             if (room == null) return NotFound();
+            if (!room.IsApproved && !room.IsRejected)
+            {
+                TempData["Error"] = "Bài đăng đang chờ duyệt nên chưa thể chỉnh sửa.";
+                return RedirectToAction(nameof(Index), new { tab = "choduyet" });
+            }
             ViewBag.IsApproved = room.IsApproved;
 
             var allowedImageTypes = new[] { "image/jpeg", "image/png", "image/webp" };
@@ -277,6 +291,53 @@ namespace DoAnLapTrinhWeb.Controllers
             return RedirectToAction(nameof(Index));
         }
 
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Landlord")]
+        public async Task<IActionResult> Delete(int id)
+        {
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userIdString, out int currentUserId)) return Unauthorized();
+
+            var room = await _context.Accommodations
+                .Include(item => item.Images)
+                .Include(item => item.Documents)
+                .FirstOrDefaultAsync(item => item.Id == id && item.OwnerId == currentUserId);
+            if (room == null) return NotFound();
+
+            var imageFiles = room.Images?
+                .Where(item => !string.IsNullOrWhiteSpace(item.ImageUrl))
+                .Select(item => Path.Combine(
+                    _webHostEnvironment.WebRootPath,
+                    "images",
+                    "accommodations",
+                    Path.GetFileName(item.ImageUrl!)))
+                .ToList() ?? new();
+            var documentFiles = room.Documents?
+                .Where(item => !string.IsNullOrWhiteSpace(item.StoredFileName))
+                .Select(item => Path.Combine(
+                    _webHostEnvironment.ContentRootPath,
+                    "App_Data",
+                    "land-documents",
+                    Path.GetFileName(item.StoredFileName!)))
+                .ToList() ?? new();
+
+            var favorites = await _context.Favorites
+                .Where(item => item.AccommodationId == room.Id)
+                .ToListAsync();
+            _context.Favorites.RemoveRange(favorites);
+            _context.Accommodations.Remove(room);
+            await _context.SaveChangesAsync();
+
+            foreach (var filePath in imageFiles.Concat(documentFiles))
+            {
+                if (System.IO.File.Exists(filePath)) System.IO.File.Delete(filePath);
+            }
+
+            TempData["Success"] = "Đã xóa bài đăng.";
+            return RedirectToAction(nameof(Index));
+        }
+
         private async Task LoadEditLocations(int cityId)
         {
             ViewBag.Cities = await _context.Cities.OrderBy(city => city.Name).ToListAsync();
@@ -360,6 +421,56 @@ namespace DoAnLapTrinhWeb.Controllers
             return Json(districts);
         }
 
+        [HttpGet]
+        [Authorize(Roles = "Landlord")]
+        public async Task<IActionResult> PreviewMapRadius(string googleMapsUrl, int cityId)
+        {
+            if (!IsGoogleMapsUrl(googleMapsUrl))
+                return BadRequest(new { success = false, message = "Liên kết Google Maps chưa hợp lệ." });
+
+            var normalizedUrl = await NormalizeGoogleMapsUrlAsync(googleMapsUrl);
+            if (!GoogleMapsUrlHelper.TryGetCoordinates(normalizedUrl, out var latitude, out var longitude))
+                return BadRequest(new { success = false, message = "Không đọc được tọa độ. Hãy sao chép link của đúng ghim vị trí." });
+
+            var cityName = await _context.Cities
+                .Where(city => city.Id == cityId)
+                .Select(city => city.Name)
+                .FirstOrDefaultAsync();
+            if (!MapDistanceHelper.TryGetCityCenter(cityName, out var centerLatitude, out var centerLongitude))
+                return BadRequest(new { success = false, message = "Thành phố này chưa có điểm trung tâm để tính bán kính." });
+
+            var distanceKm = MapDistanceHelper.CalculateKm(centerLatitude, centerLongitude, latitude, longitude);
+            return Ok(new
+            {
+                success = true,
+                distanceKm = Math.Round(distanceKm, 2),
+                centerName = cityName,
+                mapUrl = GoogleMapsUrlHelper.GetEmbedUrl(normalizedUrl, "")
+            });
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> ResolveMapDestination(string googleMapsUrl)
+        {
+            if (!IsGoogleMapsUrl(googleMapsUrl))
+                return BadRequest(new { success = false, message = "Liên kết Google Maps chưa hợp lệ." });
+
+            var normalizedUrl = await NormalizeGoogleMapsUrlAsync(googleMapsUrl);
+            if (!GoogleMapsUrlHelper.TryGetCoordinates(normalizedUrl, out var latitude, out var longitude))
+                return BadRequest(new { success = false, message = "Không đọc được vị trí từ link này. Hãy chia sẻ đúng ghim của tiện ích." });
+
+            var destination =
+                $"{latitude.ToString(System.Globalization.CultureInfo.InvariantCulture)}," +
+                $"{longitude.ToString(System.Globalization.CultureInfo.InvariantCulture)}";
+
+            return Ok(new
+            {
+                success = true,
+                destination,
+                mapUrl = GoogleMapsUrlHelper.GetDetailedUrl(normalizedUrl, destination)
+            });
+        }
+
         // --- HÀM XỬ LÝ ĐĂNG BÀI TỪ POPUP ---
         [HttpPost]
         [Authorize(Roles = "Landlord")] // Chỉ Chủ trọ mới được đăng
@@ -407,6 +518,11 @@ namespace DoAnLapTrinhWeb.Controllers
                 }
 
                 model.GoogleMapsUrl = await NormalizeGoogleMapsUrlAsync(model.GoogleMapsUrl);
+                if (!GoogleMapsUrlHelper.TryGetCoordinates(model.GoogleMapsUrl, out _, out _))
+                {
+                    TempData["Error"] = "Không đọc được tọa độ từ link Google Maps. Hãy chia sẻ đúng ghim vị trí của phòng.";
+                    return RedirectToAction("Index", "Home");
+                }
 
                 // Khởi tạo list ảnh
                 model.Images = new List<AccommodationImage>();
@@ -513,7 +629,7 @@ namespace DoAnLapTrinhWeb.Controllers
         // --- HÀM XỬ LÝ TRANG KẾT QUẢ TÌM KIẾM (TASK 2) VÀ GHI LOG (TASK 4) ---
         [HttpGet]
         [AllowAnonymous] // Ai cũng có thể tìm kiếm
-        public async Task<IActionResult> Search(int? cityId, int? districtId, int? priceRange, string? keyword, bool recordHistory = false, int page = 1)
+        public async Task<IActionResult> Search(int? cityId, int? districtId, int? priceRange, double? radiusKm, string? keyword, bool recordHistory = false, int page = 1)
         {
             // Lấy danh sách phòng ĐÃ DUYỆT
             var query = _context.Accommodations.Include(a => a.Images).Where(a => a.IsApproved);
@@ -543,9 +659,37 @@ namespace DoAnLapTrinhWeb.Controllers
                 else if (priceRange == 3) query = query.Where(a => a.Price > 4000000);
             }
 
+            var candidateRooms = await query
+                .OrderByDescending(a => a.CreatedAt)
+                .ToListAsync();
+            var distanceLookup = new Dictionary<int, double>();
+
+            if (cityId.HasValue && radiusKm.HasValue && radiusKm.Value > 0)
+            {
+                var cityName = await _context.Cities
+                    .Where(city => city.Id == cityId.Value)
+                    .Select(city => city.Name)
+                    .FirstOrDefaultAsync();
+                if (MapDistanceHelper.TryGetCityCenter(cityName, out var centerLatitude, out var centerLongitude))
+                {
+                    candidateRooms = candidateRooms.Where(room =>
+                    {
+                        if (!GoogleMapsUrlHelper.TryGetCoordinates(room.GoogleMapsUrl, out var latitude, out var longitude)) return false;
+                        var distance = MapDistanceHelper.CalculateKm(centerLatitude, centerLongitude, latitude, longitude);
+                        distanceLookup[room.Id] = distance;
+                        return distance <= radiusKm.Value;
+                    }).ToList();
+                }
+                else
+                {
+                    candidateRooms.Clear();
+                    ViewBag.RadiusError = "Thành phố đã chọn chưa có tâm bản đồ chuẩn để tính bán kính.";
+                }
+            }
+
             // --- THÊM PHẦN TÍNH TOÁN PHÂN TRANG ---
             int pageSize = 6;
-            int totalCount = await query.CountAsync();
+            int totalCount = candidateRooms.Count;
             int totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
 
             ViewBag.CurrentPage = page;
@@ -555,13 +699,14 @@ namespace DoAnLapTrinhWeb.Controllers
             ViewBag.SearchCityId = cityId;
             ViewBag.SearchDistrictId = districtId;
             ViewBag.SearchPriceRange = priceRange;
+            ViewBag.SearchRadiusKm = radiusKm;
             ViewBag.SearchKeyword = keyword;
+            ViewBag.DistanceLookup = distanceLookup;
 
-            var results = await query
-                .OrderByDescending(a => a.CreatedAt)
+            var results = candidateRooms
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
-                .ToListAsync();
+                .ToList();
 
             // Chỉ lưu khi người dùng chủ động tìm mới, đã đăng nhập và tìm thấy phòng.
             // Link xem lại từ lịch sử không gửi recordHistory nên sẽ không tạo log trùng.
@@ -589,6 +734,7 @@ namespace DoAnLapTrinhWeb.Controllers
                         cityId,
                         districtId,
                         priceRange,
+                        radiusKm,
                         keyword
                     });
                 }

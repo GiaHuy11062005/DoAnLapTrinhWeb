@@ -2,6 +2,7 @@
 @{
     ViewData["Title"] = "Trang chủ";
     var featuredRooms = ViewBag.SuggestedRooms as List<Accommodation> ?? new List<Accommodation>();
+    var cities = ViewBag.Cities as List<City> ?? new List<City>();
 }
 
 <div class="home-page">
@@ -83,6 +84,20 @@
                 <i class="fas fa-magnifying-glass"></i>
                 <input type="text" name="keyword" aria-label="Tìm kiếm phòng" placeholder="Tìm kiếm vị trí hoặc từ khóa..." />
             </div>
+            <select name="cityId" id="featuredCitySelect" aria-label="Chọn thành phố để tìm theo bán kính" required>
+                <option value="" selected disabled>Chọn thành phố</option>
+                @foreach (var city in cities)
+                {
+                    <option value="@city.Id">@city.Name</option>
+                }
+            </select>
+            <select name="radiusKm" id="featuredRadiusSelect" aria-label="Bán kính tìm kiếm" disabled>
+                <option value="" selected>Mọi bán kính</option>
+                <option value="3">Trong 3 km</option>
+                <option value="5">Trong 5 km</option>
+                <option value="10">Trong 10 km</option>
+                <option value="20">Trong 20 km</option>
+            </select>
             <button type="submit">Tìm kiếm</button>
         </form>
 
@@ -288,6 +303,8 @@
             const reviewTrack = document.getElementById("homeReviewTrack");
             const reviewPrevious = document.getElementById("homeReviewPrevious");
             const reviewNext = document.getElementById("homeReviewNext");
+            const featuredCitySelect = document.getElementById("featuredCitySelect");
+            const featuredRadiusSelect = document.getElementById("featuredRadiusSelect");
 
             searchTabs.forEach(tab => {
                 tab.addEventListener("click", () => {
@@ -317,6 +334,10 @@
                 } catch {
                     districtSelect.innerHTML = '<option value="" selected>Lỗi tải dữ liệu</option>';
                 }
+            });
+
+            featuredCitySelect?.addEventListener("change", () => {
+                featuredRadiusSelect.disabled = !featuredCitySelect.value;
             });
 
             if (reviewCarousel && reviewTrack) {

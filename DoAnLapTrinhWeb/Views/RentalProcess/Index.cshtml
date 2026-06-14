@@ -1,169 +1,134 @@
 @model IEnumerable<DoAnLapTrinhWeb.Models.RentalRequest>
 @{
-    ViewData["Title"] = "Danh sách xử lý cho thuê";
+    ViewData["Title"] = "Đang xử lý cho thuê";
     Layout = "~/Views/Shared/_Layout.cshtml";
-    var currentStatus = ViewBag.CurrentStatus as string;
+    string currentStatus = ViewBag.CurrentStatus ?? "All";
+    var conversations = ViewBag.ConversationLookup as Dictionary<string, int> ?? new();
 }
 
-<div class="container mt-4 mb-5 pb-5">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2><i class="fas fa-clipboard-list text-primary"></i> Danh sách xử lý cho thuê</h2>
-    </div>
-
-    <!-- Lọc trạng thái -->
-    <ul class="nav nav-pills mb-4">
-        <li class="nav-item">
-            <a class="nav-link @(currentStatus == "All" ? "active" : "")" href="/RentalProcess/Index?status=All">Tất cả</a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link @(currentStatus == "Negotiating" ? "active" : "")" href="/RentalProcess/Index?status=Negotiating">Đang thương lượng</a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link @(currentStatus == "Success" ? "active" : "")" href="/RentalProcess/Index?status=Success">Thành công</a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link @(currentStatus == "Cancelled" ? "active" : "")" href="/RentalProcess/Index?status=Cancelled">Đã hủy</a>
-        </li>
-    </ul>
-
-    <div class="card shadow-sm">
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover mb-0 align-middle">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Người thuê</th>
-                            <th>Bài đăng</th>
-                            <th>Ngày xác nhận</th>
-                            <th>Trạng thái</th>
-                            <th class="text-end">Thao tác</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @if (!Model.Any())
-                        {
-                            <tr>
-                                <td colspan="5" class="text-center py-4 text-muted">
-                                    <i class="fas fa-folder-open fa-2x mb-2"></i>
-                                    <p>Không có yêu cầu nào.</p>
-                                </td>
-                            </tr>
-                        }
-                        else
-                        {
-                            @foreach (var item in Model)
-                            {
-                                <tr>
-                                    <td>
-                                        <div class="d-flex align-items-center">
-                                            @if (!string.IsNullOrEmpty(item.Renter?.AvatarUrl))
-                                            {
-                                                <img src="@item.Renter.AvatarUrl" class="rounded-circle me-2" style="width: 40px; height: 40px; object-fit: cover;" />
-                                            }
-                                            else
-                                            {
-                                                <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center me-2" style="width: 40px; height: 40px;">
-                                                    <i class="fas fa-user"></i>
-                                                </div>
-                                            }
-                                            <div>
-                                                <strong>@item.Renter?.FullName</strong>
-                                                <div class="small text-muted">@item.Renter?.Phone</div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="text-truncate" style="max-width: 250px;" title="@item.Accommodation?.Title">
-                                            <a href="/Accommodation/Details/@item.AccommodationId" target="_blank" class="text-decoration-none fw-bold">@item.Accommodation?.Title</a>
-                                        </div>
-                                        <div class="small text-danger fw-semibold">
-                                            @item.Accommodation?.Price.ToString("N0") đ/tháng
-                                            <span class="text-muted ms-1">(@item.Accommodation?.AccommodationType)</span>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="small">
-                                            <i class="far fa-calendar-alt text-muted"></i>
-                                            @(item.ConfirmedAt?.ToString("dd/MM/yyyy HH:mm") ?? item.CreatedAt.ToString("dd/MM/yyyy"))
-                                        </div>
-                                    </td>
-                                    <td>
-                                        @if (item.Status == "Negotiating")
-                                        {
-                                            <span class="badge bg-warning text-dark"><i class="fas fa-sync fa-spin me-1"></i> Đang thương lượng</span>
-                                        }
-                                        else if (item.Status == "Success")
-                                        {
-                                            <span class="badge bg-success"><i class="fas fa-check-circle me-1"></i> Đã cho thuê</span>
-                                        }
-                                        else if (item.Status == "Cancelled")
-                                        {
-                                            <span class="badge bg-danger"><i class="fas fa-times-circle me-1"></i> Đã hủy</span>
-                                        }
-                                    </td>
-                                    <td class="text-end">
-                                        @if (item.Status == "Negotiating")
-                                        {
-                                            <button type="button" class="btn btn-sm btn-success mb-1" onclick="markRentalSuccess(@item.Id)">
-                                                <i class="fas fa-check"></i> Xác nhận cho thuê
-                                            </button>
-                                            <button type="button" class="btn btn-sm btn-outline-danger mb-1" onclick="cancelRental(@item.Id)">
-                                                <i class="fas fa-times"></i> Hủy
-                                            </button>
-                                        }
-                                        else
-                                        {
-                                            <button type="button" class="btn btn-sm btn-secondary disabled" disabled>Đã xử lý</button>
-                                        }
-                                    </td>
-                                </tr>
-                            }
-                        }
-                    </tbody>
-                </table>
+<div class="rental-process-page">
+    <div class="rental-process-shell">
+        <header class="rental-process-heading">
+            <div>
+                <span><i class="fas fa-handshake"></i> Quy trình cho thuê</span>
+                <h1>Đang xử lý cho thuê</h1>
+                <p>Tập trung xử lý yêu cầu mới, thương lượng và xác nhận bàn giao phòng.</p>
             </div>
-        </div>
+            <a href="/Landlord/Dashboard" class="btn btn-outline-primary"><i class="fas fa-arrow-left"></i> Về dashboard</a>
+        </header>
+
+        <nav class="rental-status-tabs" aria-label="Lọc trạng thái yêu cầu thuê">
+            <a class="@(currentStatus == "All" ? "active" : "")" href="/RentalProcess/Index?status=All">Tất cả</a>
+            <a class="@(currentStatus == "Pending" ? "active" : "")" href="/RentalProcess/Index?status=Pending"><i class="fas fa-bell"></i> Chờ phản hồi</a>
+            <a class="@(currentStatus == "Negotiating" ? "active" : "")" href="/RentalProcess/Index?status=Negotiating">Đang thương lượng</a>
+            <a class="@(currentStatus == "Success" ? "active" : "")" href="/RentalProcess/Index?status=Success">Thành công</a>
+            <a class="@(currentStatus == "Cancelled" ? "active" : "")" href="/RentalProcess/Index?status=Cancelled">Đã hủy</a>
+            <a class="@(currentStatus == "Rejected" ? "active" : "")" href="/RentalProcess/Index?status=Rejected">Đã từ chối</a>
+        </nav>
+
+        <section class="rental-process-panel">
+            <div class="rental-process-panel__heading">
+                <div><h2>@(currentStatus == "All" ? "Tất cả yêu cầu" : currentStatus == "Pending" ? "Yêu cầu đang chờ phản hồi" : currentStatus == "Negotiating" ? "Yêu cầu đang thương lượng" : "Yêu cầu đã xử lý")</h2><p>@Model.Count() yêu cầu trong danh sách</p></div>
+            </div>
+
+            <div class="rental-process-list">
+                @foreach (var item in Model)
+                {
+                    var conversationKey = $"{item.AccommodationId}:{item.RenterId}";
+                    conversations.TryGetValue(conversationKey, out var conversationId);
+                    <article class="rental-process-card @(item.Status == "Pending" ? "is-pending" : "")">
+                        <div class="rental-process-card__person">
+                            @if (!string.IsNullOrEmpty(item.Renter?.AvatarUrl))
+                            {
+                                <img src="@item.Renter.AvatarUrl" alt="@item.Renter.FullName" />
+                            }
+                            else
+                            {
+                                <span>@(!string.IsNullOrEmpty(item.Renter?.FullName) ? item.Renter.FullName[..1].ToUpper() : "U")</span>
+                            }
+                            <div><strong>@item.Renter?.FullName</strong><small>@item.Renter?.Phone</small></div>
+                        </div>
+                        <div class="rental-process-card__property">
+                            <a href="/Accommodation/Details/@item.AccommodationId" target="_blank">@item.Accommodation?.Title</a>
+                            <small>@item.Accommodation?.Price.ToString("N0")đ/tháng · @item.Occupants người ở</small>
+                        </div>
+                        <div class="rental-process-card__meta">
+                            <small>Gửi lúc</small><strong>@item.CreatedAt.ToString("dd/MM/yyyy HH:mm")</strong>
+                            <span class="dashboard-status @(item.Status == "Pending" ? "is-warning" : item.Status == "Negotiating" ? "is-info" : item.Status == "Success" ? "is-success" : "is-danger")">
+                                @(item.Status == "Pending" ? "Chờ phản hồi" : item.Status == "Negotiating" ? "Đang thương lượng" : item.Status == "Success" ? "Đã cho thuê" : item.Status == "Rejected" ? "Đã từ chối" : "Đã hủy")
+                            </span>
+                        </div>
+                        <div class="rental-process-card__actions">
+                            @if (item.Status == "Pending")
+                            {
+                                <button type="button" class="btn btn-primary" onclick="beginNegotiation(@item.Id)"><i class="fas fa-handshake"></i> Bắt đầu thương lượng</button>
+                                @if (conversationId > 0)
+                                {
+                                    <a href="/Chat/Inbox?openChat=@conversationId" class="btn btn-outline-primary"><i class="fas fa-comments"></i> Mở chat</a>
+                                }
+                                <button type="button" class="btn btn-outline-danger" onclick="rejectRental(@item.Id)">Từ chối</button>
+                            }
+                            else if (item.Status == "Negotiating")
+                            {
+                                <button type="button" class="btn btn-success" onclick="markRentalSuccess(@item.Id)"><i class="fas fa-check"></i> Xác nhận cho thuê</button>
+                                <button type="button" class="btn btn-outline-danger" onclick="cancelRental(@item.Id)">Hủy</button>
+                            }
+                            else
+                            {
+                                <span class="rental-process-card__done"><i class="fas fa-circle-check"></i> Đã xử lý</span>
+                            }
+                        </div>
+                    </article>
+                }
+                @if (!Model.Any())
+                {
+                    <div class="dashboard-empty rental-process-empty"><i class="fas fa-inbox"></i><h3>Không có yêu cầu nào</h3><p>Hãy thử chọn một trạng thái khác.</p></div>
+                }
+            </div>
+        </section>
     </div>
 </div>
 
 @section Scripts {
     <script>
-        async function markRentalSuccess(id) {
-            if (!confirm("Xác nhận đã cho thuê thành công? Thao tác này sẽ tự động giảm số lượng phòng trống của bài đăng.")) return;
+        async function updateRental(url, id, confirmation) {
+            if (!await window.appConfirm(confirmation)) return;
             try {
-                const res = await fetch("/RentalProcess/Success", {
+                const response = await fetch(url, {
                     method: "POST",
                     headers: { "Content-Type": "application/x-www-form-urlencoded" },
                     body: `id=${id}`
                 });
-                const data = await res.json();
-                if (data.success) {
-                    location.reload();
-                } else {
-                    alert(data.message || "Lỗi khi cập nhật.");
-                }
-            } catch (e) {
-                alert("Lỗi kết nối mạng.");
+                const data = await response.json();
+                if (!response.ok || !data.success) throw new Error(data.message || "Không thể cập nhật yêu cầu.");
+                location.reload();
+            } catch (error) {
+                window.appAlert?.(error.message || "Lỗi kết nối. Vui lòng thử lại.");
             }
         }
-
-        async function cancelRental(id) {
-            if (!confirm("Bạn muốn hủy yêu cầu thương lượng này?")) return;
+        function markRentalSuccess(id) {
+            updateRental("/RentalProcess/Success", id, "Xác nhận đã cho thuê thành công? Số phòng trống sẽ được cập nhật tự động.");
+        }
+        async function beginNegotiation(id) {
+            if (!await window.appConfirm("Bắt đầu thương lượng và mở chat với người thuê này?")) return;
             try {
-                const res = await fetch("/RentalProcess/Cancel", {
+                const response = await fetch("/RentalProcess/BeginNegotiation", {
                     method: "POST",
                     headers: { "Content-Type": "application/x-www-form-urlencoded" },
                     body: `id=${id}`
                 });
-                const data = await res.json();
-                if (data.success) {
-                    location.reload();
-                } else {
-                    alert(data.message || "Lỗi khi cập nhật.");
-                }
-            } catch (e) {
-                alert("Lỗi kết nối mạng.");
+                const data = await response.json();
+                if (!response.ok || !data.success) throw new Error(data.message || "Không thể bắt đầu thương lượng.");
+                window.location.href = `/Chat/Inbox?openChat=${data.conversationId}`;
+            } catch (error) {
+                window.appAlert?.(error.message || "Lỗi kết nối. Vui lòng thử lại.");
             }
+        }
+        function rejectRental(id) {
+            updateRental("/RentalProcess/Reject", id, "Từ chối yêu cầu thuê này?");
+        }
+        function cancelRental(id) {
+            updateRental("/RentalProcess/Cancel", id, "Bạn muốn hủy yêu cầu đang thương lượng này?");
         }
     </script>
 }

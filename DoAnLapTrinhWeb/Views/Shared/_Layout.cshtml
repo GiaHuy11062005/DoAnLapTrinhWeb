@@ -1,3 +1,17 @@
+@using Microsoft.EntityFrameworkCore
+@inject DoAnLapTrinhWeb.Data.AppDbContext LayoutDbContext
+@{
+    var layoutUnreadMessageCount = 0;
+    var layoutUserIdValue = User.Claims.FirstOrDefault(claim => claim.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    if ((User.IsInRole("User") || User.IsInRole("Landlord")) && int.TryParse(layoutUserIdValue, out var layoutUserId))
+    {
+        layoutUnreadMessageCount = await LayoutDbContext.ChatMessages.CountAsync(message =>
+            !message.IsRead &&
+            message.SenderId != layoutUserId &&
+            message.Conversation != null &&
+            (message.Conversation.RenterId == layoutUserId || message.Conversation.LandlordId == layoutUserId));
+    }
+}
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -52,7 +66,10 @@
                         @if (User.IsInRole("User") || User.IsInRole("Landlord"))
                         {
                             <li class="nav-item">
-                                <a class="nav-link app-nav-link" href="/Chat/Inbox"><i class="fas fa-comments me-1"></i>Tin nhắn</a>
+                                <a class="nav-link app-nav-link app-message-link" href="/Chat/Inbox">
+                                    <i class="fas fa-comments me-1"></i>Tin nhắn
+                                    <span id="headerUnreadMessageCount" class="app-message-count" hidden="@(layoutUnreadMessageCount == 0 ? "hidden" : null)">@layoutUnreadMessageCount</span>
+                                </a>
                             </li>
                         }
                         @if (!User.IsInRole("Admin"))
@@ -75,9 +92,9 @@
                                     <div class="app-notification__heading">
                                         <div>
                                             <strong>@(User.IsInRole("Admin") ? "Thông báo quản trị" : User.IsInRole("Landlord") ? "Thông báo cho thuê" : "Thông báo thuê phòng")</strong>
-                                            <span>Cập nhật realtime dành riêng cho tài khoản</span>
+                                            <span>Bấm vào một thông báo để xem và đánh dấu đã đọc</span>
                                         </div>
-                                        <button type="button" id="markNotificationsRead"><i class="fas fa-check"></i> Đã đọc</button>
+                                        <button type="button" id="markNotificationsRead"><i class="fas fa-check"></i> Đánh dấu tất cả</button>
                                     </div>
                                     <div id="notificationList" class="app-notification__list">
                                         <div class="app-notification__empty">Đang tải thông báo...</div>
@@ -219,10 +236,18 @@
 
                             <div class="col-12">
                                 <label class="form-label fw-bold">Link vị trí chính xác trên Google Maps <span class="text-danger">*</span></label>
-                                <input type="url" name="GoogleMapsUrl" class="form-control" required placeholder="https://maps.app.goo.gl/...">
+                                <input type="url" name="GoogleMapsUrl" id="modalGoogleMapsUrl" class="form-control" required placeholder="https://maps.app.goo.gl/...">
                                 <small class="text-muted fst-italic">
                                     <i class="fas fa-location-dot"></i> Mở đúng vị trí trọ trên Google Maps, chọn Chia sẻ, rồi sao chép và dán liên kết vào đây.
                                 </small>
+                                <div class="map-location-feedback">
+                                    <div class="map-location-feedback__radius">
+                                        <span><i class="fas fa-route"></i> Bán kính từ trung tâm thành phố</span>
+                                        <input type="text" id="modalMapRadius" value="Dán link Google Maps để hệ thống tính" readonly />
+                                    </div>
+                                    <small id="modalMapRadiusStatus">Hệ thống sẽ tự động đọc tọa độ và tính bán kính thật từ chính liên kết này.</small>
+                                    <iframe id="modalMapPreview" title="Xem trước vị trí bài đăng" loading="lazy" hidden></iframe>
+                                </div>
                             </div>
 
                             <div class="col-12">
