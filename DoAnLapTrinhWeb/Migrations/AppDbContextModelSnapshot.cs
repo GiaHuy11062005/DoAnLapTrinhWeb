@@ -90,6 +90,12 @@ namespace DoAnLapTrinhWeb.Migrations
                     b.Property<bool>("IsApproved")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("IsHidden")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsRejected")
+                        .HasColumnType("bit");
+
                     b.Property<bool>("IsRented")
                         .HasColumnType("bit");
 
@@ -104,6 +110,9 @@ namespace DoAnLapTrinhWeb.Migrations
 
                     b.Property<decimal>("Price")
                         .HasColumnType("decimal(18,0)");
+
+                    b.Property<string>("RejectionReason")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("SpecificAddress")
                         .HasColumnType("nvarchar(max)");
@@ -229,6 +238,15 @@ namespace DoAnLapTrinhWeb.Migrations
                     b.Property<int?>("CityId")
                         .HasColumnType("int");
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("DeletedByAdminId")
+                        .HasColumnType("int");
+
                     b.Property<string>("DestinationAddress")
                         .HasColumnType("nvarchar(max)");
 
@@ -244,8 +262,23 @@ namespace DoAnLapTrinhWeb.Migrations
                     b.Property<string>("FullName")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
                     b.Property<bool>("IsEmailConfirmed")
                         .HasColumnType("bit");
+
+                    b.Property<bool>("IsLocked")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("LockReason")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("LockedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("LockedByAdminId")
+                        .HasColumnType("int");
 
                     b.Property<string>("PasswordHash")
                         .HasColumnType("nvarchar(max)");

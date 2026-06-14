@@ -129,7 +129,7 @@ namespace DoAnLapTrinhWeb.Controllers
         // URL: /Chat/Inbox
         // =========================================================
         [HttpGet]
-        public async Task<IActionResult> Inbox()
+        public async Task<IActionResult> Inbox(string timeFilter = "all", string typeFilter = "all", string statusFilter = "all", string keyword = "")
         {
             if (!TryGetUserId(out int currentUserId))
                 return RedirectToAction("Login", "Auth");
@@ -149,6 +149,40 @@ namespace DoAnLapTrinhWeb.Controllers
                     .Where(c => c.RenterId == currentUserId);
             }
 
+            // Lọc theo thời gian (dựa trên tin nhắn cuối cùng hoặc CreatedAt)
+            if (timeFilter != "all")
+            {
+                DateTime startDate = DateTime.Today;
+                if (timeFilter == "today") startDate = DateTime.Today;
+                else if (timeFilter == "7days") startDate = DateTime.Today.AddDays(-7);
+                else if (timeFilter == "30days") startDate = DateTime.Today.AddDays(-30);
+
+                query = query.Where(c => c.UpdatedAt >= startDate);
+            }
+
+            // Lọc theo loại phòng
+            if (typeFilter != "all")
+            {
+                query = query.Where(c => c.Accommodation!.AccommodationType == typeFilter);
+            }
+
+            // Lọc theo từ khóa (tên người gửi, tiêu đề phòng)
+            if (!string.IsNullOrWhiteSpace(keyword))
+            {
+                var lowerKeyword = keyword.ToLower();
+                if (role == "Landlord")
+                {
+                    query = query.Where(c => c.Renter!.FullName!.ToLower().Contains(lowerKeyword) || 
+                                             c.Accommodation!.Title!.ToLower().Contains(lowerKeyword));
+                }
+                else
+                {
+                    query = query.Where(c => c.Landlord!.FullName!.ToLower().Contains(lowerKeyword) || 
+                                             c.Accommodation!.Title!.ToLower().Contains(lowerKeyword));
+                }
+            }
+
+            // Tải dữ liệu trước khi lọc trạng thái phức tạp
             var conversations = await query
                 .Include(c => c.Accommodation)
                     .ThenInclude(a => a!.Images)
@@ -158,7 +192,25 @@ namespace DoAnLapTrinhWeb.Controllers
                 .OrderByDescending(c => c.UpdatedAt)
                 .ToListAsync();
 
+            // Lọc theo trạng thái
+            if (statusFilter != "all")
+            {
+                if (statusFilter == "unread")
+                {
+                    conversations = conversations.Where(c => c.Messages != null && c.Messages.Any(m => m.SenderId != currentUserId && !m.IsRead)).ToList();
+                }
+                else if (statusFilter == "negotiating")
+                {
+                    conversations = conversations.Where(c => c.HasPendingNegotiation).ToList();
+                }
+            }
+
             ViewBag.CurrentUserId = currentUserId;
+            ViewBag.TimeFilter = timeFilter;
+            ViewBag.TypeFilter = typeFilter;
+            ViewBag.StatusFilter = statusFilter;
+            ViewBag.Keyword = keyword;
+
             return View(conversations);
         }
 

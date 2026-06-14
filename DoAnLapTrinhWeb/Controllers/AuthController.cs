@@ -1,4 +1,4 @@
-﻿using DoAnLapTrinhWeb.Data;
+using DoAnLapTrinhWeb.Data;
 using DoAnLapTrinhWeb.Models;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -110,6 +110,11 @@ namespace DoAnLapTrinhWeb.Controllers
                 ViewBag.Error = "Không thể đăng nhập bằng Google lúc này. Vui lòng thử lại.";
             }
 
+            if (TempData["LoginError"] != null)
+            {
+                ViewBag.Error = TempData["LoginError"];
+            }
+
             ViewBag.ReturnUrl = returnUrl;
             return View();
         }
@@ -143,6 +148,20 @@ namespace DoAnLapTrinhWeb.Controllers
 
             if (user != null)
             {
+                if (user.IsDeleted)
+                {
+                    ViewBag.Error = "Tài khoản này không tồn tại hoặc đã bị xóa.";
+                    ViewBag.ReturnUrl = returnUrl;
+                    return View();
+                }
+
+                if (user.IsLocked)
+                {
+                    ViewBag.Error = $"Tài khoản của bạn đã bị khóa. Lý do: {user.LockReason ?? "Vi phạm chính sách"}.";
+                    ViewBag.ReturnUrl = returnUrl;
+                    return View();
+                }
+
                 // Ý TƯỞNG MỚI V2: Cố tình KHÔNG chặn if (!user.IsEmailConfirmed) ở đây
                 // Người dùng có thể đăng nhập thoải mái dù chưa click link trong email.
 
@@ -349,6 +368,17 @@ namespace DoAnLapTrinhWeb.Controllers
 
             if (user != null)
             {
+                if (user.IsDeleted)
+                {
+                    return RedirectToAction("Login", new { googleLoginFailed = true });
+                }
+
+                if (user.IsLocked)
+                {
+                    TempData["LoginError"] = $"Tài khoản của bạn đã bị khóa. Lý do: {user.LockReason ?? "Vi phạm chính sách"}.";
+                    return RedirectToAction("Login");
+                }
+
                 // Google đã xác minh quyền sở hữu email, nên tài khoản cùng email được xem là đã xác thực.
                 var accountChanged = false;
                 if (!user.IsEmailConfirmed)

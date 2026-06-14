@@ -103,6 +103,10 @@ namespace DoAnLapTrinhWeb.Controllers
                 .Take(5)
                 .ToListAsync();
 
+            // 7. Tin nhắn
+            ViewBag.TotalConversations = await _context.ChatConversations.CountAsync(c => c.LandlordId == userId);
+            ViewBag.UnreadMessages = await _context.ChatMessages.CountAsync(m => m.Conversation!.LandlordId == userId && m.SenderId != userId && !m.IsRead);
+
             return View();
         }
     }

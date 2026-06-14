@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 
 namespace DoAnLapTrinhWeb.Models
 {
@@ -26,6 +26,19 @@ namespace DoAnLapTrinhWeb.Models
 
         // Nơi lưu địa chỉ cụ thể của trường học hoặc công ty
         public string? DestinationAddress { get; set; }
+
+        // --- TÍNH NĂNG KHÓA VÀ XÓA MỀM (ADMIN QUẢN LÝ) ---
+        public bool IsLocked { get; set; } = false;
+        public string? LockReason { get; set; }
+        public DateTime? LockedAt { get; set; }
+        public int? LockedByAdminId { get; set; }
+
+        public bool IsDeleted { get; set; } = false;
+        public DateTime? DeletedAt { get; set; }
+        public int? DeletedByAdminId { get; set; }
+
+        public DateTime CreatedAt { get; set; } = DateTime.Now;
+
         public ICollection<Accommodation>? Accommodations { get; set; }
     }
 }

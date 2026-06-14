@@ -31,7 +31,7 @@
                         @if (User.IsInRole("Admin"))
                         {
                             <li class="nav-item">
-                                <a class="nav-link app-nav-link" href="/Admin">Bài đăng chờ duyệt</a>
+                                <a class="nav-link app-nav-link fw-bold text-danger" href="/Admin/Index"><i class="fas fa-shield-halved me-1"></i> Admin Dashboard</a>
                             </li>
                         }
                         else if (User.IsInRole("Landlord"))
@@ -93,7 +93,10 @@
                                     <li><a class="dropdown-item py-2" href="/Profile"><i class="fas fa-user-edit text-muted me-2"></i> Trang cá nhân</a></li>
                                     @if (User.IsInRole("Admin"))
                                     {
-                                        <li><a class="dropdown-item py-2" href="/Admin"><i class="fas fa-list-check text-muted me-2"></i> Danh sách duyệt bài</a></li>
+                                        <li><a class="dropdown-item py-2" href="/Admin/Index"><i class="fas fa-chart-pie text-muted me-2"></i> Tổng quan hệ thống</a></li>
+                                        <li><a class="dropdown-item py-2" href="/Admin/PendingPosts"><i class="fas fa-list-check text-muted me-2"></i> Duyệt bài đăng</a></li>
+                                        <li><a class="dropdown-item py-2" href="/Admin/ManagePosts"><i class="fas fa-building text-muted me-2"></i> Quản lý bài đăng</a></li>
+                                        <li><a class="dropdown-item py-2" href="/Admin/ManageUsers"><i class="fas fa-users text-muted me-2"></i> Quản lý người dùng</a></li>
                                         <li><a class="dropdown-item py-2" href="/Admin/SupportTickets"><i class="fas fa-envelope-open-text text-muted me-2"></i> Quản lý hỗ trợ</a></li>
                                     }
                                     @if (!User.IsInRole("Admin"))

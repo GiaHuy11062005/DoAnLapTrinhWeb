@@ -1,0 +1,84 @@
+@model IEnumerable<DoAnLapTrinhWeb.Models.ApprovalHistory>
+@{
+    ViewData["Title"] = "Lịch Sử Xử Lý";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="admin-approval-page container mt-4 mb-5">
+    <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom print-hide">
+        <div>
+            <h2 class="fw-bold text-dark mb-1"><i class="fas fa-clock-rotate-left text-secondary me-2"></i> Lịch Sử Xử Lý</h2>
+            <p class="text-muted mb-0">Theo dõi các bài đã duyệt, bị từ chối và toàn bộ lịch sử thao tác của Admin.</p>
+        </div>
+        <div>
+            <a href="/Admin/Index" class="btn btn-outline-secondary rounded-pill shadow-sm"><i class="fas fa-arrow-left me-1"></i> Trở về Dashboard</a>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0 rounded-4">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table align-middle table-hover mb-0 admin-approval-table">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4">Thời gian xử lý</th>
+                            <th>Bài đăng</th>
+                            <th>Người cho thuê</th>
+                            <th>Người xử lý</th>
+                            <th class="text-center pe-4">Trạng thái</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model)
+                        {
+                            <tr>
+                                <td class="ps-4"><span class="text-muted small fw-medium">@item.ProcessedAt.ToString("dd/MM/yyyy HH:mm")</span></td>
+                                <td>
+                                    @if (item.AccommodationId.HasValue)
+                                    {
+                                        <a href="/Accommodation/Details/@item.AccommodationId" target="_blank" class="text-decoration-none">
+                                            <h6 class="mb-0 fw-bold text-truncate" style="max-width: 250px;">@item.AccommodationTitle</h6>
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <h6 class="mb-0 fw-bold text-truncate text-muted" style="max-width: 250px;">@item.AccommodationTitle</h6>
+                                    }
+                                    <small class="text-muted">@item.Price.ToString("N0") VNĐ</small>
+                                </td>
+                                <td>
+                                    <h6 class="mb-0 fw-bold">@item.OwnerName</h6>
+                                    <small class="text-muted">@item.OwnerEmail</small>
+                                </td>
+                                <td><span class="badge bg-light text-dark border">@item.ProcessedBy</span></td>
+                                <td class="text-center pe-4">
+                                    @if (item.Action == "Rejected")
+                                    {
+                                        <span class="badge bg-danger rounded-pill px-3">Đã từ chối</span>
+                                    }
+                                    else if (item.Action == "ImportedApproved")
+                                    {
+                                        <span class="badge bg-info rounded-pill px-3">Đã duyệt trước đó</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-success rounded-pill px-3">Đã duyệt</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                        @if (!Model.Any())
+                        {
+                            <tr>
+                                <td colspan="5" class="text-center py-5 text-muted">
+                                    <i class="fas fa-history fa-3x mb-3 opacity-50"></i>
+                                    <h5>Chưa có lịch sử xử lý bài đăng.</h5>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

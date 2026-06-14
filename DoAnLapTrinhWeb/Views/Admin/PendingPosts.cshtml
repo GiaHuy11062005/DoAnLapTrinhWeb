@@ -1,0 +1,118 @@
+@model IEnumerable<DoAnLapTrinhWeb.Models.Accommodation>
+@{
+    ViewData["Title"] = "Duyệt Bài Đăng";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="admin-approval-page container mt-4 mb-5">
+    <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom print-hide">
+        <div>
+            <h2 class="fw-bold text-dark mb-1"><i class="fas fa-clipboard-check text-primary me-2"></i> Duyệt Bài Đăng</h2>
+            <p class="text-muted mb-0">Quản lý và xét duyệt các bài đăng mới từ chủ trọ.</p>
+        </div>
+        <div>
+            <a href="/Admin/Index" class="btn btn-outline-secondary rounded-pill shadow-sm"><i class="fas fa-arrow-left me-1"></i> Trở về Dashboard</a>
+        </div>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle me-2"></i>@TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <div class="card shadow-sm border-0 rounded-4">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table align-middle table-hover mb-0 admin-approval-table">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4">Ngày gửi</th>
+                            <th>Người cho thuê</th>
+                            <th>Bài đăng</th>
+                            <th>Giá thuê</th>
+                            <th class="text-end pe-4 print-hide">Xử lý</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pendingTableBody">
+                        @foreach (var item in Model)
+                        {
+                            <tr id="pending-room-@item.Id">
+                                <td class="ps-4"><span class="text-muted small fw-medium">@item.CreatedAt.ToString("dd/MM/yyyy HH:mm")</span></td>
+                                <td>
+                                    <h6 class="mb-0 fw-bold">@item.Owner?.FullName</h6>
+                                    <small class="text-muted">@item.Owner?.Email</small>
+                                </td>
+                                <td>
+                                    <h6 class="mb-0 fw-bold text-truncate" style="max-width: 250px;">@item.Title</h6>
+                                    <small class="text-muted">
+                                        <span class="badge bg-light text-dark border me-1">
+                                            @(item.AccommodationType == "NhaNguyenCan" ? "Nhà nguyên căn" : item.AccommodationType == "CanHo" ? "Căn hộ" : item.AccommodationType == "SleepBox" ? "Ký túc xá" : "Phòng trọ")
+                                        </span>
+                                        @item.District?.Name, @item.City?.Name
+                                    </small>
+                                </td>
+                                <td class="text-danger fw-bold">@item.Price.ToString("N0") đ</td>
+                                <td class="text-end pe-4 print-hide">
+                                    <a href="/Accommodation/Details/@item.Id" class="btn btn-sm btn-outline-primary" target="_blank" title="Xem bài đăng"><i class="fas fa-eye"></i></a>
+                                    <a href="/Admin/Documents/@item.Id" class="btn btn-sm btn-outline-secondary" target="_blank" title="Xem giấy tờ"><i class="fas fa-file-contract"></i></a>
+                                    
+                                    <form action="/Admin/Approve" method="post" class="d-inline">
+                                        <input type="hidden" name="id" value="@item.Id" />
+                                        <button type="submit" class="btn btn-sm btn-success" title="Duyệt"><i class="fas fa-check"></i> Duyệt</button>
+                                    </form>
+
+                                    <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#rejectModal-@item.Id" title="Từ chối">
+                                        <i class="fas fa-times"></i> Từ chối
+                                    </button>
+
+
+                                </td>
+                            </tr>
+                        }
+                        @if (!Model.Any())
+                        {
+                            <tr id="pendingEmptyRow">
+                                <td colspan="5" class="text-center py-5 text-muted">
+                                    <i class="fas fa-clipboard-check fa-3x mb-3 opacity-50"></i>
+                                    <h5>Không có bài đăng nào cần duyệt</h5>
+                                    <p class="mb-0">Tất cả bài đăng mới đã được xử lý.</p>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+@* === Reject Modals — phải nằm ngoài table để tránh nhấp nháy === *@
+@foreach (var item in Model)
+{
+    <div class="modal fade" id="rejectModal-@item.Id" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold text-danger"><i class="fas fa-times-circle"></i> Từ chối bài đăng</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form action="/Admin/Reject" method="post">
+                    <div class="modal-body">
+                        <input type="hidden" name="id" value="@item.Id" />
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Lý do từ chối <span class="text-danger">*</span></label>
+                            <textarea name="reason" class="form-control" rows="3" required placeholder="Nhập lý do từ chối để chủ trọ biết (VD: Hình ảnh không rõ ràng, thông tin sai lệch...)"></textarea>
+                        </div>
+                        <p class="text-muted small mb-0"><i class="fas fa-info-circle"></i> Bài đăng sẽ bị đánh dấu từ chối và chủ trọ sẽ nhận được thông báo về lý do này.</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                        <button type="submit" class="btn btn-danger">Xác nhận từ chối</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+</div>

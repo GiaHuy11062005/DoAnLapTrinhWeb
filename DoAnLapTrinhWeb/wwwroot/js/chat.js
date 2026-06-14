@@ -6,7 +6,7 @@
     "use strict";
 
     let chatConnection = null;
-    let currentConversationId = 0;
+    window.currentConversationId = 0; // Expose globally for Inbox page
     let myUserId = 0;
 
     const popupContainer = document.getElementById("globalChatPopupContainer");
@@ -59,7 +59,7 @@
             popupContainer.classList.remove("is-minimized");
 
             // 4. Lấy dữ liệu cơ bản
-            currentConversationId = conversationId;
+            window.currentConversationId = conversationId;
             const innerDiv = document.getElementById("miniChatInner");
             if (innerDiv) {
                 myUserId = parseInt(innerDiv.dataset.currentUserId) || 0;
@@ -81,7 +81,7 @@
     window.closeChatPopup = function (e) {
         if (e) e.stopPropagation();
         popupContainer.classList.add("is-hidden");
-        currentConversationId = 0;
+        window.currentConversationId = 0;
     };
 
     window.toggleMinimizeChatPopup = function (e) {
@@ -131,7 +131,7 @@
         if (!input || !sendBtn) return;
 
         const content = input.value.trim();
-        if (!content || !currentConversationId) return;
+        if (!content || !window.currentConversationId) return;
 
         input.disabled = true;
         sendBtn.disabled = true;
@@ -140,7 +140,7 @@
             const res = await fetch("/Chat/SendMessage", {
                 method: "POST",
                 headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                body: `conversationId=${encodeURIComponent(currentConversationId)}&content=${encodeURIComponent(content)}`
+                body: `conversationId=${encodeURIComponent(window.currentConversationId)}&content=${encodeURIComponent(content)}`
             });
 
             if (res.ok) {
@@ -229,11 +229,11 @@
     }
 
     function markAsRead() {
-        if (!currentConversationId) return;
+        if (!window.currentConversationId) return;
         fetch("/Chat/MarkAsRead", {
             method: "POST",
             headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: `conversationId=${encodeURIComponent(currentConversationId)}`
+            body: `conversationId=${encodeURIComponent(window.currentConversationId)}`
         }).catch(() => { });
     }
 
@@ -243,7 +243,7 @@
     function initSignalR() {
         if (chatConnection) {
             // Đã kết nối, chỉ cần join group của conversation mới
-            chatConnection.invoke("JoinConversation", currentConversationId).catch(() => {});
+            chatConnection.invoke("JoinConversation", window.currentConversationId).catch(() => {});
             return;
         }
 
@@ -254,7 +254,7 @@
 
         chatConnection.on("MessageReceived", (data) => {
             // Nếu người dùng đang mở popup của conversation này
-            if (data.conversationId === currentConversationId) {
+            if (data.conversationId === window.currentConversationId) {
                 const isMine = data.senderId === myUserId;
                 const bubble = createBubble(data.senderName, data.content, data.createdAt, isMine);
                 
@@ -277,22 +277,22 @@
         });
 
         chatConnection.on("NegotiationConfirmed", (conversationId) => {
-            if (conversationId === currentConversationId) {
+            if (conversationId === window.currentConversationId) {
                 const box = document.getElementById(`negotiationBox_${conversationId}`);
                 if (box) box.remove();
             }
         });
 
         chatConnection.on("NegotiationRejected", (conversationId) => {
-            if (conversationId === currentConversationId) {
+            if (conversationId === window.currentConversationId) {
                 const box = document.getElementById(`negotiationBox_${conversationId}`);
                 if (box) box.remove();
             }
         });
 
         chatConnection.start().then(() => {
-            if (currentConversationId) {
-                chatConnection.invoke("JoinConversation", currentConversationId);
+            if (window.currentConversationId) {
+                chatConnection.invoke("JoinConversation", window.currentConversationId);
             }
         }).catch(err => console.error("Lỗi SignalR Chat: ", err));
     }

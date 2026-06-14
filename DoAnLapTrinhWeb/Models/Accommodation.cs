@@ -52,6 +52,9 @@ namespace DoAnLapTrinhWeb.Models
         public string? ContactPhone { get; set; } // SĐT liên hệ riêng cho bài này
 
         public bool IsApproved { get; set; }
+        public bool IsRejected { get; set; } = false;
+        public string? RejectionReason { get; set; }
+        public bool IsHidden { get; set; } = false; // Ẩn bài đăng trên trang chủ
         public DateTime CreatedAt { get; set; }
 
         // --- CHO THUÊ / TRẠNG THÁI ---

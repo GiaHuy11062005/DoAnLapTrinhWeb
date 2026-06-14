@@ -1,0 +1,164 @@
+@model DoAnLapTrinhWeb.Models.AppUser
+@{
+    ViewData["Title"] = "Chi Tiết Người Dùng";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var recentRooms = ViewBag.RecentRooms as List<DoAnLapTrinhWeb.Models.Accommodation> ?? new List<DoAnLapTrinhWeb.Models.Accommodation>();
+}
+
+<div class="admin-approval-page container mt-4 mb-5">
+    <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom print-hide">
+        <div>
+            <h2 class="fw-bold text-dark mb-1"><i class="fas fa-user-circle text-primary me-2"></i> Hồ Sơ Người Dùng</h2>
+            <p class="text-muted mb-0">Xem chi tiết thông tin và hoạt động của tài khoản.</p>
+        </div>
+        <div>
+            <a href="/Admin/ManageUsers" class="btn btn-outline-secondary rounded-pill shadow-sm"><i class="fas fa-arrow-left me-1"></i> Trở về danh sách</a>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Thông tin cơ bản -->
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0 rounded-4 h-100">
+                <div class="card-body text-center p-4">
+                    <div class="bg-primary bg-opacity-10 text-primary rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 100px; height: 100px; font-weight: bold; font-size: 2.5rem;">
+                        @(!string.IsNullOrEmpty(Model.FullName) ? Model.FullName.Substring(0, 1).ToUpper() : "U")
+                    </div>
+                    <h4 class="fw-bold mb-1">@Model.FullName</h4>
+                    <p class="text-muted mb-3">
+                        @if (Model.Role == "Admin")
+                        {
+                            <span class="badge bg-danger">Quản trị viên</span>
+                        }
+                        else if (Model.Role == "Landlord")
+                        {
+                            <span class="badge bg-primary">Chủ trọ</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-info">Người thuê</span>
+                        }
+                    </p>
+
+                    <div class="d-flex justify-content-center gap-2 mb-4">
+                        @if (Model.IsLocked)
+                        {
+                            <span class="badge bg-danger-subtle text-danger px-3 py-2 rounded-pill"><i class="fas fa-lock me-1"></i> Bị khóa</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-success-subtle text-success px-3 py-2 rounded-pill"><i class="fas fa-check-circle me-1"></i> Hoạt động tốt</span>
+                        }
+                    </div>
+
+                    <ul class="list-group list-group-flush text-start">
+                        <li class="list-group-item px-0"><i class="fas fa-envelope text-muted me-2" style="width: 20px;"></i> <strong>Email:</strong> <br>@Model.Email</li>
+                        <li class="list-group-item px-0"><i class="fas fa-phone text-muted me-2" style="width: 20px;"></i> <strong>Số điện thoại:</strong> <br>@(string.IsNullOrEmpty(Model.Phone) ? "Chưa cập nhật" : Model.Phone)</li>
+                        <li class="list-group-item px-0"><i class="far fa-calendar-alt text-muted me-2" style="width: 20px;"></i> <strong>Ngày tham gia:</strong> <br>@Model.CreatedAt.ToString("dd/MM/yyyy HH:mm")</li>
+                        @if (Model.IsLocked)
+                        {
+                            <li class="list-group-item px-0 text-danger"><i class="fas fa-ban text-danger me-2" style="width: 20px;"></i> <strong>Lý do khóa:</strong> <br>@Model.LockReason</li>
+                            <li class="list-group-item px-0"><i class="far fa-clock text-muted me-2" style="width: 20px;"></i> <strong>Khóa lúc:</strong> <br>@Model.LockedAt?.ToString("dd/MM/yyyy HH:mm")</li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Thống kê & Hoạt động -->
+        <div class="col-md-8">
+            <div class="card shadow-sm border-0 rounded-4 mb-4">
+                <div class="card-body p-4">
+                    <h5 class="fw-bold mb-4"><i class="fas fa-chart-bar text-primary me-2"></i> Tổng quan hoạt động</h5>
+                    
+                    @if (Model.Role == "Landlord")
+                    {
+                        <div class="row g-3 text-center">
+                            <div class="col-6 col-md-3">
+                                <div class="p-3 border rounded-3 bg-light">
+                                    <h3 class="fw-bold text-dark mb-1">@ViewBag.TotalRooms</h3>
+                                    <span class="text-muted small">Tổng số bài</span>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="p-3 border rounded-3 bg-success-subtle text-success border-success border-opacity-25">
+                                    <h3 class="fw-bold mb-1">@ViewBag.ApprovedRooms</h3>
+                                    <span class="small">Đã duyệt</span>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="p-3 border rounded-3 bg-warning-subtle text-warning border-warning border-opacity-25">
+                                    <h3 class="fw-bold mb-1 text-dark">@ViewBag.PendingRooms</h3>
+                                    <span class="small text-dark">Chờ duyệt</span>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="p-3 border rounded-3 bg-danger-subtle text-danger border-danger border-opacity-25">
+                                    <h3 class="fw-bold mb-1">@ViewBag.RejectedRooms</h3>
+                                    <span class="small">Bị từ chối</span>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    else if (Model.Role == "User")
+                    {
+                        <div class="row g-3 text-center">
+                            <div class="col-6 col-md-4">
+                                <div class="p-3 border rounded-3 bg-light">
+                                    <h3 class="fw-bold text-dark mb-1">@ViewBag.TotalChats</h3>
+                                    <span class="text-muted small">Cuộc trò chuyện liên hệ</span>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            @if (Model.Role == "Landlord")
+            {
+                <div class="card shadow-sm border-0 rounded-4">
+                    <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
+                        <h5 class="fw-bold mb-0"><i class="fas fa-list text-primary me-2"></i> Bài đăng gần đây</h5>
+                    </div>
+                    <div class="card-body p-0 mt-3">
+                        <div class="table-responsive">
+                            <table class="table align-middle table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="ps-4">Ngày đăng</th>
+                                        <th>Tiêu đề</th>
+                                        <th class="text-center">Trạng thái</th>
+                                        <th class="text-end pe-4 print-hide">Công cụ</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var room in recentRooms)
+                                    {
+                                        <tr>
+                                            <td class="ps-4"><small class="text-muted">@room.CreatedAt.ToString("dd/MM/yyyy")</small></td>
+                                            <td>
+                                                <a href="/Accommodation/Details/@room.Id" target="_blank" class="text-decoration-none text-dark fw-bold text-truncate d-inline-block" style="max-width: 250px;">@room.Title</a>
+                                            </td>
+                                            <td class="text-center">
+                                                @if (room.IsApproved) { <span class="badge bg-success-subtle text-success">Đã duyệt</span> }
+                                                else if (room.IsRejected) { <span class="badge bg-danger-subtle text-danger">Từ chối</span> }
+                                                else { <span class="badge bg-warning-subtle text-warning text-dark">Chờ duyệt</span> }
+                                            </td>
+                                            <td class="text-end pe-4 print-hide">
+                                                <a href="/Accommodation/Details/@room.Id" target="_blank" class="btn btn-sm btn-outline-primary"><i class="fas fa-eye"></i></a>
+                                            </td>
+                                        </tr>
+                                    }
+                                    @if (!recentRooms.Any())
+                                    {
+                                        <tr><td colspan="4" class="text-center py-4 text-muted">Người dùng này chưa có bài đăng nào.</td></tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>

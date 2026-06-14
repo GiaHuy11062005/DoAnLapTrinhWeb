@@ -29,46 +29,84 @@ namespace DoAnLapTrinhWeb.Controllers
             _environment = environment;
         }
 
-        public async Task<IActionResult> Index(string filter = "new")
+        public async Task<IActionResult> Index()
         {
-            ViewBag.CurrentFilter = filter;
-
-            // Đếm thống kê
-            ViewBag.TotalUsers = await _context.Users.CountAsync();
-            ViewBag.ApprovedRooms = await _context.Accommodations.CountAsync(a => a.IsApproved);
-            ViewBag.PendingRoomsCount = await _context.Accommodations.CountAsync(a => !a.IsApproved);
+            // Chỉ đếm thống kê cho Dashboard
+            ViewBag.TotalUsers = await _context.Users.CountAsync(u => !u.IsDeleted);
+            ViewBag.TotalAdmins = await _context.Users.CountAsync(u => u.Role == "Admin" && !u.IsDeleted);
+            ViewBag.TotalLandlords = await _context.Users.CountAsync(u => u.Role == "Landlord" && !u.IsDeleted);
+            ViewBag.TotalTenants = await _context.Users.CountAsync(u => u.Role == "User" && !u.IsDeleted);
+            ViewBag.LockedUsers = await _context.Users.CountAsync(u => u.IsLocked && !u.IsDeleted);
+            
             ViewBag.TotalRooms = await _context.Accommodations.CountAsync();
-            ViewBag.ApprovalHistoryCount = await _context.ApprovalHistories.CountAsync();
+            ViewBag.PendingRoomsCount = await _context.Accommodations.CountAsync(a => !a.IsApproved && !a.IsRejected);
+            ViewBag.ApprovedRooms = await _context.Accommodations.CountAsync(a => a.IsApproved);
+            ViewBag.RejectedRooms = await _context.Accommodations.CountAsync(a => a.IsRejected);
+            
+            ViewBag.TotalRentalRequests = await _context.RentalRequests.CountAsync();
 
-            if (filter == "pending")
-            {
-                var pendingRooms = await _context.Accommodations
-                    .Include(a => a.Owner)
-                    .Include(a => a.City)
-                    .Include(a => a.District)
-                    .Where(a => !a.IsApproved)
-                    .OrderByDescending(a => a.CreatedAt)
-                    .ToListAsync();
-                ViewBag.PendingRoomsList = pendingRooms;
-            }
-            else if (filter == "history")
-            {
-                var approvalHistory = await _context.ApprovalHistories
-                    .OrderByDescending(history => history.ProcessedAt)
-                    .ToListAsync();
-                ViewBag.ApprovalHistoryList = approvalHistory;
-            }
-            else // "new"
-            {
-                var recentActivities = await _context.Accommodations
-                    .Include(a => a.Owner)
-                    .OrderByDescending(a => a.CreatedAt)
-                    .Take(50)
-                    .ToListAsync();
-                ViewBag.RecentActivities = recentActivities;
-            }
+            // Thống kê hỗ trợ
+            ViewBag.TotalSupportTickets = await _context.SupportTickets.CountAsync();
+            ViewBag.PendingSupportTickets = await _context.SupportTickets.CountAsync(t => t.Status == "Pending");
+
+            // Thống kê lịch sử xử lý
+            ViewBag.TotalApprovalHistory = await _context.ApprovalHistories.CountAsync();
+
+            var recentActivities = await _context.Accommodations
+                .Include(a => a.Owner)
+                .OrderByDescending(a => a.CreatedAt)
+                .Take(10)
+                .ToListAsync();
+            ViewBag.RecentActivities = recentActivities;
 
             return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> ApprovalHistory()
+        {
+            var history = await _context.ApprovalHistories
+                .OrderByDescending(h => h.ProcessedAt)
+                .ToListAsync();
+            return View(history);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> PendingPosts()
+        {
+            var pendingRooms = await _context.Accommodations
+                .Include(a => a.Owner)
+                .Include(a => a.City)
+                .Include(a => a.District)
+                .Where(a => !a.IsApproved && !a.IsRejected)
+                .OrderByDescending(a => a.CreatedAt)
+                .ToListAsync();
+            return View(pendingRooms);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> ManagePosts(string type = "all", string status = "all")
+        {
+            ViewBag.CurrentType = type;
+            ViewBag.CurrentStatus = status;
+
+            var query = _context.Accommodations
+                .Include(a => a.Owner)
+                .Include(a => a.City)
+                .Include(a => a.District)
+                .AsQueryable();
+
+            if (type == "phongtro") query = query.Where(a => a.AccommodationType != "NhaNguyenCan");
+            else if (type == "nhanguyencan") query = query.Where(a => a.AccommodationType == "NhaNguyenCan");
+
+            if (status == "pending") query = query.Where(a => !a.IsApproved && !a.IsRejected);
+            else if (status == "approved") query = query.Where(a => a.IsApproved);
+            else if (status == "rejected") query = query.Where(a => a.IsRejected);
+            else if (status == "hidden") query = query.Where(a => a.IsHidden);
+            else if (status == "rentedout") query = query.Where(a => a.IsRentedOut);
+
+            var rooms = await query.OrderByDescending(a => a.CreatedAt).ToListAsync();
+            return View(rooms);
         }
 
         [HttpGet]
@@ -124,7 +162,7 @@ namespace DoAnLapTrinhWeb.Controllers
             var approved = false;
             var room = await _context.Accommodations
                 .Include(a => a.Owner)
-                .FirstOrDefaultAsync(a => a.Id == id && !a.IsApproved);
+                .FirstOrDefaultAsync(a => a.Id == id && !a.IsApproved && !a.IsRejected);
             if (room != null)
             {
                 room.IsApproved = true; // Đổi trạng thái thành Đã Duyệt
@@ -141,7 +179,7 @@ namespace DoAnLapTrinhWeb.Controllers
                 _context.Notifications.Add(ownerNotification);
 
                 var renterIds = await _context.Users
-                    .Where(user => user.Role == "User")
+                    .Where(user => user.Role == "User" && !user.IsDeleted && !user.IsLocked)
                     .Select(user => user.Id)
                     .ToListAsync();
                 var renterNotifications = renterIds.Select(renterId => new AppNotification
@@ -161,48 +199,78 @@ namespace DoAnLapTrinhWeb.Controllers
             }
             if (Request.Headers["X-Requested-With"] == "XMLHttpRequest") return Ok();
             if (approved) TempData["Success"] = "Đã duyệt bài đăng thành công!";
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction(nameof(PendingPosts));
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> Reject(int id, string reason)
+        {
+            var room = await _context.Accommodations
+                .Include(a => a.Owner)
+                .FirstOrDefaultAsync(a => a.Id == id && !a.IsApproved && !a.IsRejected);
+            if (room != null)
+            {
+                room.IsRejected = true;
+                room.RejectionReason = reason;
+
+                var history = CreateHistory(room, "Rejected");
+                _context.ApprovalHistories.Add(history);
+                
+                var ownerNotification = new AppNotification
+                {
+                    UserId = room.OwnerId,
+                    Type = "Rejected",
+                    Title = "Bài đăng đã bị từ chối",
+                    Message = $"Lý do: {reason}",
+                    Url = "/Accommodation/Index"
+                };
+                _context.Notifications.Add(ownerNotification);
+                await _context.SaveChangesAsync();
+                await SendNotification(ownerNotification);
+                await NotifyProcessed(room, history, "Rejected", "Đã từ chối");
+                
+                TempData["Success"] = "Đã từ chối bài đăng!";
+            }
+            return RedirectToAction(nameof(PendingPosts));
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> ToggleHidden(int id)
+        {
+            var room = await _context.Accommodations.FirstOrDefaultAsync(a => a.Id == id);
+            if (room != null)
+            {
+                room.IsHidden = !room.IsHidden;
+                await _context.SaveChangesAsync();
+                TempData["Success"] = room.IsHidden ? "Đã ẩn bài đăng." : "Đã hiện bài đăng.";
+            }
+            return RedirectToAction(nameof(ManagePosts));
         }
 
         [HttpPost]
         public async Task<IActionResult> Delete(int id)
         {
-            var deleted = false;
             var room = await _context.Accommodations
-                .Include(a => a.Owner)
                 .Include(a => a.Documents)
-                .FirstOrDefaultAsync(a => a.Id == id && !a.IsApproved);
+                .FirstOrDefaultAsync(a => a.Id == id);
             if (room != null)
             {
                 var storedDocuments = room.Documents?
                     .Where(item => !string.IsNullOrWhiteSpace(item.StoredFileName))
                     .Select(item => item.StoredFileName!)
                     .ToList() ?? new();
-                var history = CreateHistory(room, "Rejected");
-                _context.ApprovalHistories.Add(history);
-                var ownerNotification = new AppNotification
-                {
-                    UserId = room.OwnerId,
-                    Type = "Rejected",
-                    Title = "Bài đăng đã bị từ chối",
-                    Message = room.Title ?? "Bài đăng phòng trọ",
-                    Url = "/Accommodation/Index"
-                };
-                _context.Notifications.Add(ownerNotification);
-                _context.Accommodations.Remove(room); // Xóa bài nếu vi phạm
+                
+                _context.Accommodations.Remove(room);
                 await _context.SaveChangesAsync();
-                await SendNotification(ownerNotification);
+
                 foreach (var storedFileName in storedDocuments)
                 {
                     var filePath = Path.Combine(_environment.ContentRootPath, "App_Data", "land-documents", storedFileName);
                     if (System.IO.File.Exists(filePath)) System.IO.File.Delete(filePath);
                 }
-                await NotifyProcessed(room, history, "Rejected", "Đã từ chối");
-                deleted = true;
+                TempData["Success"] = "Đã xóa bài đăng!";
             }
-            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest") return Ok();
-            if (deleted) TempData["Success"] = "Đã xóa bài đăng!";
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction(nameof(ManagePosts));
         }
 
         private async Task NotifyProcessed(Accommodation room, ApprovalHistory history, string status, string statusLabel)
@@ -251,6 +319,139 @@ namespace DoAnLapTrinhWeb.Controllers
                 notification.IsRead,
                 createdAt = notification.CreatedAt.ToString("dd/MM/yyyy HH:mm")
             });
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> ManageUsers(string role = "all", string status = "all", string search = "")
+        {
+            ViewBag.CurrentRole = role;
+            ViewBag.CurrentStatus = status;
+            ViewBag.Search = search;
+
+            var query = _context.Users
+                .Where(u => !u.IsDeleted) // Không hiển thị người đã xóa mềm
+                .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                query = query.Where(u => (u.FullName != null && u.FullName.Contains(search)) || 
+                                         (u.Email != null && u.Email.Contains(search)) ||
+                                         (u.Phone != null && u.Phone.Contains(search)));
+            }
+
+            if (role != "all")
+            {
+                if (role == "admin") query = query.Where(u => u.Role == "Admin");
+                else if (role == "landlord") query = query.Where(u => u.Role == "Landlord");
+                else if (role == "tenant") query = query.Where(u => u.Role == "User");
+            }
+
+            if (status == "active") query = query.Where(u => !u.IsLocked);
+            else if (status == "locked") query = query.Where(u => u.IsLocked);
+
+            var users = await query.OrderByDescending(u => u.CreatedAt).ToListAsync();
+
+            // Tính toán thêm số liệu (số bài đăng, liên hệ) có thể thực hiện trên View hoặc map vào ViewModel.
+            // Để đơn giản ta dùng ViewBag hoặc nạp vào List. Ta sẽ map sang một danh sách ẩn danh/ViewModel nhỏ nếu cần.
+            // Ở đây trả thẳng Users về View, View sẽ dùng Injection hoặc Count để đếm. Nhưng để tối ưu, ta tính luôn ở đây:
+            var userIds = users.Select(u => u.Id).ToList();
+            
+            var roomCounts = await _context.Accommodations
+                .Where(a => userIds.Contains(a.OwnerId))
+                .GroupBy(a => a.OwnerId)
+                .Select(g => new { UserId = g.Key, Count = g.Count(), Approved = g.Count(a => a.IsApproved), Pending = g.Count(a => !a.IsApproved && !a.IsRejected), Rejected = g.Count(a => a.IsRejected) })
+                .ToDictionaryAsync(x => x.UserId);
+                
+            var chatCounts = await _context.ChatConversations
+                .Where(c => userIds.Contains(c.RenterId))
+                .GroupBy(c => c.RenterId)
+                .Select(g => new { UserId = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.UserId);
+
+            ViewBag.RoomCounts = roomCounts;
+            ViewBag.ChatCounts = chatCounts;
+
+            return View(users);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> UserDetails(int id)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id);
+            if (user == null) return NotFound();
+
+            ViewBag.TotalRooms = await _context.Accommodations.CountAsync(a => a.OwnerId == id);
+            ViewBag.ApprovedRooms = await _context.Accommodations.CountAsync(a => a.OwnerId == id && a.IsApproved);
+            ViewBag.RejectedRooms = await _context.Accommodations.CountAsync(a => a.OwnerId == id && a.IsRejected);
+            ViewBag.PendingRooms = await _context.Accommodations.CountAsync(a => a.OwnerId == id && !a.IsApproved && !a.IsRejected);
+            
+            ViewBag.RecentRooms = await _context.Accommodations
+                .Where(a => a.OwnerId == id)
+                .OrderByDescending(a => a.CreatedAt)
+                .Take(5)
+                .ToListAsync();
+
+            ViewBag.TotalChats = await _context.ChatConversations.CountAsync(c => c.RenterId == id);
+
+            return View(user);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> ToggleUserLock(int id, string reason)
+        {
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userIdString, out int currentAdminId)) return Unauthorized();
+
+            if (id == currentAdminId)
+            {
+                TempData["Error"] = "Bạn không thể tự khóa tài khoản của mình.";
+                return RedirectToAction(nameof(ManageUsers));
+            }
+
+            var user = await _context.Users.FindAsync(id);
+            if (user != null)
+            {
+                user.IsLocked = !user.IsLocked;
+                if (user.IsLocked)
+                {
+                    user.LockReason = reason;
+                    user.LockedAt = DateTime.Now;
+                    user.LockedByAdminId = currentAdminId;
+                }
+                else
+                {
+                    user.LockReason = null;
+                    user.LockedAt = null;
+                    user.LockedByAdminId = null;
+                }
+                await _context.SaveChangesAsync();
+                TempData["Success"] = user.IsLocked ? $"Đã khóa tài khoản {user.FullName}" : $"Đã mở khóa tài khoản {user.FullName}";
+            }
+            return RedirectToAction(nameof(ManageUsers));
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> SoftDeleteUser(int id)
+        {
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userIdString, out int currentAdminId)) return Unauthorized();
+
+            if (id == currentAdminId)
+            {
+                TempData["Error"] = "Bạn không thể tự xóa tài khoản của mình.";
+                return RedirectToAction(nameof(ManageUsers));
+            }
+
+            var user = await _context.Users.FindAsync(id);
+            if (user != null)
+            {
+                user.IsDeleted = true;
+                user.DeletedAt = DateTime.Now;
+                user.DeletedByAdminId = currentAdminId;
+                await _context.SaveChangesAsync();
+                TempData["Success"] = $"Đã xóa mềm tài khoản {user.FullName}.";
+            }
+            return RedirectToAction(nameof(ManageUsers));
         }
 
         [HttpGet]

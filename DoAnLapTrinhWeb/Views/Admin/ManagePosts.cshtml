@@ -1,0 +1,149 @@
+@model IEnumerable<DoAnLapTrinhWeb.Models.Accommodation>
+@{
+    ViewData["Title"] = "Quản Lý Bài Đăng";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    string currentType = ViewBag.CurrentType as string ?? "all";
+    string currentStatus = ViewBag.CurrentStatus as string ?? "all";
+}
+
+<div class="admin-approval-page container mt-4 mb-5">
+    <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom print-hide">
+        <div>
+            <h2 class="fw-bold text-dark mb-1"><i class="fas fa-building text-primary me-2"></i> Quản Lý Bài Đăng</h2>
+            <p class="text-muted mb-0">Quản lý, tìm kiếm và phân loại toàn bộ bài đăng trong hệ thống.</p>
+        </div>
+        <div>
+            <a href="/Admin/Index" class="btn btn-outline-secondary rounded-pill shadow-sm"><i class="fas fa-arrow-left me-1"></i> Trở về Dashboard</a>
+        </div>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle me-2"></i>@TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <!-- Bộ lọc -->
+    <div class="card shadow-sm border-0 rounded-4 mb-4">
+        <div class="card-body">
+            <form method="get" action="/Admin/ManagePosts" class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Loại hình</label>
+                    <select name="type" class="form-select">
+                        <option value="all" selected="@(currentType == "all")">Tất cả loại hình</option>
+                        <option value="phongtro" selected="@(currentType == "phongtro")">Phòng trọ / Căn hộ / Sleepbox</option>
+                        <option value="nhanguyencan" selected="@(currentType == "nhanguyencan")">Nhà nguyên căn</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Trạng thái</label>
+                    <select name="status" class="form-select">
+                        <option value="all" selected="@(currentStatus == "all")">Tất cả trạng thái</option>
+                        <option value="pending" selected="@(currentStatus == "pending")">Chờ duyệt</option>
+                        <option value="approved" selected="@(currentStatus == "approved")">Đã duyệt (Đang hiển thị)</option>
+                        <option value="rejected" selected="@(currentStatus == "rejected")">Bị từ chối</option>
+                        <option value="hidden" selected="@(currentStatus == "hidden")">Đang bị ẩn</option>
+                        <option value="rentedout" selected="@(currentStatus == "rentedout")">Đã cho thuê</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <button type="submit" class="btn btn-primary w-100"><i class="fas fa-filter"></i> Lọc danh sách</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0 rounded-4">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table align-middle table-hover mb-0 admin-approval-table">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4">Tài khoản & Ngày đăng</th>
+                            <th>Bài đăng & Khu vực</th>
+                            <th>Giá thuê</th>
+                            <th class="text-center">Trạng thái</th>
+                            <th class="text-end pe-4 print-hide">Công cụ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model)
+                        {
+                            <tr>
+                                <td class="ps-4">
+                                    <h6 class="mb-0 fw-bold">@item.Owner?.FullName</h6>
+                                    <small class="text-muted d-block">@item.Owner?.Email</small>
+                                    <small class="text-muted"><i class="far fa-clock"></i> @item.CreatedAt.ToString("dd/MM/yyyy")</small>
+                                </td>
+                                <td>
+                                    <a href="/Accommodation/Details/@item.Id" target="_blank" class="text-decoration-none text-dark">
+                                        <h6 class="mb-0 fw-bold text-truncate" style="max-width: 250px;">@item.Title</h6>
+                                    </a>
+                                    <small class="text-muted">
+                                        <span class="badge bg-light text-dark border me-1">
+                                            @(item.AccommodationType == "NhaNguyenCan" ? "Nhà nguyên căn" : item.AccommodationType == "CanHo" ? "Căn hộ" : item.AccommodationType == "SleepBox" ? "Ký túc xá" : "Phòng trọ")
+                                        </span>
+                                        @item.District?.Name, @item.City?.Name
+                                    </small>
+                                </td>
+                                <td class="text-danger fw-bold">@item.Price.ToString("N0") đ</td>
+                                <td class="text-center">
+                                    @if (item.IsHidden)
+                                    {
+                                        <span class="badge bg-secondary">Bị Ẩn</span>
+                                    }
+                                    else if (item.IsRentedOut)
+                                    {
+                                        <span class="badge bg-dark">Đã cho thuê</span>
+                                    }
+                                    else if (item.IsRejected)
+                                    {
+                                        <span class="badge bg-danger">Bị từ chối</span>
+                                    }
+                                    else if (item.IsApproved)
+                                    {
+                                        <span class="badge bg-success">Đã duyệt</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-warning text-dark">Chờ duyệt</span>
+                                    }
+                                </td>
+                                <td class="text-end pe-4 print-hide">
+                                    <form action="/Admin/ToggleHidden" method="post" class="d-inline">
+                                        <input type="hidden" name="id" value="@item.Id" />
+                                        @if (item.IsHidden)
+                                        {
+                                            <button type="submit" class="btn btn-sm btn-outline-success" title="Hiển thị lại bài đăng"><i class="fas fa-eye"></i></button>
+                                        }
+                                        else
+                                        {
+                                            <button type="submit" class="btn btn-sm btn-outline-warning" title="Ẩn bài đăng này"><i class="fas fa-eye-slash"></i></button>
+                                        }
+                                    </form>
+
+                                    <form action="/Admin/Delete" method="post" class="d-inline" onsubmit="return confirm('Cảnh báo: Bạn có chắc chắn muốn xóa bài đăng này không? Việc này không thể hoàn tác!');">
+                                        <input type="hidden" name="id" value="@item.Id" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Xóa bài đăng"><i class="fas fa-trash-alt"></i></button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                        @if (!Model.Any())
+                        {
+                            <tr>
+                                <td colspan="5" class="text-center py-5 text-muted">
+                                    <i class="fas fa-box-open fa-3x mb-3 opacity-50"></i>
+                                    <h5>Không tìm thấy bài đăng nào</h5>
+                                    <p class="mb-0">Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm.</p>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

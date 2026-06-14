@@ -5,24 +5,40 @@
     var recentPosts = ViewBag.RecentPosts as List<DoAnLapTrinhWeb.Models.Accommodation> ?? new List<DoAnLapTrinhWeb.Models.Accommodation>();
     var recentRequests = ViewBag.RecentRequests as List<DoAnLapTrinhWeb.Models.RentalRequest> ?? new List<DoAnLapTrinhWeb.Models.RentalRequest>();
     string timeFilter = ViewBag.CurrentTimeFilter;
+
+    int totalPosts = ViewBag.TotalPosts ?? 0;
+    int approvedPosts = ViewBag.ApprovedPosts ?? 0;
+    int pendingPosts = ViewBag.PendingPosts ?? 0;
+    int rejectedPosts = ViewBag.RejectedPosts ?? 0;
+    int totalRequests = ViewBag.TotalRequests ?? 0;
+    int pendingRequests = ViewBag.PendingRequests ?? 0;
+    int negotiatingRequests = ViewBag.NegotiatingRequests ?? 0;
+    int successRequests = ViewBag.SuccessRequests ?? 0;
+    int cancelledRequests = ViewBag.CancelledRequests ?? 0;
+    int totalAvailableRooms = ViewBag.TotalAvailableRooms ?? 0;
+    int totalConversations = ViewBag.TotalConversations ?? 0;
+    int unreadMessages = ViewBag.UnreadMessages ?? 0;
+    int rentedOutPosts = ViewBag.RentedOutPosts ?? 0;
 }
 
 <div class="container mt-4 mb-5">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+
+    <!-- ═══════ PHẦN 1: TIÊU ĐỀ ═══════ -->
+    <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom">
         <div>
             <h2 class="fw-bold text-dark mb-1"><i class="fas fa-tachometer-alt text-primary me-2"></i> Dashboard Chủ Trọ</h2>
-            <p class="text-muted mb-0">Theo dõi thống kê bài đăng, tình trạng phòng và yêu cầu thuê của bạn.</p>
+            <p class="text-muted mb-0">Theo dõi thống kê bài đăng, tình trạng phòng và truy cập nhanh các chức năng quản lý.</p>
         </div>
         <div class="d-flex gap-2">
-            <a href="/Accommodation/Index" class="btn btn-outline-primary rounded-pill"><i class="fas fa-list"></i> Quản lý trọ</a>
-            <a href="/RentalProcess/Index" class="btn btn-outline-warning rounded-pill"><i class="fas fa-clipboard-check"></i> Xử lý thuê</a>
+            <a href="/Accommodation/Index" class="btn btn-outline-primary rounded-pill"><i class="fas fa-list me-1"></i> Quản lý trọ</a>
+            <a href="/RentalProcess/Index" class="btn btn-outline-warning rounded-pill"><i class="fas fa-clipboard-check me-1"></i> Xử lý thuê</a>
             <button class="btn btn-primary rounded-pill shadow-sm" data-bs-toggle="modal" data-bs-target="#postAccommodationModal">
-                <i class="fas fa-plus"></i> Đăng tin mới
+                <i class="fas fa-plus me-1"></i> Đăng tin mới
             </button>
         </div>
     </div>
 
-    <!-- Bộ lọc -->
+    <!-- ═══════ BỘ LỌC ═══════ -->
     <div class="card border-0 shadow-sm rounded-4 mb-4">
         <div class="card-body py-3">
             <form id="filterForm" method="get" action="/Landlord/Dashboard" class="row g-3 align-items-center">
@@ -49,31 +65,193 @@
         </div>
     </div>
 
+    <!-- ═══════ PHẦN 2: THẺ THỐNG KÊ BẤM ĐƯỢC ═══════ -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-lg-3">
+            <a href="/Accommodation/Index" class="text-decoration-none">
+                <div class="card bg-primary text-white border-0 shadow-sm rounded-4 h-100 landlord-stat-card">
+                    <div class="card-body p-3 d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="opacity-75 mb-1 small text-uppercase fw-bold">Tổng Bài Đăng</h6>
+                            <h2 class="fw-bold mb-0">@totalPosts</h2>
+                            <small class="opacity-75">@approvedPosts đã duyệt · @pendingPosts chờ duyệt</small>
+                        </div>
+                        <i class="fas fa-layer-group fa-2x opacity-50"></i>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-6 col-lg-3">
+            <a href="/RentalProcess/Index" class="text-decoration-none">
+                <div class="card bg-info text-white border-0 shadow-sm rounded-4 h-100 landlord-stat-card">
+                    <div class="card-body p-3 d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="opacity-75 mb-1 small text-uppercase fw-bold">Tổng Yêu Cầu Thuê</h6>
+                            <h2 class="fw-bold mb-0">@totalRequests</h2>
+                            <small class="opacity-75">@pendingRequests đang chờ · @negotiatingRequests thương lượng</small>
+                        </div>
+                        <i class="fas fa-handshake fa-2x opacity-50"></i>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-6 col-lg-3">
+            <a href="/Accommodation/Index" class="text-decoration-none">
+                <div class="card bg-success text-white border-0 shadow-sm rounded-4 h-100 landlord-stat-card">
+                    <div class="card-body p-3 d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="opacity-75 mb-1 small text-uppercase fw-bold">Phòng Còn Trống</h6>
+                            <h2 class="fw-bold mb-0">@totalAvailableRooms</h2>
+                            <small class="opacity-75">Phòng trọ / Ký túc xá</small>
+                        </div>
+                        <i class="fas fa-door-open fa-2x opacity-50"></i>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-6 col-lg-3">
+            <a href="/Chat/Inbox" class="text-decoration-none">
+                <div class="card bg-dark text-white border-0 shadow-sm rounded-4 h-100 landlord-stat-card">
+                    <div class="card-body p-3 d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="opacity-75 mb-1 small text-uppercase fw-bold">Tin Nhắn</h6>
+                            <h2 class="fw-bold mb-0">@totalConversations</h2>
+                            <small class="opacity-75">@(unreadMessages > 0 ? $"{unreadMessages} chưa đọc" : "Tất cả đã đọc")</small>
+                        </div>
+                        <i class="fas fa-comments fa-2x opacity-50"></i>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <!-- ═══════ PHẦN 3: TRUY CẬP NHANH ═══════ -->
+    <div class="mb-4">
+        <h5 class="fw-bold mb-3"><i class="fas fa-rocket text-primary me-2"></i> Truy cập nhanh</h5>
+        <div class="row g-3">
+
+            <!-- Quản lý trọ -->
+            <div class="col-6 col-md-4 col-lg-2">
+                <a href="/Accommodation/Index" class="text-decoration-none">
+                    <div class="card border-0 shadow-sm rounded-4 h-100 text-center landlord-quick-card">
+                        <div class="card-body p-3 position-relative">
+                            <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-2" style="width:52px;height:52px;background:rgba(var(--bs-primary-rgb),0.15);">
+                                <i class="fas fa-building fa-lg text-primary"></i>
+                            </div>
+                            <span class="position-absolute top-0 end-0 translate-middle badge rounded-pill bg-primary" style="margin-top:12px;margin-right:6px;">@totalPosts</span>
+                            <h6 class="fw-bold mb-1 text-dark" style="font-size:.85rem;">Quản lý trọ</h6>
+                            <small class="text-muted" style="font-size:.72rem;">Xem và chỉnh sửa tất cả bài đăng của bạn</small>
+                        </div>
+                    </div>
+                </a>
+            </div>
+
+            <!-- Xử lý yêu cầu thuê -->
+            <div class="col-6 col-md-4 col-lg-2">
+                <a href="/RentalProcess/Index" class="text-decoration-none">
+                    <div class="card border-0 shadow-sm rounded-4 h-100 text-center landlord-quick-card">
+                        <div class="card-body p-3 position-relative">
+                            <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-2" style="width:52px;height:52px;background:rgba(var(--bs-warning-rgb),0.15);">
+                                <i class="fas fa-clipboard-check fa-lg text-warning"></i>
+                            </div>
+                            @if (pendingRequests > 0)
+                            {
+                                <span class="position-absolute top-0 end-0 translate-middle badge rounded-pill bg-danger" style="margin-top:12px;margin-right:6px;">@pendingRequests</span>
+                            }
+                            <h6 class="fw-bold mb-1 text-dark" style="font-size:.85rem;">Xử lý thuê</h6>
+                            <small class="text-muted" style="font-size:.72rem;">Duyệt, thương lượng và xác nhận yêu cầu thuê</small>
+                        </div>
+                    </div>
+                </a>
+            </div>
+
+            <!-- Tin nhắn -->
+            <div class="col-6 col-md-4 col-lg-2">
+                <a href="/Chat/Inbox" class="text-decoration-none">
+                    <div class="card border-0 shadow-sm rounded-4 h-100 text-center landlord-quick-card">
+                        <div class="card-body p-3 position-relative">
+                            <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-2" style="width:52px;height:52px;background:rgba(var(--bs-info-rgb),0.15);">
+                                <i class="fas fa-comments fa-lg text-info"></i>
+                            </div>
+                            @if (unreadMessages > 0)
+                            {
+                                <span class="position-absolute top-0 end-0 translate-middle badge rounded-pill bg-danger" style="margin-top:12px;margin-right:6px;">@unreadMessages</span>
+                            }
+                            <h6 class="fw-bold mb-1 text-dark" style="font-size:.85rem;">Tin nhắn</h6>
+                            <small class="text-muted" style="font-size:.72rem;">Trả lời tin nhắn từ người thuê quan tâm</small>
+                        </div>
+                    </div>
+                </a>
+            </div>
+
+            <!-- Đăng tin mới -->
+            <div class="col-6 col-md-4 col-lg-2">
+                <a href="#" class="text-decoration-none" data-bs-toggle="modal" data-bs-target="#postAccommodationModal">
+                    <div class="card border-0 shadow-sm rounded-4 h-100 text-center landlord-quick-card">
+                        <div class="card-body p-3">
+                            <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-2" style="width:52px;height:52px;background:rgba(var(--bs-success-rgb),0.15);">
+                                <i class="fas fa-plus-circle fa-lg text-success"></i>
+                            </div>
+                            <h6 class="fw-bold mb-1 text-dark" style="font-size:.85rem;">Đăng tin mới</h6>
+                            <small class="text-muted" style="font-size:.72rem;">Tạo bài đăng cho thuê phòng trọ hoặc nhà</small>
+                        </div>
+                    </div>
+                </a>
+            </div>
+
+            <!-- Liên hệ hỗ trợ -->
+            <div class="col-6 col-md-4 col-lg-2">
+                <a href="/Support/Create" class="text-decoration-none">
+                    <div class="card border-0 shadow-sm rounded-4 h-100 text-center landlord-quick-card">
+                        <div class="card-body p-3">
+                            <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-2" style="width:52px;height:52px;background:rgba(var(--bs-danger-rgb),0.15);">
+                                <i class="fas fa-headset fa-lg text-danger"></i>
+                            </div>
+                            <h6 class="fw-bold mb-1 text-dark" style="font-size:.85rem;">Liên hệ hỗ trợ</h6>
+                            <small class="text-muted" style="font-size:.72rem;">Gửi yêu cầu hỗ trợ hoặc khiếu nại đến Admin</small>
+                        </div>
+                    </div>
+                </a>
+            </div>
+
+            <!-- Về trang chủ -->
+            <div class="col-6 col-md-4 col-lg-2">
+                <a href="/" class="text-decoration-none">
+                    <div class="card border-0 shadow-sm rounded-4 h-100 text-center landlord-quick-card">
+                        <div class="card-body p-3">
+                            <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-2" style="width:52px;height:52px;background:rgba(var(--bs-secondary-rgb),0.15);">
+                                <i class="fas fa-home fa-lg text-secondary"></i>
+                            </div>
+                            <h6 class="fw-bold mb-1 text-dark" style="font-size:.85rem;">Về trang chủ</h6>
+                            <small class="text-muted" style="font-size:.72rem;">Xem giao diện công khai của hệ thống</small>
+                        </div>
+                    </div>
+                </a>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ═══════ PHẦN 4: CHI TIẾT THỐNG KÊ ═══════ -->
     <div class="row g-4 mb-4">
-        <!-- Khối Thống Kê Bài Đăng -->
+        <!-- Thống kê bài đăng -->
         <div class="col-md-6">
             <h5 class="fw-bold mb-3"><i class="fas fa-bullhorn text-warning me-2"></i> Thống Kê Bài Đăng</h5>
             <div class="row g-3">
                 <div class="col-6">
-                    <div class="card bg-primary text-white border-0 shadow-sm rounded-4 h-100">
-                        <div class="card-body p-3 d-flex justify-content-between align-items-center">
-                            <div><h6 class="opacity-75 mb-1 small">Tổng Bài Đăng</h6><h3 class="fw-bold mb-0">@ViewBag.TotalPosts</h3></div>
-                            <i class="fas fa-layer-group fa-2x opacity-50"></i>
+                    <a href="/Accommodation/Index" class="text-decoration-none">
+                        <div class="card bg-success text-white border-0 shadow-sm rounded-4 h-100 landlord-stat-card">
+                            <div class="card-body p-3 d-flex justify-content-between align-items-center">
+                                <div><h6 class="opacity-75 mb-1 small">Đã Duyệt</h6><h3 class="fw-bold mb-0">@approvedPosts</h3></div>
+                                <i class="fas fa-check-circle fa-2x opacity-50"></i>
+                            </div>
                         </div>
-                    </div>
-                </div>
-                <div class="col-6">
-                    <div class="card bg-success text-white border-0 shadow-sm rounded-4 h-100">
-                        <div class="card-body p-3 d-flex justify-content-between align-items-center">
-                            <div><h6 class="opacity-75 mb-1 small">Đã Duyệt (Active)</h6><h3 class="fw-bold mb-0">@ViewBag.ApprovedPosts</h3></div>
-                            <i class="fas fa-check-circle fa-2x opacity-50"></i>
-                        </div>
-                    </div>
+                    </a>
                 </div>
                 <div class="col-6">
                     <div class="card bg-warning text-dark border-0 shadow-sm rounded-4 h-100">
                         <div class="card-body p-3 d-flex justify-content-between align-items-center">
-                            <div><h6 class="opacity-75 mb-1 small">Đang Chờ Duyệt</h6><h3 class="fw-bold mb-0">@ViewBag.PendingPosts</h3></div>
+                            <div><h6 class="opacity-75 mb-1 small">Đang Chờ Duyệt</h6><h3 class="fw-bold mb-0">@pendingPosts</h3></div>
                             <i class="fas fa-hourglass-half fa-2x opacity-50"></i>
                         </div>
                     </div>
@@ -81,38 +259,50 @@
                 <div class="col-6">
                     <div class="card bg-danger text-white border-0 shadow-sm rounded-4 h-100">
                         <div class="card-body p-3 d-flex justify-content-between align-items-center">
-                            <div><h6 class="opacity-75 mb-1 small">Bị Từ Chối</h6><h3 class="fw-bold mb-0">@ViewBag.RejectedPosts</h3></div>
+                            <div><h6 class="opacity-75 mb-1 small">Bị Từ Chối</h6><h3 class="fw-bold mb-0">@rejectedPosts</h3></div>
                             <i class="fas fa-ban fa-2x opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="card bg-secondary text-white border-0 shadow-sm rounded-4 h-100">
+                        <div class="card-body p-3 d-flex justify-content-between align-items-center">
+                            <div><h6 class="opacity-75 mb-1 small">Đã Hết Phòng</h6><h3 class="fw-bold mb-0">@rentedOutPosts</h3></div>
+                            <i class="fas fa-door-closed fa-2x opacity-50"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Khối Yêu Cầu Thuê -->
+        <!-- Thống kê yêu cầu thuê -->
         <div class="col-md-6">
             <h5 class="fw-bold mb-3"><i class="fas fa-handshake text-info me-2"></i> Yêu Cầu Thuê</h5>
             <div class="row g-3">
                 <div class="col-6">
-                    <div class="card bg-info text-white border-0 shadow-sm rounded-4 h-100">
-                        <div class="card-body p-3 d-flex justify-content-between align-items-center">
-                            <div><h6 class="opacity-75 mb-1 small">Tổng Yêu Cầu</h6><h3 class="fw-bold mb-0">@ViewBag.TotalRequests</h3></div>
-                            <i class="fas fa-envelope-open-text fa-2x opacity-50"></i>
+                    <a href="/RentalProcess/Index" class="text-decoration-none">
+                        <div class="card bg-warning text-dark border-0 shadow-sm rounded-4 h-100 landlord-stat-card">
+                            <div class="card-body p-3 d-flex justify-content-between align-items-center">
+                                <div><h6 class="opacity-75 mb-1 small">Đang Chờ Xử Lý</h6><h3 class="fw-bold mb-0">@pendingRequests</h3></div>
+                                <i class="fas fa-clock fa-2x opacity-50"></i>
+                            </div>
                         </div>
-                    </div>
+                    </a>
                 </div>
                 <div class="col-6">
-                    <div class="card border-0 shadow-sm rounded-4 h-100" style="background-color: #8e44ad; color: white;">
-                        <div class="card-body p-3 d-flex justify-content-between align-items-center">
-                            <div><h6 class="opacity-75 mb-1 small">Đang Thương Lượng</h6><h3 class="fw-bold mb-0">@ViewBag.NegotiatingRequests</h3></div>
-                            <i class="fas fa-comments-dollar fa-2x opacity-50"></i>
+                    <a href="/RentalProcess/Index" class="text-decoration-none">
+                        <div class="card border-0 shadow-sm rounded-4 h-100 landlord-stat-card" style="background-color: #8e44ad; color: white;">
+                            <div class="card-body p-3 d-flex justify-content-between align-items-center">
+                                <div><h6 class="opacity-75 mb-1 small">Đang Thương Lượng</h6><h3 class="fw-bold mb-0">@negotiatingRequests</h3></div>
+                                <i class="fas fa-comments-dollar fa-2x opacity-50"></i>
+                            </div>
                         </div>
-                    </div>
+                    </a>
                 </div>
                 <div class="col-6">
                     <div class="card bg-success text-white border-0 shadow-sm rounded-4 h-100">
                         <div class="card-body p-3 d-flex justify-content-between align-items-center">
-                            <div><h6 class="opacity-75 mb-1 small">Thuê Thành Công</h6><h3 class="fw-bold mb-0">@ViewBag.SuccessRequests</h3></div>
+                            <div><h6 class="opacity-75 mb-1 small">Thuê Thành Công</h6><h3 class="fw-bold mb-0">@successRequests</h3></div>
                             <i class="fas fa-check-double fa-2x opacity-50"></i>
                         </div>
                     </div>
@@ -120,7 +310,7 @@
                 <div class="col-6">
                     <div class="card bg-secondary text-white border-0 shadow-sm rounded-4 h-100">
                         <div class="card-body p-3 d-flex justify-content-between align-items-center">
-                            <div><h6 class="opacity-75 mb-1 small">Đã Hủy</h6><h3 class="fw-bold mb-0">@ViewBag.CancelledRequests</h3></div>
+                            <div><h6 class="opacity-75 mb-1 small">Đã Hủy</h6><h3 class="fw-bold mb-0">@cancelledRequests</h3></div>
                             <i class="fas fa-times-circle fa-2x opacity-50"></i>
                         </div>
                     </div>
@@ -129,8 +319,8 @@
         </div>
     </div>
 
+    <!-- ═══════ PHẦN 5: TÌNH TRẠNG PHÒNG ═══════ -->
     <div class="row g-4 mb-4">
-        <!-- Khối Tình Trạng Phòng / Nhà -->
         <div class="col-12">
             <h5 class="fw-bold mb-3"><i class="fas fa-home text-success me-2"></i> Tình Trạng Hiện Tại</h5>
             <div class="row g-3">
@@ -138,7 +328,7 @@
                     <div class="card border border-success-subtle shadow-sm rounded-4">
                         <div class="card-body p-3 text-center">
                             <h6 class="text-muted fw-bold mb-1">Phòng Đang Trống</h6>
-                            <h2 class="text-success fw-bold mb-0">@ViewBag.TotalAvailableRooms</h2>
+                            <h2 class="text-success fw-bold mb-0">@totalAvailableRooms</h2>
                             <small class="text-muted">(Phòng trọ / Ký túc xá)</small>
                         </div>
                     </div>
@@ -165,7 +355,7 @@
                     <div class="card border border-warning-subtle shadow-sm rounded-4">
                         <div class="card-body p-3 text-center">
                             <h6 class="text-muted fw-bold mb-1">Bài Viết Đã Hết Phòng</h6>
-                            <h2 class="text-warning fw-bold mb-0">@ViewBag.RentedOutPosts</h2>
+                            <h2 class="text-warning fw-bold mb-0">@rentedOutPosts</h2>
                             <small class="text-muted">Tổng số tin đã đóng</small>
                         </div>
                     </div>
@@ -174,7 +364,7 @@
         </div>
     </div>
 
-    <!-- Charts -->
+    <!-- ═══════ PHẦN 6: BIỂU ĐỒ ═══════ -->
     <div class="row g-4 mb-4">
         <div class="col-md-8">
             <div class="card shadow-sm border-0 rounded-4 h-100">
@@ -198,13 +388,14 @@
         </div>
     </div>
 
+    <!-- ═══════ PHẦN 7: BẢNG HOẠT ĐỘNG ═══════ -->
     <div class="row g-4">
-        <!-- Bảng Yêu Cầu Thuê Gần Đây -->
+        <!-- Yêu cầu thuê gần đây -->
         <div class="col-md-12">
             <div class="card shadow-sm border-0 rounded-4">
                 <div class="card-header bg-white border-bottom pt-4 pb-3 d-flex justify-content-between align-items-center">
                     <h5 class="fw-bold mb-0"><i class="fas fa-bolt text-warning me-2"></i> Yêu cầu thuê mới nhất</h5>
-                    <a href="/RentalProcess/Index" class="btn btn-sm btn-outline-primary rounded-pill">Xem tất cả</a>
+                    <a href="/RentalProcess/Index" class="btn btn-sm btn-outline-primary rounded-pill"><i class="fas fa-list me-1"></i> Xem tất cả</a>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
@@ -254,12 +445,12 @@
             </div>
         </div>
 
-        <!-- Bảng Bài Đăng Gần Đây -->
+        <!-- Bài đăng gần đây -->
         <div class="col-md-12">
             <div class="card shadow-sm border-0 rounded-4">
                 <div class="card-header bg-white border-bottom pt-4 pb-3 d-flex justify-content-between align-items-center">
                     <h5 class="fw-bold mb-0"><i class="fas fa-list-alt text-primary me-2"></i> Bài đăng gần đây của bạn</h5>
-                    <a href="/Accommodation/Index" class="btn btn-sm btn-outline-primary rounded-pill">Quản lý</a>
+                    <a href="/Accommodation/Index" class="btn btn-sm btn-outline-primary rounded-pill"><i class="fas fa-building me-1"></i> Quản lý</a>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
@@ -291,6 +482,7 @@
                                         </td>
                                         <td class="text-center">
                                             @if(post.IsApproved) { <span class="badge bg-success-subtle text-success px-2 py-1"><i class="fas fa-check"></i> Đã duyệt</span> }
+                                            else if(post.IsRejected) { <span class="badge bg-danger-subtle text-danger px-2 py-1"><i class="fas fa-times"></i> Từ chối</span> }
                                             else { <span class="badge bg-warning-subtle text-warning px-2 py-1"><i class="fas fa-clock"></i> Chờ duyệt</span> }
                                         </td>
                                         <td class="text-end pe-4">
@@ -319,6 +511,27 @@
         </div>
     </div>
 </div>
+
+<style>
+    .landlord-stat-card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        cursor: pointer;
+    }
+    .landlord-stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 25px rgba(0,0,0,.18) !important;
+    }
+    .landlord-quick-card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        cursor: pointer;
+        border: 1px solid #eee !important;
+    }
+    .landlord-quick-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 6px 20px rgba(0,0,0,.12) !important;
+        border-color: var(--bs-primary) !important;
+    }
+</style>
 
 @section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -370,14 +583,6 @@
                     plugins: { legend: { position: 'bottom' } }
                 }
             });
-
-            // Lắng nghe SignalR để reload trang mượt mà nếu có yêu cầu thuê mới
-            if (typeof window.connection !== 'undefined') {
-                window.connection.on("MessageReceived", function() {
-                    // Cập nhật lại UI hoặc reload
-                    console.log("New rental request/message received. Need to update dashboard stats.");
-                });
-            }
         });
     </script>
 }

@@ -1,0 +1,212 @@
+@model IEnumerable<DoAnLapTrinhWeb.Models.AppUser>
+@{
+    ViewData["Title"] = "Quản Lý Người Dùng";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    string currentRole = ViewBag.CurrentRole as string ?? "all";
+    string currentStatus = ViewBag.CurrentStatus as string ?? "all";
+    string search = ViewBag.Search as string ?? "";
+    
+    var roomCounts = ViewBag.RoomCounts as Dictionary<int, dynamic> ?? new Dictionary<int, dynamic>();
+    var chatCounts = ViewBag.ChatCounts as Dictionary<int, dynamic> ?? new Dictionary<int, dynamic>();
+}
+
+<div class="admin-approval-page container mt-4 mb-5">
+    <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom print-hide">
+        <div>
+            <h2 class="fw-bold text-dark mb-1"><i class="fas fa-users text-primary me-2"></i> Quản Lý Người Dùng</h2>
+            <p class="text-muted mb-0">Quản lý tài khoản, phân quyền và khóa tài khoản vi phạm.</p>
+        </div>
+        <div>
+            <a href="/Admin/Index" class="btn btn-outline-secondary rounded-pill shadow-sm"><i class="fas fa-arrow-left me-1"></i> Trở về Dashboard</a>
+        </div>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle me-2"></i>@TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fas fa-exclamation-triangle me-2"></i>@TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <!-- Bộ lọc -->
+    <div class="card shadow-sm border-0 rounded-4 mb-4">
+        <div class="card-body">
+            <form method="get" action="/Admin/ManageUsers" class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">Tìm kiếm</label>
+                    <input type="text" name="search" class="form-control" value="@search" placeholder="Tên, Email, SĐT...">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">Vai trò</label>
+                    <select name="role" class="form-select">
+                        <option value="all" selected="@(currentRole == "all")">Tất cả vai trò</option>
+                        <option value="admin" selected="@(currentRole == "admin")">Quản trị viên (Admin)</option>
+                        <option value="landlord" selected="@(currentRole == "landlord")">Chủ trọ</option>
+                        <option value="tenant" selected="@(currentRole == "tenant")">Người thuê</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">Trạng thái</label>
+                    <select name="status" class="form-select">
+                        <option value="all" selected="@(currentStatus == "all")">Tất cả</option>
+                        <option value="active" selected="@(currentStatus == "active")">Đang hoạt động</option>
+                        <option value="locked" selected="@(currentStatus == "locked")">Bị khóa</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-primary w-100"><i class="fas fa-search"></i> Tìm kiếm</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0 rounded-4">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table align-middle table-hover mb-0 admin-approval-table">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4">Người dùng</th>
+                            <th>Vai trò</th>
+                            <th>Thống kê</th>
+                            <th class="text-center">Trạng thái</th>
+                            <th class="text-end pe-4 print-hide">Công cụ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var user in Model)
+                        {
+                            <tr>
+                                <td class="ps-4">
+                                    <div class="d-flex align-items-center">
+                                        <div class="bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 45px; height: 45px; font-weight: bold; font-size: 1.2rem;">
+                                            @(!string.IsNullOrEmpty(user.FullName) ? user.FullName.Substring(0, 1).ToUpper() : "U")
+                                        </div>
+                                        <div>
+                                            <a href="/Admin/UserDetails/@user.Id" class="text-decoration-none text-dark"><h6 class="mb-0 fw-bold">@user.FullName</h6></a>
+                                            <small class="text-muted"><i class="fas fa-envelope me-1"></i>@user.Email</small><br>
+                                            <small class="text-muted"><i class="fas fa-phone me-1"></i>@(string.IsNullOrEmpty(user.Phone) ? "Chưa cập nhật" : user.Phone)</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    @if (user.Role == "Admin")
+                                    {
+                                        <span class="badge bg-danger">Quản trị viên</span>
+                                    }
+                                    else if (user.Role == "Landlord")
+                                    {
+                                        <span class="badge bg-primary">Chủ trọ</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-info">Người thuê</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (user.Role == "Landlord")
+                                    {
+                                        var countObj = roomCounts.ContainsKey(user.Id) ? roomCounts[user.Id] : null;
+                                        <small class="text-muted d-block">Tổng bài: <strong class="text-dark">@(countObj?.Count ?? 0)</strong></small>
+                                        <small class="text-success d-block">Đã duyệt: @(countObj?.Approved ?? 0)</small>
+                                        <small class="text-warning d-block">Chờ duyệt: @(countObj?.Pending ?? 0)</small>
+                                    }
+                                    else if (user.Role == "User")
+                                    {
+                                        var chatObj = chatCounts.ContainsKey(user.Id) ? chatCounts[user.Id] : null;
+                                        <small class="text-muted d-block">Liên hệ: <strong class="text-dark">@(chatObj?.Count ?? 0)</strong></small>
+                                    }
+                                </td>
+                                <td class="text-center">
+                                    @if (user.IsLocked)
+                                    {
+                                        <span class="badge bg-danger-subtle text-danger" title="@user.LockReason">Bị khóa</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-success-subtle text-success">Hoạt động</span>
+                                    }
+                                </td>
+                                <td class="text-end pe-4 print-hide">
+                                    <a href="/Admin/UserDetails/@user.Id" class="btn btn-sm btn-outline-primary" title="Xem chi tiết"><i class="fas fa-eye"></i></a>
+                                    
+                                    @if (user.Id.ToString() != User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value)
+                                    {
+                                        @if (user.IsLocked)
+                                        {
+                                            <form action="/Admin/ToggleUserLock" method="post" class="d-inline">
+                                                <input type="hidden" name="id" value="@user.Id" />
+                                                <button type="submit" class="btn btn-sm btn-success" title="Mở khóa tài khoản"><i class="fas fa-unlock"></i></button>
+                                            </form>
+                                        }
+                                        else
+                                        {
+                                            <button type="button" class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#lockModal-@user.Id" title="Khóa tài khoản">
+                                                <i class="fas fa-lock"></i>
+                                            </button>
+                                        }
+
+                                        <form action="/Admin/SoftDeleteUser" method="post" class="d-inline" onsubmit="return confirm('Cảnh báo: Bạn có chắc chắn muốn xóa tài khoản này không? Mọi dữ liệu liên quan sẽ bị ẩn đi.');">
+                                            <input type="hidden" name="id" value="@user.Id" />
+                                            <button type="submit" class="btn btn-sm btn-danger" title="Xóa tài khoản"><i class="fas fa-trash-alt"></i></button>
+                                        </form>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                        @if (!Model.Any())
+                        {
+                            <tr>
+                                <td colspan="5" class="text-center py-5 text-muted">
+                                    <i class="fas fa-users-slash fa-3x mb-3 opacity-50"></i>
+                                    <h5>Không tìm thấy người dùng nào</h5>
+                                    <p class="mb-0">Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm.</p>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+@* === Lock Modals — phải nằm ngoài table để tránh nhấp nháy === *@
+@foreach (var user in Model)
+{
+    @if (user.Id.ToString() != User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value && !user.IsLocked)
+    {
+        <div class="modal fade" id="lockModal-@user.Id" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title fw-bold text-warning"><i class="fas fa-lock"></i> Khóa tài khoản @user.FullName</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <form action="/Admin/ToggleUserLock" method="post">
+                        <div class="modal-body">
+                            <input type="hidden" name="id" value="@user.Id" />
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Lý do khóa <span class="text-danger">*</span></label>
+                                <textarea name="reason" class="form-control" rows="3" required placeholder="Nhập lý do khóa tài khoản này..."></textarea>
+                            </div>
+                            <p class="text-muted small mb-0"><i class="fas fa-info-circle"></i> Người dùng sẽ không thể đăng nhập cho đến khi được mở khóa lại.</p>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                            <button type="submit" class="btn btn-warning">Xác nhận khóa</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    }
+}
+</div>
