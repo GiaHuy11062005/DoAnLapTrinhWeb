@@ -51,6 +51,22 @@
             </a>
         </div>
 
+        <!-- Negotiation Box -->
+        @if (currentUserId == Model.LandlordId && Model.HasPendingNegotiation)
+        {
+            <div class="mini-chat-negotiation-box" id="negotiationBox_@Model.Id">
+                <div class="mini-chat-negotiation-icon"><i class="fas fa-handshake"></i></div>
+                <div class="mini-chat-negotiation-content">
+                    <strong>Yêu cầu thương lượng</strong>
+                    <p>Người thuê đang quan tâm bài đăng này. Xác nhận để thêm vào danh sách xử lý.</p>
+                    <div class="mini-chat-negotiation-actions">
+                        <button type="button" class="btn btn-sm btn-primary" onclick="confirmNegotiation(@Model.Id)">Xác nhận</button>
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="rejectNegotiation(@Model.Id)">Từ chối</button>
+                    </div>
+                </div>
+            </div>
+        }
+
         <!-- Messages -->
         <div class="mini-chat-messages" id="chatMessages">
             @if (Model.Messages != null && Model.Messages.Any())

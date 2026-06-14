@@ -15,6 +15,7 @@ namespace DoAnLapTrinhWeb.Models
 
         public DateTime CreatedAt { get; set; } = DateTime.Now;
         public DateTime UpdatedAt { get; set; } = DateTime.Now;
+        public bool HasPendingNegotiation { get; set; } = false;
 
         public ICollection<ChatMessage>? Messages { get; set; }
     }

@@ -159,6 +159,49 @@
     }
 
     // =========================================================
+    // XÁC NHẬN / TỪ CHỐI THƯƠNG LƯỢNG
+    // =========================================================
+    window.confirmNegotiation = async function (conversationId) {
+        if (!confirm("Bạn muốn xác nhận yêu cầu thương lượng này và đưa vào danh sách xử lý?")) return;
+        try {
+            const res = await fetch("/Chat/ConfirmNegotiation", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: `conversationId=${encodeURIComponent(conversationId)}`
+            });
+            const data = await res.json();
+            if (data.success) {
+                const box = document.getElementById(`negotiationBox_${conversationId}`);
+                if (box) box.remove();
+            } else {
+                alert(data.message || "Lỗi khi xác nhận.");
+            }
+        } catch {
+            alert("Lỗi kết nối.");
+        }
+    };
+
+    window.rejectNegotiation = async function (conversationId) {
+        if (!confirm("Bạn muốn từ chối yêu cầu thương lượng này?")) return;
+        try {
+            const res = await fetch("/Chat/RejectNegotiation", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: `conversationId=${encodeURIComponent(conversationId)}`
+            });
+            const data = await res.json();
+            if (data.success) {
+                const box = document.getElementById(`negotiationBox_${conversationId}`);
+                if (box) box.remove();
+            } else {
+                alert(data.message || "Lỗi khi từ chối.");
+            }
+        } catch {
+            alert("Lỗi kết nối.");
+        }
+    };
+
+    // =========================================================
     // HELPER FUNCTIONS
     // =========================================================
     function escapeHtml(text) {
@@ -230,6 +273,20 @@
             } else {
                 // TODO: Xử lý hiển thị thông báo popup hoặc đỏ icon nếu chưa mở đúng box chat
                 // Hiện tại hệ thống Notification chung (chuông góc trên) đã xử lý việc này
+            }
+        });
+
+        chatConnection.on("NegotiationConfirmed", (conversationId) => {
+            if (conversationId === currentConversationId) {
+                const box = document.getElementById(`negotiationBox_${conversationId}`);
+                if (box) box.remove();
+            }
+        });
+
+        chatConnection.on("NegotiationRejected", (conversationId) => {
+            if (conversationId === currentConversationId) {
+                const box = document.getElementById(`negotiationBox_${conversationId}`);
+                if (box) box.remove();
             }
         });
 

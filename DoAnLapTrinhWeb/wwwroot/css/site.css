@@ -3245,6 +3245,42 @@ body {
     color: var(--chat-primary, #0056e0);
 }
 
+/* Negotiation Box */
+.mini-chat-negotiation-box {
+    margin: 10px 12px;
+    padding: 12px;
+    background: #eef2ff;
+    border: 1px solid #c7d2fe;
+    border-radius: 8px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+}
+.mini-chat-negotiation-icon {
+    font-size: 1.5rem;
+    color: #4f46e5;
+    padding-top: 2px;
+}
+.mini-chat-negotiation-content {
+    flex: 1;
+}
+.mini-chat-negotiation-content strong {
+    font-size: 0.85rem;
+    color: #3730a3;
+    display: block;
+    margin-bottom: 4px;
+}
+.mini-chat-negotiation-content p {
+    font-size: 0.75rem;
+    color: #4338ca;
+    margin-bottom: 8px;
+    line-height: 1.4;
+}
+.mini-chat-negotiation-actions {
+    display: flex;
+    gap: 8px;
+}
+
 /* Messages Area */
 .mini-chat-messages {
     flex: 1;

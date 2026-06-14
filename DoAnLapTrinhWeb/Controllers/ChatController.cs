@@ -83,6 +83,7 @@ namespace DoAnLapTrinhWeb.Controllers
                     c.RenterId == currentUserId &&
                     c.LandlordId == accommodation.OwnerId);
 
+            bool isNewConversation = false;
             if (conversation == null)
             {
                 conversation = new ChatConversation
@@ -90,12 +91,35 @@ namespace DoAnLapTrinhWeb.Controllers
                     AccommodationId = accommodationId,
                     RenterId = currentUserId,
                     LandlordId = accommodation.OwnerId,
+                    HasPendingNegotiation = true,
                     CreatedAt = DateTime.Now,
                     UpdatedAt = DateTime.Now
                 };
                 _context.ChatConversations.Add(conversation);
-                await _context.SaveChangesAsync();
+                isNewConversation = true;
             }
+
+            // Kiểm tra RentalRequest
+            var rentalRequest = await _context.RentalRequests
+                .FirstOrDefaultAsync(r => r.AccommodationId == accommodationId && r.RenterId == currentUserId);
+
+            if (rentalRequest == null)
+            {
+                rentalRequest = new RentalRequest
+                {
+                    AccommodationId = accommodationId,
+                    RenterId = currentUserId,
+                    Status = "Pending",
+                    CreatedAt = DateTime.Now
+                };
+                _context.RentalRequests.Add(rentalRequest);
+                if (!isNewConversation)
+                {
+                    conversation.HasPendingNegotiation = true;
+                }
+            }
+
+            await _context.SaveChangesAsync();
 
             return Ok(new { success = true, conversationId = conversation.Id });
         }
@@ -304,6 +328,75 @@ namespace DoAnLapTrinhWeb.Controllers
         public IActionResult Room(int id)
         {
             return RedirectToAction("Inbox", new { openChat = id });
+        }
+
+        // =========================================================
+        // ACTION CONFIRM NEGOTIATION
+        // =========================================================
+        [HttpPost]
+        public async Task<IActionResult> ConfirmNegotiation(int conversationId)
+        {
+            if (!TryGetUserId(out int currentUserId))
+                return Unauthorized(new { success = false, message = "Chưa đăng nhập." });
+
+            var conversation = await _context.ChatConversations
+                .FirstOrDefaultAsync(c => c.Id == conversationId);
+
+            if (conversation == null || conversation.LandlordId != currentUserId)
+                return NotFound(new { success = false, message = "Không tìm thấy hoặc không có quyền." });
+
+            var rentalRequest = await _context.RentalRequests
+                .FirstOrDefaultAsync(r => r.AccommodationId == conversation.AccommodationId && r.RenterId == conversation.RenterId);
+
+            if (rentalRequest != null && rentalRequest.Status == "Pending")
+            {
+                rentalRequest.Status = "Negotiating";
+                rentalRequest.ConfirmedAt = DateTime.Now;
+                conversation.HasPendingNegotiation = false;
+                await _context.SaveChangesAsync();
+
+                // Notify UI via SignalR
+                await _chatHubContext.Clients.Group($"Chat_{conversationId}")
+                    .SendAsync("NegotiationConfirmed", conversationId);
+
+                return Ok(new { success = true });
+            }
+
+            return BadRequest(new { success = false, message = "Không có yêu cầu nào đang chờ xác nhận." });
+        }
+
+        // =========================================================
+        // ACTION REJECT NEGOTIATION
+        // =========================================================
+        [HttpPost]
+        public async Task<IActionResult> RejectNegotiation(int conversationId)
+        {
+            if (!TryGetUserId(out int currentUserId))
+                return Unauthorized(new { success = false, message = "Chưa đăng nhập." });
+
+            var conversation = await _context.ChatConversations
+                .FirstOrDefaultAsync(c => c.Id == conversationId);
+
+            if (conversation == null || conversation.LandlordId != currentUserId)
+                return NotFound(new { success = false, message = "Không tìm thấy hoặc không có quyền." });
+
+            var rentalRequest = await _context.RentalRequests
+                .FirstOrDefaultAsync(r => r.AccommodationId == conversation.AccommodationId && r.RenterId == conversation.RenterId);
+
+            if (rentalRequest != null && rentalRequest.Status == "Pending")
+            {
+                rentalRequest.Status = "Rejected";
+                conversation.HasPendingNegotiation = false;
+                await _context.SaveChangesAsync();
+
+                // Notify UI via SignalR
+                await _chatHubContext.Clients.Group($"Chat_{conversationId}")
+                    .SendAsync("NegotiationRejected", conversationId);
+
+                return Ok(new { success = true });
+            }
+
+            return BadRequest(new { success = false, message = "Không có yêu cầu nào đang chờ xác nhận." });
         }
     }
 }

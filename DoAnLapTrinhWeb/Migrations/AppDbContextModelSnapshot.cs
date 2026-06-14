@@ -30,11 +30,18 @@ namespace DoAnLapTrinhWeb.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("AccommodationType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<bool>("AllowsPets")
                         .HasColumnType("bit");
 
                     b.Property<double>("Area")
                         .HasColumnType("float");
+
+                    b.Property<int>("AvailableRooms")
+                        .HasColumnType("int");
 
                     b.Property<int>("CityId")
                         .HasColumnType("int");
@@ -82,6 +89,9 @@ namespace DoAnLapTrinhWeb.Migrations
                         .HasColumnType("bit");
 
                     b.Property<bool>("IsApproved")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsRentedOut")
                         .HasColumnType("bit");
 
                     b.Property<int>("MaxOccupants")
@@ -308,6 +318,9 @@ namespace DoAnLapTrinhWeb.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<bool>("HasPendingNegotiation")
+                        .HasColumnType("bit");
+
                     b.Property<int>("LandlordId")
                         .HasColumnType("int");
 
@@ -437,6 +450,9 @@ namespace DoAnLapTrinhWeb.Migrations
 
                     b.Property<int>("AccommodationId")
                         .HasColumnType("int");
+
+                    b.Property<DateTime?>("ConfirmedAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");

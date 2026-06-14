@@ -1,4 +1,4 @@
-﻿// Please see documentation at https://learn.microsoft.com/aspnet/core/client-side/bundling-and-minification
+// Please see documentation at https://learn.microsoft.com/aspnet/core/client-side/bundling-and-minification
 // for details on configuring this project to bundle and minify static web assets.
 
 // Write your JavaScript code.
@@ -238,4 +238,37 @@ $(document).ready(function () {
         maxSize: 10 * 1024 * 1024,
         errorMessage: 'Chỉ chọn tối đa 3 tệp JPG, PNG hoặc PDF; tối đa 10MB mỗi tệp.'
     });
+});
+
+// ==========================================
+// 3. LẮNG NGHE SỰ KIỆN REAL-TIME: TRẠNG THÁI CHO THUÊ
+// ==========================================
+document.addEventListener('accommodationStatusChanged', function (e) {
+    if (!e.detail) return;
+    const accommodationId = e.detail.id;
+    const isRentedOut = e.detail.isRentedOut;
+
+    if (isRentedOut) {
+        // Cập nhật nút Liên hệ ngay ở trang Details
+        const contactBtn = document.getElementById('btnContactNow');
+        if (contactBtn && contactBtn.getAttribute('onclick')?.includes(accommodationId)) {
+            contactBtn.outerHTML = `<button type="button" class="room-booking-button is-disabled" style="background: #94a3b8; cursor: not-allowed;" disabled><i class="fas fa-ban"></i> Đã có người thuê / Hết phòng</button>`;
+        }
+        
+        // Cập nhật các thẻ Card ở trang chủ (nếu có)
+        // Tìm các thẻ có chứa data-id hoặc a href
+        document.querySelectorAll('.room-card').forEach(card => {
+            const link = card.querySelector(`a[href*="/Accommodation/Details/${accommodationId}"]`);
+            if (link) {
+                // Thêm badge Hết phòng
+                const badgeContainer = card.querySelector('.room-card__badges') || card.querySelector('.room-card__image');
+                if (badgeContainer && !badgeContainer.querySelector('.badge-rented')) {
+                    const badge = document.createElement('span');
+                    badge.className = 'badge bg-danger position-absolute top-0 end-0 m-2 badge-rented';
+                    badge.textContent = 'Hết phòng / Đã thuê';
+                    badgeContainer.appendChild(badge);
+                }
+            }
+        });
+    }
 });

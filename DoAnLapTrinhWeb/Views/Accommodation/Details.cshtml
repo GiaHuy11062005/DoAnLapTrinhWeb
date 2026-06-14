@@ -149,33 +149,28 @@
                         <small>Phòng cho phép tối đa @Model.MaxOccupants người ở.</small>
                     </div>
 
-                    @if (User.IsInRole("User"))
+                    @* ====== NÚT LIÊN HỆ NGAY ====== *@
+                    @if (Model.IsRentedOut)
                     {
-                        <button type="button" id="roomRentalRequestButton" class="room-booking-button" data-room-id="@Model.Id">
-                            Đăng ký thuê ngay
+                        var rentedText = Model.AccommodationType == "Nhà nguyên căn" ? "Đã có người thuê" : "Đã hết phòng";
+                        <button type="button" class="room-booking-button is-disabled" style="background: #94a3b8; cursor: not-allowed;" disabled>
+                            <i class="fas fa-ban"></i> @rentedText
                         </button>
-                        <p id="roomRentalRequestMessage" class="room-rental-request-message" hidden></p>
+                    }
+                    else if (User.IsInRole("User"))
+                    {
+                        <button type="button" class="room-chat-button" onclick="openChatPopup(@Model.Id, 0)" id="btnContactNow">
+                            <i class="fas fa-comments"></i> Liên hệ ngay
+                        </button>
                     }
                     else if (isAuthenticated)
                     {
-                        <button type="button" class="room-booking-button" disabled>Chỉ tài khoản người thuê có thể gửi yêu cầu</button>
+                        <button type="button" class="room-booking-button" disabled>Chỉ tài khoản người thuê mới có thể liên hệ</button>
                     }
                     else
                     {
-                        <a href="/Auth/Login?returnUrl=@Uri.EscapeDataString(Context.Request.Path)" class="room-booking-button">Đăng ký thuê ngay</a>
-                    }
-
-                    @* ====== NÚT NHẮN TIN VỚI CHỦ TRỌ ====== *@
-                    @if (User.IsInRole("User"))
-                    {
-                        <button type="button" class="room-chat-button" onclick="openChatPopup(@Model.Id, 0)">
-                            <i class="fas fa-comments"></i> Nhắn tin với chủ trọ
-                        </button>
-                    }
-                    else if (!isAuthenticated)
-                    {
                         <a href="/Auth/Login?returnUrl=@Uri.EscapeDataString(Context.Request.Path)" class="room-chat-button">
-                            <i class="fas fa-comments"></i> Đăng nhập để nhắn tin
+                            <i class="fas fa-sign-in-alt"></i> Đăng nhập để liên hệ
                         </a>
                     }
 

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
@@ -42,6 +42,11 @@ namespace DoAnLapTrinhWeb.Models
 
         public bool IsApproved { get; set; }
         public DateTime CreatedAt { get; set; }
+
+        // --- CHO THUÊ / TRẠNG THÁI ---
+        public string AccommodationType { get; set; } = "Phòng trọ"; // Dãy trọ, Phòng trọ, Nhà nguyên căn
+        public int AvailableRooms { get; set; } = 1; // Số lượng phòng trống (Dãy trọ / Phòng trọ)
+        public bool IsRentedOut { get; set; } = false; // true = Hết phòng / Đã có người thuê
 
         // --- THÔNG TIN CHỦ TRỌ ---
         public int OwnerId { get; set; }

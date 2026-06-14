@@ -8,6 +8,7 @@ namespace DoAnLapTrinhWeb.Models
         public int Occupants { get; set; } = 1;
         public string Status { get; set; } = "Pending";
         public DateTime CreatedAt { get; set; } = DateTime.Now;
+        public DateTime? ConfirmedAt { get; set; }
         public Accommodation? Accommodation { get; set; }
         public AppUser? Renter { get; set; }
     }
