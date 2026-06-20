@@ -21,6 +21,8 @@
     const iconFor = type => {
         if (type === "RentalRequest") return "fa-handshake";
         if (type === "RentalRequestSent") return "fa-paper-plane";
+        if (type === "ReviewRequest") return "fa-star-half-stroke";
+        if (type === "FavoriteUpdate") return "fa-heart-circle-bolt";
         if (type === "Approval") return "fa-circle-check";
         if (type === "Rejected") return "fa-circle-xmark";
         if (type === "PendingApproval") return "fa-list-check";

@@ -5,13 +5,25 @@
     var fullAddress = $"{Model.SpecificAddress}, {Model.District?.Name}, {Model.City?.Name}";
     var googleMapsLink = GoogleMapsUrlHelper.GetDetailedUrl(Model.GoogleMapsUrl, fullAddress);
     var googleMapsEmbedUrl = GoogleMapsUrlHelper.GetEmbedUrl(Model.GoogleMapsUrl, fullAddress);
-    var roomMapDestination = GoogleMapsUrlHelper.GetMapQuery(Model.GoogleMapsUrl, fullAddress);
+    var hasRoomCoordinates = GoogleMapsUrlHelper.TryGetCoordinates(Model.GoogleMapsUrl, out var roomLatitude, out var roomLongitude);
     var ownerName = Model.Owner?.FullName ?? "Chủ trọ";
     var ownerInitial = ownerName.Substring(0, 1).ToUpper();
     var isAuthenticated = User.Identity?.IsAuthenticated == true;
 
     // Lấy ID của người dùng đang đăng nhập để kiểm tra xem họ có phải chủ bài đăng không
     var currentUserId = User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    int? activeRentalAccommodationId = ViewBag.ActiveRentalAccommodationId == null
+        ? null
+        : (int)ViewBag.ActiveRentalAccommodationId;
+    var activeRentalTitle = ViewBag.ActiveRentalTitle as string;
+    var userHasActiveRental = User.IsInRole("User") && activeRentalAccommodationId.HasValue;
+    var userIsRentingThisRoom = activeRentalAccommodationId == Model.Id;
+    var roomReviews = ViewBag.RoomReviews as List<AccommodationReview> ?? new();
+    var averageRating = Convert.ToDouble(ViewBag.AverageRating ?? 0);
+    var reviewCount = Convert.ToInt32(ViewBag.ReviewCount ?? roomReviews.Count);
+    int? reviewableRentalRequestId = ViewBag.ReviewableRentalRequestId == null
+        ? null
+        : (int)ViewBag.ReviewableRentalRequestId;
 
     var amenities = new[]
     {
@@ -119,7 +131,7 @@
                     <div class="room-map-panel" id="roomMapPanel">
                         <iframe id="roomMapFrame" class="room-map-frame" src="@googleMapsEmbedUrl" title="Vị trí @Model.Title" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
                         <a id="roomMapExternal" href="@googleMapsLink" target="_blank" rel="noopener noreferrer" class="room-map-external">
-                            Mở bằng Google Maps <i class="fas fa-arrow-up-right-from-square"></i>
+                            <span id="roomMapExternalLabel">Mở vị trí chính xác bằng Google Maps</span> <i class="fas fa-arrow-up-right-from-square"></i>
                         </a>
                     </div>
 
@@ -136,32 +148,41 @@
 
                     <div class="room-distance-menu" id="roomDistanceMenu">
                         <label for="schoolMapInput">Nhập tên trường cần so sánh</label>
-                        <input type="text" id="schoolMapInput" placeholder="VD: Đại học Bách Khoa TP.HCM" />
+                        <div class="room-school-combobox">
+                            <input type="text"
+                                   id="schoolMapInput"
+                                   role="combobox"
+                                   aria-autocomplete="list"
+                                   aria-expanded="false"
+                                   aria-controls="schoolSearchResults"
+                                   autocomplete="off"
+                                   placeholder="Nhập từng ký tự tên trường, VD: H, HU..." />
+                            <div id="schoolSearchResults" class="room-map-results room-school-combobox__results" role="listbox"></div>
+                        </div>
+                        <small class="room-nearby-hint"><i class="fas fa-keyboard"></i> Mỗi ký tự sẽ lọc toàn bộ trường và từng cơ sở trong khu vực @Model.City?.Name.</small>
                         <p id="schoolMapError" class="room-distance-menu__error" hidden>Vui lòng nhập tên trường.</p>
                         <div class="room-distance-menu__actions">
                             <button type="button" id="roomDistanceCancel">Hủy bỏ</button>
-                            <button type="button" id="roomDistanceConfirm" class="is-primary">Xác nhận</button>
+                            <button type="button" id="roomDistanceConfirm" class="is-primary">Tìm lại</button>
                         </div>
                     </div>
 
                     <div class="room-distance-menu" id="roomNearbyMenu">
-                        <label class="fw-bold mb-2">Chọn tiện ích cần chỉ đường</label>
+                        <label class="fw-bold mb-2">Chọn tiện ích cần tìm quanh trọ</label>
                         <select id="nearbyCategoryInput" class="form-select mb-2">
-                            <option value="Chợ hoặc siêu thị gần nhất">Chợ & Siêu thị</option>
-                            <option value="Bệnh viện hoặc phòng khám gần nhất">Bệnh viện & Y tế</option>
-                            <option value="Trạm xe buýt gần nhất">Trạm xe buýt</option>
-                            <option value="Cửa hàng tiện lợi gần nhất">Cửa hàng tiện lợi 24/7</option>
-                            <option value="Nhà hàng hoặc quán ăn gần nhất">Ăn uống & Cafe</option>
-                            <option value="Phòng gym gần nhất">Phòng Gym & Thể thao</option>
+                            <option value="supermarket">Chợ & Siêu thị</option>
+                            <option value="hospital">Bệnh viện & Y tế</option>
+                            <option value="bus_stop">Trạm xe buýt</option>
+                            <option value="convenience_store">Cửa hàng tiện lợi 24/7</option>
+                            <option value="restaurant_cafe">Ăn uống & Cafe</option>
+                            <option value="gym">Phòng Gym & Thể thao</option>
                         </select>
-                        <small class="room-nearby-hint"><i class="fas fa-wand-magic-sparkles"></i> Đổi lựa chọn để Google Maps tự tìm nơi gần trọ và vẽ đường đi.</small>
-                        <div class="room-nearby-divider"><span>hoặc chỉ đường chính xác</span></div>
-                        <label for="nearbyGoogleMapsUrl" class="fw-bold mb-2">Dán link Google Maps của tiện ích</label>
-                        <input type="url" id="nearbyGoogleMapsUrl" placeholder="https://maps.app.goo.gl/..." />
+                        <small class="room-nearby-hint"><i class="fas fa-wand-magic-sparkles"></i> Dữ liệu được tìm trực tiếp quanh tọa độ phòng trọ từ OpenStreetMap.</small>
                         <p id="nearbyMapError" class="room-distance-menu__error" hidden></p>
+                        <div id="nearbySearchResults" class="room-map-results"></div>
                         <div class="room-distance-menu__actions">
                             <button type="button" id="roomNearbyCancel">Hủy bỏ</button>
-                            <button type="button" id="roomNearbyConfirm" class="is-primary"><i class="fas fa-route"></i> Vẽ đường đi</button>
+                            <button type="button" id="roomNearbyConfirm" class="is-primary"><i class="fas fa-location-dot"></i> Tìm quanh đây</button>
                         </div>
                     </div>
                 </section>
@@ -182,6 +203,86 @@
                 <section class="room-detail-card">
                     <h2>Mô tả chi tiết</h2>
                     <p class="room-description">@Model.Description</p>
+                </section>
+
+                <section class="room-detail-card room-review-section" id="roomReviewSection">
+                    <div class="room-review-section__heading">
+                        <div>
+                            <h2>Đánh giá từ người đã thuê</h2>
+                            <p>Chỉ tài khoản đã được xác nhận thuê thành công mới có thể gửi đánh giá.</p>
+                        </div>
+                        <div class="room-review-score">
+                            <strong>@(reviewCount > 0 ? averageRating.ToString("0.0") : "0.0")</strong>
+                            <span>
+                                @for (var star = 1; star <= 5; star++)
+                                {
+                                    <i class="fas fa-star @(star <= Math.Round(averageRating) ? "is-active" : "")"></i>
+                                }
+                            </span>
+                            <small>@reviewCount đánh giá</small>
+                        </div>
+                    </div>
+
+                    @if (reviewableRentalRequestId.HasValue)
+                    {
+                        <form action="/Accommodation/SubmitReview" method="post" class="room-review-form">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="accommodationId" value="@Model.Id" />
+                            <input type="hidden" name="rentalRequestId" value="@reviewableRentalRequestId.Value" />
+                            <label>
+                                <span>Chấm sao trải nghiệm</span>
+                                <select name="rating" required>
+                                    <option value="5">5 sao - Rất hài lòng</option>
+                                    <option value="4">4 sao - Hài lòng</option>
+                                    <option value="3">3 sao - Tạm ổn</option>
+                                    <option value="2">2 sao - Chưa tốt</option>
+                                    <option value="1">1 sao - Cần cải thiện nhiều</option>
+                                </select>
+                            </label>
+                            <label>
+                                <span>Chia sẻ ngắn cho người thuê sau</span>
+                                <textarea name="comment" rows="3" maxlength="600" placeholder="Ví dụ: phòng đúng ảnh, chủ hỗ trợ tốt, khu vực yên tĩnh..."></textarea>
+                            </label>
+                            <button type="submit"><i class="fas fa-star"></i> Gửi đánh giá</button>
+                        </form>
+                    }
+                    else if (User.IsInRole("User") && userIsRentingThisRoom)
+                    {
+                        <div class="room-review-note"><i class="fas fa-circle-check"></i> Bạn đã có quyền đánh giá sau khi thuê thành công. Nếu đã gửi rồi, hệ thống chỉ giữ một đánh giá cho mỗi lượt thuê.</div>
+                    }
+
+                    @if (roomReviews.Any())
+                    {
+                        <div class="room-review-list">
+                            @foreach (var review in roomReviews.Take(8))
+                            {
+                                var reviewerName = review.Reviewer?.FullName ?? "Người thuê đã xác minh";
+                                <article class="room-review-item">
+                                    <div>
+                                        <strong>@reviewerName</strong>
+                                        <span>
+                                            @for (var star = 1; star <= 5; star++)
+                                            {
+                                                <i class="fas fa-star @(star <= review.Rating ? "is-active" : "")"></i>
+                                            }
+                                        </span>
+                                    </div>
+                                    @if (!string.IsNullOrWhiteSpace(review.Comment))
+                                    {
+                                        <p>@review.Comment</p>
+                                    }
+                                    <small>@review.CreatedAt.ToString("dd/MM/yyyy")</small>
+                                </article>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="room-review-empty">
+                            <i class="far fa-star"></i>
+                            <span>Phòng này chưa có đánh giá. Khi có lượt thuê thành công, người thuê sẽ nhận thông báo để đánh giá tại đây.</span>
+                        </div>
+                    }
                 </section>
             </main>
 
@@ -244,18 +345,32 @@
 
                     <h2>Thông tin thuê phòng</h2>
 
-                    <div class="room-occupant-section">
-                        <label>Số lượng người ở</label>
-                        <div class="room-occupant-control" data-max-occupants="@Model.MaxOccupants">
-                            <button type="button" data-occupant-action="decrease" aria-label="Giảm số người"><i class="fas fa-minus"></i></button>
-                            <strong id="roomOccupantCount">1</strong>
-                            <button type="button" data-occupant-action="increase" aria-label="Tăng số người"><i class="fas fa-plus"></i></button>
+                    @if (!userHasActiveRental)
+                    {
+                        <div class="room-occupant-section">
+                            <label>Số lượng người ở</label>
+                            <div class="room-occupant-control" data-max-occupants="@Model.MaxOccupants">
+                                <button type="button" data-occupant-action="decrease" aria-label="Giảm số người"><i class="fas fa-minus"></i></button>
+                                <strong id="roomOccupantCount">1</strong>
+                                <button type="button" data-occupant-action="increase" aria-label="Tăng số người"><i class="fas fa-plus"></i></button>
+                            </div>
+                            <small>Phòng cho phép tối đa @Model.MaxOccupants người ở.</small>
                         </div>
-                        <small>Phòng cho phép tối đa @Model.MaxOccupants người ở.</small>
-                    </div>
+                    }
 
                     @* ====== NÚT LIÊN HỆ NGAY ====== *@
-                    @if (Model.IsRentedOut)
+                    @if (userHasActiveRental)
+                    {
+                        <div class="room-active-rental-note">
+                            <i class="fas fa-house-circle-check"></i>
+                            <div>
+                                <strong>@(userIsRentingThisRoom ? "Bạn đang thuê phòng này" : "Bạn đang có một phòng thuê còn hiệu lực")</strong>
+                                <span>@(userIsRentingThisRoom ? "Quản lý nơi ở trong mục Phòng đã thuê." : $"Phòng đang thuê: {activeRentalTitle}. Các phòng khác hiện chỉ để tham khảo.")</span>
+                            </div>
+                        </div>
+                        <a href="/Rental/MyRentals" class="room-booking-button text-decoration-none"><i class="fas fa-key"></i> Mở phòng đã thuê</a>
+                    }
+                    else if (isUnavailable || Model.IsRentedOut)
                     {
                         var rentedText = Model.AccommodationType == "Nhà nguyên căn" ? "Đã có người thuê" : "Đã hết phòng";
                         <button type="button" class="room-booking-button is-disabled" style="background: #94a3b8; cursor: not-allowed;" disabled>
@@ -366,8 +481,8 @@
         const mapPanel = document.getElementById("roomMapPanel");
         const mapFrame = document.getElementById("roomMapFrame");
         const mapExternal = document.getElementById("roomMapExternal");
+        const mapExternalLabel = document.getElementById("roomMapExternalLabel");
 
-        const fullAddressText = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(fullAddress));
         const roomMapExternalUrl = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(googleMapsLink));
 
         const distanceToggle = document.getElementById("roomDistanceToggle");
@@ -376,15 +491,21 @@
         const distanceConfirm = document.getElementById("roomDistanceConfirm");
         const schoolInput = document.getElementById("schoolMapInput");
         const schoolError = document.getElementById("schoolMapError");
+        const schoolSearchResults = document.getElementById("schoolSearchResults");
+        let schoolSearchTimer = null;
+        let schoolSearchController = null;
+        let schoolSearchSequence = 0;
 
         const nearbyToggle = document.getElementById("roomNearbyToggle");
         const nearbyMenu = document.getElementById("roomNearbyMenu");
         const nearbyCancel = document.getElementById("roomNearbyCancel");
         const nearbyConfirm = document.getElementById("roomNearbyConfirm");
         const nearbyCategory = document.getElementById("nearbyCategoryInput");
-        const nearbyGoogleMapsUrl = document.getElementById("nearbyGoogleMapsUrl");
         const nearbyMapError = document.getElementById("nearbyMapError");
-        const roomMapDestination = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(roomMapDestination));
+        const nearbySearchResults = document.getElementById("nearbySearchResults");
+        const roomLatitude = @(hasRoomCoordinates ? roomLatitude.ToString(System.Globalization.CultureInfo.InvariantCulture) : "null");
+        const roomLongitude = @(hasRoomCoordinates ? roomLongitude.ToString(System.Globalization.CultureInfo.InvariantCulture) : "null");
+        const roomCityName = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.City?.Name ?? ""));
 
         function setMapOpen(isOpen) {
             mapPanel?.classList.toggle("is-open", isOpen);
@@ -396,6 +517,10 @@
             distanceMenu?.classList.toggle("is-open", isOpen);
             distanceToggle?.setAttribute("aria-expanded", isOpen.toString());
             if (isOpen) schoolInput?.focus();
+            if (!isOpen) {
+                schoolSearchResults?.classList.remove("is-open");
+                schoolInput?.setAttribute("aria-expanded", "false");
+            }
         }
 
         function setNearbyMenuOpen(isOpen) {
@@ -409,6 +534,7 @@
                 const roomMapEmbedUrl = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(googleMapsEmbedUrl));
                 mapFrame.src = roomMapEmbedUrl;
                 mapExternal.href = roomMapExternalUrl;
+                if (mapExternalLabel) mapExternalLabel.textContent = "Mở vị trí chính xác bằng Google Maps";
             }
             setMapOpen(willOpen);
         });
@@ -433,68 +559,171 @@
             nearbyMapError.hidden = true;
         });
 
-        distanceConfirm?.addEventListener("click", () => {
-            const school = schoolInput?.value.trim();
-            if (!school) {
-                schoolError.hidden = false;
-                schoolInput?.focus();
+        function escapeMapText(value) {
+            const element = document.createElement("div");
+            element.textContent = value || "";
+            return element.innerHTML;
+        }
+
+        function renderMapResults(container, results, emptyMessage) {
+            if (!container) return;
+            if (container === schoolSearchResults) {
+                schoolInput?.setAttribute("aria-expanded", "true");
+                container.classList.add("is-open");
+            }
+            if (!results?.length) {
+                container.innerHTML = `<p class="room-map-results__empty">${escapeMapText(emptyMessage)}</p>`;
                 return;
             }
+            container.innerHTML = results.map(result => `
+                <button type="button" class="room-map-result"
+                        role="option"
+                        data-map-latitude="${result.latitude}"
+                        data-map-longitude="${result.longitude}"
+                        data-map-name="${encodeURIComponent(result.name || "Điểm đến")}">
+                    <span>
+                        <strong>${escapeMapText(result.name)}</strong>
+                        ${result.subtitle ? `<small>${escapeMapText(result.subtitle)}</small>` : ""}
+                        ${result.distanceKm == null ? "" : `<small>Cách phòng khoảng ${Number(result.distanceKm).toLocaleString("vi-VN")} km</small>`}
+                    </span>
+                    <i class="fas fa-route"></i>
+                </button>
+            `).join("");
+        }
 
-            schoolError.hidden = true;
-            mapFrame.src = `https://maps.google.com/maps?saddr=${encodeURIComponent(fullAddressText)}&daddr=${encodeURIComponent(school)}&output=embed`;
-
+        function showOsmRoute(destinationLatitude, destinationLongitude, destinationName) {
+            if (roomLatitude == null || roomLongitude == null) {
+                window.appAlert?.("Không đọc được tọa độ phòng trọ từ link Google Maps.");
+                return;
+            }
+            const previewUrl = `/Map/PreviewRoute?originLat=${roomLatitude}&originLon=${roomLongitude}&destinationLat=${destinationLatitude}&destinationLon=${destinationLongitude}&destinationName=${encodeURIComponent(destinationName)}`;
+            mapFrame.src = previewUrl;
+            mapExternal.href = `https://www.google.com/maps/dir/?api=1&origin=${roomLatitude},${roomLongitude}&destination=${destinationLatitude},${destinationLongitude}&travelmode=driving`;
+            if (mapExternalLabel) mapExternalLabel.textContent = "Mở đường đi chính xác bằng Google Maps";
             setMapOpen(true);
             setDistanceMenuOpen(false);
-            mapPanel?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-        });
-
-        schoolInput?.addEventListener("input", () => { schoolError.hidden = true; });
-        schoolInput?.addEventListener("keydown", event => { if (event.key === "Enter") distanceConfirm?.click(); });
-
-        function showNearbyRoute(destination, externalDestination = destination) {
-            mapFrame.src = `https://maps.google.com/maps?saddr=${encodeURIComponent(roomMapDestination)}&daddr=${encodeURIComponent(destination)}&dirflg=d&output=embed`;
-            mapExternal.href = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(roomMapDestination)}&destination=${encodeURIComponent(externalDestination)}&travelmode=driving`;
-            setMapOpen(true);
             setNearbyMenuOpen(false);
             mapPanel?.scrollIntoView({ behavior: "smooth", block: "nearest" });
         }
 
-        function showAutomaticNearbyRoute() {
-            nearbyMapError.hidden = true;
-            const destination = `${nearbyCategory.value} gần ${roomMapDestination}`;
-            showNearbyRoute(destination);
+        async function searchSchools() {
+            const school = schoolInput?.value.trim();
+            const searchSequence = ++schoolSearchSequence;
+            if (!school) {
+                schoolSearchController?.abort();
+                schoolSearchResults.innerHTML = "";
+                schoolSearchResults.classList.remove("is-open");
+                schoolInput?.setAttribute("aria-expanded", "false");
+                schoolError.hidden = true;
+                return;
+            }
+            if (roomLatitude == null || roomLongitude == null) {
+                schoolSearchResults.innerHTML = "";
+                schoolSearchResults.classList.remove("is-open");
+                schoolError.textContent = "Không đọc được tọa độ phòng trọ để xác định khu vực tìm trường.";
+                schoolError.hidden = false;
+                return;
+            }
+
+            schoolSearchController?.abort();
+            schoolSearchController = new AbortController();
+            distanceConfirm.disabled = true;
+            schoolError.hidden = true;
+            schoolSearchResults.classList.add("is-open");
+            schoolSearchResults.innerHTML = '<p class="room-map-results__empty">Đang tìm trường...</p>';
+            try {
+                const searchParameters = new URLSearchParams({
+                    query: school,
+                    originLat: roomLatitude,
+                    originLon: roomLongitude,
+                    cityName: roomCityName
+                });
+                const response = await fetch(`/Map/SearchSchool?${searchParameters}`, {
+                    signal: schoolSearchController.signal,
+                    cache: "no-store"
+                });
+                const data = await response.json();
+                if (searchSequence !== schoolSearchSequence) return;
+                if (!response.ok || !data.success) throw new Error(data.message || "Không tìm được trường.");
+                renderMapResults(schoolSearchResults, data.results || [], "Không tìm thấy trường hoặc cơ sở phù hợp trong khu vực này.");
+            } catch (error) {
+                if (error.name === "AbortError" || searchSequence !== schoolSearchSequence) return;
+                schoolSearchResults.innerHTML = "";
+                schoolSearchResults.classList.remove("is-open");
+                schoolError.textContent = error.message || "Không thể tìm trường lúc này.";
+                schoolError.hidden = false;
+            } finally {
+                if (searchSequence === schoolSearchSequence) distanceConfirm.disabled = false;
+            }
         }
 
-        nearbyCategory?.addEventListener("change", () => {
-            nearbyGoogleMapsUrl.value = "";
-            showAutomaticNearbyRoute();
+        distanceConfirm?.addEventListener("click", searchSchools);
+
+        schoolInput?.addEventListener("input", () => {
+            schoolError.hidden = true;
+            window.clearTimeout(schoolSearchTimer);
+            schoolSearchTimer = window.setTimeout(searchSchools, 400);
+        });
+        schoolInput?.addEventListener("keydown", event => {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                window.clearTimeout(schoolSearchTimer);
+                searchSchools();
+            }
+            if (event.key === "Escape") {
+                schoolSearchResults?.classList.remove("is-open");
+                schoolInput.setAttribute("aria-expanded", "false");
+            }
         });
 
-        nearbyGoogleMapsUrl?.addEventListener("input", () => { nearbyMapError.hidden = true; });
-        nearbyGoogleMapsUrl?.addEventListener("keydown", event => { if (event.key === "Enter") nearbyConfirm?.click(); });
-
-        nearbyConfirm?.addEventListener("click", async () => {
-            const exactMapUrl = nearbyGoogleMapsUrl.value.trim();
-            if (!exactMapUrl) {
-                showAutomaticNearbyRoute();
+        async function showAutomaticNearbySearch() {
+            nearbyMapError.hidden = true;
+            if (roomLatitude == null || roomLongitude == null) {
+                nearbyMapError.textContent = "Không đọc được tọa độ phòng trọ từ link Google Maps.";
+                nearbyMapError.hidden = false;
                 return;
             }
 
             nearbyConfirm.disabled = true;
-            nearbyMapError.hidden = true;
+            nearbySearchResults.innerHTML = '<p class="room-map-results__empty">Đang tìm tiện ích...</p>';
             try {
-                const response = await fetch(`/Accommodation/ResolveMapDestination?googleMapsUrl=${encodeURIComponent(exactMapUrl)}`);
+                const response = await fetch(`/Map/Nearby?latitude=${roomLatitude}&longitude=${roomLongitude}&type=${encodeURIComponent(nearbyCategory.value)}&radius=2500`);
                 const data = await response.json();
-                if (!response.ok || !data.success) throw new Error(data.message || "Không đọc được link tiện ích.");
-                showNearbyRoute(data.destination, data.destination);
+                if (!response.ok || !data.success) throw new Error(data.message || "Không tìm được tiện ích.");
+                renderMapResults(nearbySearchResults, data.results, "Không tìm thấy tiện ích phù hợp trong bán kính 2,5 km.");
             } catch (error) {
-                nearbyMapError.textContent = error.message || "Không thể đọc link Google Maps của tiện ích.";
+                nearbySearchResults.innerHTML = "";
+                nearbyMapError.textContent = error.message || "Không thể tìm tiện ích lúc này.";
                 nearbyMapError.hidden = false;
-                nearbyGoogleMapsUrl.focus();
             } finally {
                 nearbyConfirm.disabled = false;
             }
+        }
+
+        nearbyCategory?.addEventListener("change", () => {
+            showAutomaticNearbySearch();
+        });
+
+        nearbyConfirm?.addEventListener("click", showAutomaticNearbySearch);
+        schoolSearchResults?.addEventListener("click", event => {
+            const result = event.target.closest(".room-map-result");
+            if (result) {
+                const schoolName = decodeURIComponent(result.dataset.mapName);
+                schoolInput.value = schoolName;
+                schoolSearchResults.classList.remove("is-open");
+                schoolInput.setAttribute("aria-expanded", "false");
+                showOsmRoute(result.dataset.mapLatitude, result.dataset.mapLongitude, schoolName);
+            }
+        });
+        document.addEventListener("click", event => {
+            if (!event.target.closest(".room-school-combobox")) {
+                schoolSearchResults?.classList.remove("is-open");
+                schoolInput?.setAttribute("aria-expanded", "false");
+            }
+        });
+        nearbySearchResults?.addEventListener("click", event => {
+            const result = event.target.closest(".room-map-result");
+            if (result) showOsmRoute(result.dataset.mapLatitude, result.dataset.mapLongitude, decodeURIComponent(result.dataset.mapName));
         });
 
         const occupantControl = document.querySelector("[data-max-occupants]");

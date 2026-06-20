@@ -38,6 +38,7 @@ namespace DoAnLapTrinhWeb.Controllers
         // URL: POST /Chat/StartPopup
         // =========================================================
         [HttpPost]
+        [Authorize(Roles = "User")]
         public async Task<IActionResult> StartPopup(int accommodationId)
         {
             if (!TryGetUserId(out int currentUserId))
@@ -45,7 +46,7 @@ namespace DoAnLapTrinhWeb.Controllers
 
             var accommodation = await _context.Accommodations
                 .Include(a => a.Owner)
-                .FirstOrDefaultAsync(a => a.Id == accommodationId);
+                .FirstOrDefaultAsync(a => a.Id == accommodationId && a.IsApproved);
 
             if (accommodation == null)
                 return NotFound(new { success = false, message = "Không tìm thấy phòng trọ." });
@@ -53,6 +54,25 @@ namespace DoAnLapTrinhWeb.Controllers
             // Nếu người dùng là chủ trọ của bài đăng này thì không cho phép tự chat
             if (accommodation.OwnerId == currentUserId)
                 return BadRequest(new { success = false, message = "Bạn không thể tự nhắn tin cho chính mình." });
+            if (User.IsInRole("User"))
+            {
+                var activeRental = await _context.RentalRequests
+                    .Include(request => request.Accommodation)
+                    .FirstOrDefaultAsync(request =>
+                        request.RenterId == currentUserId &&
+                        request.Status == "Success");
+                if (activeRental != null)
+                    return BadRequest(new
+                    {
+                        success = false,
+                        message = activeRental.AccommodationId == accommodationId
+                            ? "Bạn đang thuê phòng này. Hãy sử dụng mục Phòng đã thuê để quản lý nơi ở."
+                            : $"Bạn đang thuê {activeRental.Accommodation?.Title ?? "một phòng khác"}. Các phòng còn lại hiện chỉ để tham khảo."
+                    });
+            }
+            var isWholeAccommodation = accommodation.AccommodationType == "NhaNguyenCan" || accommodation.AccommodationType == "CanHo";
+            if (accommodation.IsRentedOut || (isWholeAccommodation ? accommodation.IsRented : accommodation.AvailableRooms <= 0))
+                return BadRequest(new { success = false, message = "Phòng này hiện không còn nhận yêu cầu thuê." });
 
             // Kiểm tra conversation đã tồn tại chưa (tránh tạo trùng)
             var conversation = await _context.ChatConversations
@@ -79,7 +99,10 @@ namespace DoAnLapTrinhWeb.Controllers
 
             // Kiểm tra RentalRequest
             var rentalRequest = await _context.RentalRequests
-                .FirstOrDefaultAsync(r => r.AccommodationId == accommodationId && r.RenterId == currentUserId);
+                .FirstOrDefaultAsync(r =>
+                    r.AccommodationId == accommodationId &&
+                    r.RenterId == currentUserId &&
+                    (r.Status == "Pending" || r.Status == "Negotiating"));
 
             if (rentalRequest == null)
             {
@@ -182,6 +205,32 @@ namespace DoAnLapTrinhWeb.Controllers
                     conversations = conversations.Where(c => c.HasPendingNegotiation).ToList();
                 }
             }
+
+            var conversationKeys = conversations
+                .Select(conversation => new { conversation.AccommodationId, conversation.RenterId })
+                .ToList();
+            var conversationAccommodationIds = conversationKeys
+                .Select(key => key.AccommodationId)
+                .Distinct()
+                .ToList();
+            var conversationRenterIds = conversationKeys
+                .Select(key => key.RenterId)
+                .Distinct()
+                .ToList();
+            var rentalStatuses = await _context.RentalRequests
+                .AsNoTracking()
+                .Where(request =>
+                    conversationAccommodationIds.Contains(request.AccommodationId) &&
+                    conversationRenterIds.Contains(request.RenterId))
+                .OrderByDescending(request => request.ConfirmedAt ?? request.CreatedAt)
+                .Select(request => new { request.AccommodationId, request.RenterId, request.Status })
+                .ToListAsync();
+            ViewBag.RentalStatusLookup = rentalStatuses
+                .Where(request => conversationKeys.Any(key =>
+                    key.AccommodationId == request.AccommodationId &&
+                    key.RenterId == request.RenterId))
+                .GroupBy(request => $"{request.AccommodationId}:{request.RenterId}")
+                .ToDictionary(group => group.Key, group => group.First().Status);
 
             ViewBag.CurrentUserId = currentUserId;
             ViewBag.TimeFilter = timeFilter;

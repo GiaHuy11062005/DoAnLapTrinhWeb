@@ -1,16 +1,19 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using DoAnLapTrinhWeb.Data;
 using System.Linq;
 using System.Threading.Tasks;
 using System;
 using System.Security.Claims;
+using System.Collections.Generic;
 using DoAnLapTrinhWeb.Models;
 using DoAnLapTrinhWeb.Hubs;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.Hosting;
 using System.IO;
+using System.Text.Json;
 
 namespace DoAnLapTrinhWeb.Controllers
 {
@@ -48,6 +51,48 @@ namespace DoAnLapTrinhWeb.Controllers
             
             ViewBag.TotalRentalRequests = await _context.RentalRequests.CountAsync();
 
+            var currentMonthStart = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
+            ViewBag.MonthlyTenantUsers = await _context.Users.CountAsync(user =>
+                !user.IsDeleted && user.CreatedAt >= currentMonthStart && user.Role == "User");
+            ViewBag.MonthlyLandlordUsers = await _context.Users.CountAsync(user =>
+                !user.IsDeleted && user.CreatedAt >= currentMonthStart && user.Role == "Landlord");
+            ViewBag.MonthlyAdminUsers = await _context.Users.CountAsync(user =>
+                !user.IsDeleted && user.CreatedAt >= currentMonthStart && user.Role == "Admin");
+
+            var rentalChartStart = currentMonthStart.AddMonths(-5);
+            var rentalRequestsForChart = await _context.RentalRequests
+                .Where(request => request.CreatedAt >= rentalChartStart)
+                .Select(request => new { request.CreatedAt, request.Status })
+                .ToListAsync();
+            var rentalChartMonths = Enumerable.Range(0, 6)
+                .Select(offset => rentalChartStart.AddMonths(offset))
+                .ToList();
+            ViewBag.RentalChartLabels = rentalChartMonths
+                .Select(month => $"T{month.Month}/{month.Year}")
+                .ToList();
+            ViewBag.RentalSuccessRates = rentalChartMonths
+                .Select(month =>
+                {
+                    var requestsInMonth = rentalRequestsForChart
+                        .Where(request => request.CreatedAt.Year == month.Year && request.CreatedAt.Month == month.Month)
+                        .ToList();
+                    if (requestsInMonth.Count == 0) return 0;
+                    var successCount = requestsInMonth.Count(request => request.Status == "Success");
+                    return (int)Math.Round(successCount * 100d / requestsInMonth.Count);
+                })
+                .ToList();
+            ViewBag.RentalSuccessCounts = rentalChartMonths
+                .Select(month => rentalRequestsForChart.Count(request =>
+                    request.CreatedAt.Year == month.Year &&
+                    request.CreatedAt.Month == month.Month &&
+                    request.Status == "Success"))
+                .ToList();
+            ViewBag.RentalRequestCounts = rentalChartMonths
+                .Select(month => rentalRequestsForChart.Count(request =>
+                    request.CreatedAt.Year == month.Year && request.CreatedAt.Month == month.Month))
+                .ToList();
+            ViewBag.HomeBanner = await LoadHomeBannerSettingsAsync();
+
             // Thống kê hỗ trợ
             ViewBag.TotalSupportTickets = await _context.SupportTickets.CountAsync();
             ViewBag.PendingSupportTickets = await _context.SupportTickets.CountAsync(t => t.Status == "Pending");
@@ -62,14 +107,70 @@ namespace DoAnLapTrinhWeb.Controllers
                 .ToListAsync();
             ViewBag.RecentActivities = recentActivities;
             ViewBag.RecentNotifications = await _context.Notifications
-                .Where(item => item.UserId == adminId && item.Type != "ChatMessage")
+                .Where(item => item.UserId == adminId && item.Type != "ChatMessage" && item.Type != "NewAccommodation")
                 .OrderByDescending(item => item.CreatedAt)
                 .Take(5)
                 .ToListAsync();
             ViewBag.UnreadNotifications = await _context.Notifications
-                .CountAsync(item => item.UserId == adminId && item.Type != "ChatMessage" && !item.IsRead);
+                .CountAsync(item => item.UserId == adminId && item.Type != "ChatMessage" && item.Type != "NewAccommodation" && !item.IsRead);
 
             return View();
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UpdateHomeBanner(List<IFormFile>? bannerImages, int skipSeconds)
+        {
+            var settings = await LoadHomeBannerSettingsAsync();
+            settings.SkipSeconds = Math.Clamp(skipSeconds, 2, 30);
+            if (settings.ImageUrls.Count == 0 && !string.IsNullOrWhiteSpace(settings.ImageUrl))
+                settings.ImageUrls.Add(settings.ImageUrl);
+
+            var uploadedImages = bannerImages?
+                .Where(file => file != null && file.Length > 0)
+                .Take(5)
+                .ToList() ?? new List<IFormFile>();
+            if (uploadedImages.Count > 0)
+            {
+                var allowedTypes = new Dictionary<string, string>
+                {
+                    ["image/jpeg"] = ".jpg",
+                    ["image/png"] = ".png",
+                    ["image/webp"] = ".webp"
+                };
+                if (uploadedImages.Any(file =>
+                    !allowedTypes.ContainsKey(file.ContentType) ||
+                    file.Length > 8 * 1024 * 1024))
+                {
+                    TempData["Error"] = "Banner chỉ nhận JPG, PNG hoặc WEBP và tối đa 8MB.";
+                    return RedirectToAction(nameof(Index));
+                }
+
+                var bannerFolder = Path.Combine(_environment.WebRootPath, "images", "banners");
+                Directory.CreateDirectory(bannerFolder);
+                foreach (var bannerImage in uploadedImages)
+                {
+                    var fileName = $"{Guid.NewGuid():N}{allowedTypes[bannerImage.ContentType]}";
+                    var filePath = Path.Combine(bannerFolder, fileName);
+                    using (var stream = new FileStream(filePath, FileMode.Create))
+                    {
+                        await bannerImage.CopyToAsync(stream);
+                    }
+
+                    settings.ImageUrls.Add($"/images/banners/{fileName}");
+                }
+
+                settings.ImageUrls = settings.ImageUrls
+                    .Where(value => !string.IsNullOrWhiteSpace(value))
+                    .Distinct()
+                    .TakeLast(5)
+                    .ToList();
+                settings.ImageUrl = settings.ImageUrls.First();
+            }
+
+            await SaveHomeBannerSettingsAsync(settings);
+            TempData["Success"] = "Đã cập nhật banner trang chủ.";
+            return RedirectToAction(nameof(Index));
         }
 
         [HttpGet]
@@ -188,22 +289,8 @@ namespace DoAnLapTrinhWeb.Controllers
                 };
                 _context.Notifications.Add(ownerNotification);
 
-                var renterIds = await _context.Users
-                    .Where(user => user.Role == "User" && !user.IsDeleted && !user.IsLocked)
-                    .Select(user => user.Id)
-                    .ToListAsync();
-                var renterNotifications = renterIds.Select(renterId => new AppNotification
-                {
-                    UserId = renterId,
-                    Type = "NewAccommodation",
-                    Title = "Có phòng trọ mới vừa được duyệt",
-                    Message = room.Title ?? "Xem phòng trọ mới",
-                    Url = $"/Accommodation/Details/{room.Id}"
-                }).ToList();
-                _context.Notifications.AddRange(renterNotifications);
                 await _context.SaveChangesAsync();
                 await SendNotification(ownerNotification);
-                foreach (var notification in renterNotifications) await SendNotification(notification);
                 await NotifyProcessed(room, history, "Approved", "Đã duyệt");
                 approved = true;
             }
@@ -329,6 +416,35 @@ namespace DoAnLapTrinhWeb.Controllers
                 notification.IsRead,
                 createdAt = notification.CreatedAt.ToString("dd/MM/yyyy HH:mm")
             });
+        }
+
+        private async Task<HomeBannerSettings> LoadHomeBannerSettingsAsync()
+        {
+            var filePath = GetHomeBannerSettingsPath();
+            if (!System.IO.File.Exists(filePath)) return new HomeBannerSettings();
+
+            try
+            {
+                var json = await System.IO.File.ReadAllTextAsync(filePath);
+                return JsonSerializer.Deserialize<HomeBannerSettings>(json) ?? new HomeBannerSettings();
+            }
+            catch
+            {
+                return new HomeBannerSettings();
+            }
+        }
+
+        private async Task SaveHomeBannerSettingsAsync(HomeBannerSettings settings)
+        {
+            var filePath = GetHomeBannerSettingsPath();
+            Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
+            var json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
+            await System.IO.File.WriteAllTextAsync(filePath, json);
+        }
+
+        private string GetHomeBannerSettingsPath()
+        {
+            return Path.Combine(_environment.ContentRootPath, "App_Data", "home-banner.json");
         }
 
         [HttpGet]

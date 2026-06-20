@@ -68,5 +68,6 @@ namespace DoAnLapTrinhWeb.Models
         // Đã thêm chữ virtual để đồng bộ với cơ chế của Entity Framework
         public virtual ICollection<AccommodationImage>? Images { get; set; }
         public virtual ICollection<AccommodationDocument>? Documents { get; set; }
+        public virtual ICollection<AccommodationReview>? Reviews { get; set; }
     }
 }

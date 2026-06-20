@@ -11,5 +11,6 @@ namespace DoAnLapTrinhWeb.Models
         public DateTime? ConfirmedAt { get; set; }
         public Accommodation? Accommodation { get; set; }
         public AppUser? Renter { get; set; }
+        public AccommodationReview? Review { get; set; }
     }
 }

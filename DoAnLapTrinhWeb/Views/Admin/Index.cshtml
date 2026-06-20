@@ -17,6 +17,23 @@
     int lockedUsers = ViewBag.LockedUsers ?? 0;
     int unreadNotifications = ViewBag.UnreadNotifications ?? 0;
     int urgentCount = pendingRooms + pendingTickets;
+    int monthlyTenantUsers = ViewBag.MonthlyTenantUsers ?? 0;
+    int monthlyLandlordUsers = ViewBag.MonthlyLandlordUsers ?? 0;
+    int monthlyAdminUsers = ViewBag.MonthlyAdminUsers ?? 0;
+    int monthlyUsersTotal = monthlyTenantUsers + monthlyLandlordUsers + monthlyAdminUsers;
+    var tenantAngle = monthlyUsersTotal > 0 ? monthlyTenantUsers * 360d / monthlyUsersTotal : 0;
+    var landlordAngle = tenantAngle + (monthlyUsersTotal > 0 ? monthlyLandlordUsers * 360d / monthlyUsersTotal : 0);
+    var pieBackground = monthlyUsersTotal > 0
+        ? $"conic-gradient(#1749a5 0deg {tenantAngle.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)}deg, #f97316 {tenantAngle.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)}deg {landlordAngle.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)}deg, #16865a {landlordAngle.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)}deg 360deg)"
+        : "conic-gradient(#e7ecf4 0deg 360deg)";
+    var rentalChartLabels = ViewBag.RentalChartLabels as List<string> ?? new();
+    var rentalSuccessRates = ViewBag.RentalSuccessRates as List<int> ?? new();
+    var rentalSuccessCounts = ViewBag.RentalSuccessCounts as List<int> ?? new();
+    var rentalRequestCounts = ViewBag.RentalRequestCounts as List<int> ?? new();
+    var homeBanner = ViewBag.HomeBanner as HomeBannerSettings ?? new HomeBannerSettings();
+    var homeBannerImages = homeBanner.ImageUrls.Any()
+        ? homeBanner.ImageUrls
+        : new List<string> { homeBanner.ImageUrl };
 }
 
 <div class="dashboard-page">
@@ -50,6 +67,79 @@
                 <span class="dashboard-metric__icon is-dark"><i class="fas fa-building"></i></span>
                 <span><small>Tổng tin đăng</small><strong>@totalRooms</strong><em>@rejectedRooms tin bị từ chối</em></span>
             </a>
+        </section>
+
+        <section class="dashboard-chart-grid" aria-label="Biểu đồ vận hành hệ thống">
+            <article class="dashboard-chart-card">
+                <div class="dashboard-section-heading">
+                    <div>
+                        <span class="dashboard-section-heading__icon is-blue"><i class="fas fa-chart-pie"></i></span>
+                        <div><h2>Người dùng mới trong tháng</h2><p>Cơ cấu tài khoản đăng ký từ đầu tháng đến hiện tại</p></div>
+                    </div>
+                </div>
+                <div class="dashboard-pie-chart">
+                    <div class="dashboard-pie-chart__visual" style="background: @pieBackground">
+                        <span><strong>@monthlyUsersTotal</strong><small>Tài khoản mới</small></span>
+                    </div>
+                    <div class="dashboard-chart-legend">
+                        <div><i class="is-tenant"></i><span>Người thuê</span><strong>@monthlyTenantUsers</strong></div>
+                        <div><i class="is-landlord"></i><span>Chủ trọ</span><strong>@monthlyLandlordUsers</strong></div>
+                        <div><i class="is-admin"></i><span>Admin</span><strong>@monthlyAdminUsers</strong></div>
+                    </div>
+                </div>
+            </article>
+
+            <article class="dashboard-chart-card">
+                <div class="dashboard-section-heading">
+                    <div>
+                        <span class="dashboard-section-heading__icon is-orange"><i class="fas fa-chart-column"></i></span>
+                        <div><h2>Tỷ lệ xác nhận cho thuê thành công</h2><p>Số yêu cầu thành công trên tổng yêu cầu từng tháng</p></div>
+                    </div>
+                </div>
+                <div class="dashboard-bar-chart">
+                    @for (var index = 0; index < rentalChartLabels.Count; index++)
+                    {
+                        var rate = index < rentalSuccessRates.Count ? rentalSuccessRates[index] : 0;
+                        var success = index < rentalSuccessCounts.Count ? rentalSuccessCounts[index] : 0;
+                        var total = index < rentalRequestCounts.Count ? rentalRequestCounts[index] : 0;
+                        <div class="dashboard-bar-chart__item" title="@success/@total yêu cầu thành công">
+                            <strong>@rate%</strong>
+                            <div class="dashboard-bar-chart__track"><span style="height: @rate%;"></span></div>
+                            <small>@rentalChartLabels[index]</small>
+                            <em>@success/@total</em>
+                        </div>
+                    }
+                </div>
+            </article>
+        </section>
+
+        <section class="dashboard-banner-panel">
+            <div class="dashboard-section-heading">
+                <div>
+                    <span class="dashboard-section-heading__icon is-blue"><i class="fas fa-images"></i></span>
+                    <div>
+                        <h2>Banner trang chủ</h2>
+                        <p>Ảnh hiện tại nên dùng tỉ lệ ngang, khuyến nghị @HomeBannerSettings.RecommendedWidth x @HomeBannerSettings.RecommendedHeight px. Khu hero hiện có min-height 450px và ảnh được cover toàn chiều ngang.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="dashboard-banner-editor">
+                <div class="dashboard-banner-preview" id="dashboardBannerPreview" style="background-image: url('@homeBannerImages.First()')">
+                    <span id="dashboardBannerPreviewMeta">@homeBannerImages.Count ảnh · @homeBanner.SkipSeconds giây</span>
+                </div>
+                <form action="/Admin/UpdateHomeBanner" method="post" enctype="multipart/form-data" class="dashboard-banner-form">
+                    @Html.AntiForgeryToken()
+                    <label>
+                        <span>Ảnh banner mới (có thể chọn nhiều ảnh)</span>
+                        <input type="file" name="bannerImages" accept="image/jpeg,image/png,image/webp" class="form-control" id="dashboardBannerInput" multiple />
+                    </label>
+                    <label>
+                        <span>Thời gian skip/chuyển banner (giây)</span>
+                        <input type="number" name="skipSeconds" min="2" max="30" value="@homeBanner.SkipSeconds" class="form-control" id="dashboardBannerSkipSeconds" />
+                    </label>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-floppy-disk"></i> Lưu banner</button>
+                </form>
+            </div>
         </section>
 
         <div class="dashboard-priority-grid">
@@ -158,6 +248,33 @@
         document.addEventListener("pendingAccommodationCreated", () => {
             const pending = document.getElementById("pendingCount");
             if (pending) pending.textContent = Number(pending.textContent) + 1;
+        });
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const bannerPreview = document.getElementById("dashboardBannerPreview");
+            const bannerMeta = document.getElementById("dashboardBannerPreviewMeta");
+            const bannerInput = document.getElementById("dashboardBannerInput");
+            const bannerSkipSeconds = document.getElementById("dashboardBannerSkipSeconds");
+            let previewUrl = null;
+
+            const updateBannerMeta = () => {
+                if (!bannerMeta) return;
+                const imageCount = bannerInput?.files?.length || @homeBannerImages.Count;
+                const seconds = Math.max(2, Number(bannerSkipSeconds?.value) || @homeBanner.SkipSeconds);
+                bannerMeta.textContent = `${imageCount} ảnh · ${seconds} giây`;
+            };
+
+            bannerInput?.addEventListener("change", () => {
+                if (previewUrl) URL.revokeObjectURL(previewUrl);
+                const firstFile = bannerInput.files?.[0];
+                if (firstFile && bannerPreview) {
+                    previewUrl = URL.createObjectURL(firstFile);
+                    bannerPreview.style.backgroundImage = `url("${previewUrl}")`;
+                }
+                updateBannerMeta();
+            });
+
+            bannerSkipSeconds?.addEventListener("input", updateBannerMeta);
         });
     </script>
 }

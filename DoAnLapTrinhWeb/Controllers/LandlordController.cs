@@ -107,12 +107,12 @@ namespace DoAnLapTrinhWeb.Controllers
             ViewBag.TotalConversations = await _context.ChatConversations.CountAsync(c => c.LandlordId == userId);
             ViewBag.UnreadMessages = await _context.ChatMessages.CountAsync(m => m.Conversation!.LandlordId == userId && m.SenderId != userId && !m.IsRead);
             ViewBag.RecentNotifications = await _context.Notifications
-                .Where(item => item.UserId == userId && item.Type != "ChatMessage")
+                .Where(item => item.UserId == userId && item.Type != "ChatMessage" && item.Type != "NewAccommodation")
                 .OrderByDescending(item => item.CreatedAt)
                 .Take(5)
                 .ToListAsync();
             ViewBag.UnreadNotifications = await _context.Notifications
-                .CountAsync(item => item.UserId == userId && item.Type != "ChatMessage" && !item.IsRead);
+                .CountAsync(item => item.UserId == userId && item.Type != "ChatMessage" && item.Type != "NewAccommodation" && !item.IsRead);
 
             return View();
         }

@@ -27,7 +27,7 @@ namespace DoAnLapTrinhWeb.Controllers
             if (!TryGetUserId(out var userId)) return Unauthorized();
 
             var items = await _context.Notifications
-                .Where(item => item.UserId == userId && item.Type != "ChatMessage")
+                .Where(item => item.UserId == userId && item.Type != "ChatMessage" && item.Type != "NewAccommodation")
                 .OrderByDescending(item => item.CreatedAt)
                 .Take(30)
                 .Select(item => new
@@ -78,7 +78,7 @@ namespace DoAnLapTrinhWeb.Controllers
             if (!TryGetUserId(out var userId)) return Unauthorized();
 
             var unreadItems = await _context.Notifications
-                .Where(item => item.UserId == userId && item.Type != "ChatMessage" && !item.IsRead)
+                .Where(item => item.UserId == userId && item.Type != "ChatMessage" && item.Type != "NewAccommodation" && !item.IsRead)
                 .ToListAsync();
 
             foreach (var item in unreadItems) item.IsRead = true;
@@ -96,12 +96,24 @@ namespace DoAnLapTrinhWeb.Controllers
                 .Include(item => item.Owner)
                 .FirstOrDefaultAsync(item => item.Id == accommodationId && item.IsApproved);
             if (room == null) return NotFound(new { message = "Phòng không tồn tại hoặc chưa được duyệt." });
+            var isWholeAccommodation = room.AccommodationType == "NhaNguyenCan" || room.AccommodationType == "CanHo";
+            if (room.IsRentedOut || (isWholeAccommodation ? room.IsRented : room.AvailableRooms <= 0))
+                return BadRequest(new { message = "Phòng này hiện không còn nhận yêu cầu thuê." });
+
+            var activeRental = await _context.RentalRequests
+                .Include(item => item.Accommodation)
+                .FirstOrDefaultAsync(item => item.RenterId == renterId && item.Status == "Success");
+            if (activeRental != null)
+                return BadRequest(new
+                {
+                    message = $"Bạn đang thuê {activeRental.Accommodation?.Title ?? "một phòng khác"}. Hãy kết thúc hợp đồng hiện tại trước khi thuê phòng mới."
+                });
 
             occupants = Math.Clamp(occupants, 1, room.MaxOccupants);
             var existingRequest = await _context.RentalRequests.AnyAsync(item =>
                 item.AccommodationId == room.Id &&
                 item.RenterId == renterId &&
-                item.Status == "Pending");
+                (item.Status == "Pending" || item.Status == "Negotiating"));
             if (existingRequest) return BadRequest(new { message = "Bạn đã gửi yêu cầu thuê phòng này trước đó." });
 
             var renter = await _context.Users.FindAsync(renterId);

@@ -73,6 +73,11 @@ namespace DoAnLapTrinhWeb.Controllers
 
             if (request == null)
                 return BadRequest(new { success = false, message = "Yêu cầu không còn ở trạng thái chờ phản hồi." });
+            var renterHasActiveRental = await _context.RentalRequests.AnyAsync(item =>
+                item.RenterId == request.RenterId &&
+                item.Status == "Success");
+            if (renterHasActiveRental)
+                return BadRequest(new { success = false, message = "Người thuê này đang có một hợp đồng thuê còn hiệu lực." });
 
             request.Status = "Negotiating";
             request.ConfirmedAt = DateTime.Now;
@@ -154,13 +159,23 @@ namespace DoAnLapTrinhWeb.Controllers
 
             if (request == null || request.Status != "Negotiating")
                 return BadRequest(new { success = false, message = "Không tìm thấy yêu cầu hoặc trạng thái không hợp lệ." });
+            var renterAlreadyHasActiveRental = await _context.RentalRequests.AnyAsync(item =>
+                item.RenterId == request.RenterId &&
+                item.Id != request.Id &&
+                item.Status == "Success");
+            if (renterAlreadyHasActiveRental)
+                return BadRequest(new { success = false, message = "Người thuê này đang có một hợp đồng thuê khác còn hiệu lực." });
 
             // 1. Đổi trạng thái request
             request.Status = "Success";
+            request.ConfirmedAt = DateTime.Now;
 
             // 2. Xử lý Accommodation logic
             var acc = request.Accommodation!;
-            if (acc.AccommodationType == "NhaNguyenCan" || acc.AccommodationType == "CanHo")
+            var isWholeAccommodation = acc.AccommodationType == "NhaNguyenCan" || acc.AccommodationType == "CanHo";
+            if (acc.IsRentedOut || (isWholeAccommodation ? acc.IsRented : acc.AvailableRooms <= 0))
+                return BadRequest(new { success = false, message = "Phòng này hiện không còn chỗ trống để xác nhận cho thuê." });
+            if (isWholeAccommodation)
             {
                 acc.IsRentedOut = true;
                 acc.IsRented = true;
@@ -175,10 +190,39 @@ namespace DoAnLapTrinhWeb.Controllers
                 }
             }
 
+            var notification = CreateRenterNotification(
+                request,
+                "Thuê thành công - hãy đánh giá phòng",
+                $"{request.Accommodation?.Title} đã được xác nhận cho thuê thành công. Hãy chia sẻ đánh giá để giúp người thuê sau chọn phòng tốt hơn.",
+                $"/Accommodation/Details/{request.AccommodationId}#roomReviewSection");
+            notification.Type = "ReviewRequest";
+            _context.Notifications.Add(notification);
+
+            var otherOpenRequests = await _context.RentalRequests
+                .Where(item =>
+                    item.RenterId == request.RenterId &&
+                    item.Id != request.Id &&
+                    (item.Status == "Pending" || item.Status == "Negotiating"))
+                .ToListAsync();
+            foreach (var openRequest in otherOpenRequests)
+                openRequest.Status = "Cancelled";
+            if (otherOpenRequests.Count > 0)
+            {
+                var otherConversations = await _context.ChatConversations
+                    .Where(item =>
+                        item.RenterId == request.RenterId &&
+                        item.AccommodationId != request.AccommodationId &&
+                        item.HasPendingNegotiation)
+                    .ToListAsync();
+                foreach (var conversation in otherConversations)
+                    conversation.HasPendingNegotiation = false;
+            }
+
             await _context.SaveChangesAsync();
 
             // 3. Notify real-time (disable buttons for this accommodation)
             await _accommodationHub.Clients.All.SendAsync("AccommodationStatusChanged", new { id = acc.Id, isRentedOut = acc.IsRentedOut });
+            await SendNotification(notification);
 
             return Ok(new { success = true });
         }
@@ -205,7 +249,52 @@ namespace DoAnLapTrinhWeb.Controllers
             return Ok(new { success = true });
         }
 
-        private static AppNotification CreateRenterNotification(RentalRequest request, string title, string message)
+        [HttpPost]
+        public async Task<IActionResult> EndContract(int id)
+        {
+            if (!TryGetUserId(out int landlordId)) return Unauthorized();
+
+            var request = await _context.RentalRequests
+                .Include(item => item.Accommodation)
+                .FirstOrDefaultAsync(item =>
+                    item.Id == id &&
+                    item.Status == "Success" &&
+                    item.Accommodation != null &&
+                    item.Accommodation.OwnerId == landlordId);
+            if (request == null)
+                return BadRequest(new { success = false, message = "Không tìm thấy hợp đồng đang hoạt động." });
+
+            request.Status = "Completed";
+            var accommodation = request.Accommodation!;
+            if (accommodation.AccommodationType == "NhaNguyenCan" || accommodation.AccommodationType == "CanHo")
+            {
+                accommodation.IsRented = false;
+                accommodation.IsRentedOut = false;
+            }
+            else
+            {
+                accommodation.AvailableRooms += 1;
+                accommodation.IsRentedOut = false;
+            }
+
+            var notification = CreateRenterNotification(
+                request,
+                "Hợp đồng thuê đã kết thúc",
+                $"Hợp đồng thuê {accommodation.Title} đã được chủ trọ xác nhận kết thúc.",
+                "/Rental/MyRentals");
+            _context.Notifications.Add(notification);
+            await _context.SaveChangesAsync();
+
+            await _accommodationHub.Clients.All.SendAsync("AccommodationStatusChanged", new
+            {
+                id = accommodation.Id,
+                isRentedOut = accommodation.IsRentedOut
+            });
+            await SendNotification(notification);
+            return Ok(new { success = true });
+        }
+
+        private static AppNotification CreateRenterNotification(RentalRequest request, string title, string message, string? url = null)
         {
             return new AppNotification
             {
@@ -213,7 +302,7 @@ namespace DoAnLapTrinhWeb.Controllers
                 Type = "RentalRequestSent",
                 Title = title,
                 Message = message,
-                Url = $"/Accommodation/Details/{request.AccommodationId}"
+                Url = url ?? $"/Accommodation/Details/{request.AccommodationId}"
             };
         }
 

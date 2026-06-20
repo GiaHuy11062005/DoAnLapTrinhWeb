@@ -31,6 +31,11 @@ namespace DoAnLapTrinhWeb.Controllers
             ViewBag.Districts = user.CityId.HasValue
                 ? await _context.Districts.Where(d => d.CityId == user.CityId).OrderBy(d => d.Name).ToListAsync()
                 : [];
+            ViewBag.RentedRoomCount = user.Role == "User"
+                ? await _context.RentalRequests.CountAsync(request =>
+                    request.RenterId == user.Id &&
+                    request.Status == "Success")
+                : 0;
 
             return View(user);
         }

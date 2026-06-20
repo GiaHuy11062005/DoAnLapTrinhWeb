@@ -22,6 +22,7 @@ namespace DoAnLapTrinhWeb.Data
         public DbSet<ApprovalHistory> ApprovalHistories { get; set; }
         public DbSet<AppNotification> Notifications { get; set; }
         public DbSet<RentalRequest> RentalRequests { get; set; }
+        public DbSet<AccommodationReview> AccommodationReviews { get; set; }
         public DbSet<SupportTicket> SupportTickets { get; set; }
 
         // Bảng Chat
@@ -97,6 +98,28 @@ namespace DoAnLapTrinhWeb.Data
                 .WithMany()
                 .HasForeignKey(request => request.AccommodationId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<AccommodationReview>()
+                .HasOne(review => review.Accommodation)
+                .WithMany(accommodation => accommodation.Reviews)
+                .HasForeignKey(review => review.AccommodationId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<AccommodationReview>()
+                .HasOne(review => review.Reviewer)
+                .WithMany()
+                .HasForeignKey(review => review.ReviewerId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<AccommodationReview>()
+                .HasOne(review => review.RentalRequest)
+                .WithOne(request => request.Review)
+                .HasForeignKey<AccommodationReview>(review => review.RentalRequestId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<AccommodationReview>()
+                .HasIndex(review => review.RentalRequestId)
+                .IsUnique();
 
             // =========================================================
             // CẤU HÌNH QUAN HỆ BẢNG CHAT

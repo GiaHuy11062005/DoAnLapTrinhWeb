@@ -82,6 +82,33 @@ namespace DoAnLapTrinhWeb.Models
             ["ca mau"] = (9.176900, 105.152400)
         };
 
+        private static readonly Dictionary<string, (double Latitude, double Longitude)> DistrictCenters = new()
+        {
+            ["thanh pho ho chi minh|quan 1"] = (10.775658, 106.700424),
+            ["thanh pho ho chi minh|quan 3"] = (10.784369, 106.684408),
+            ["thanh pho ho chi minh|quan 4"] = (10.757826, 106.701297),
+            ["thanh pho ho chi minh|quan 5"] = (10.754027, 106.663374),
+            ["thanh pho ho chi minh|quan 6"] = (10.746903, 106.634495),
+            ["thanh pho ho chi minh|quan 7"] = (10.734034, 106.721578),
+            ["thanh pho ho chi minh|quan 8"] = (10.724088, 106.628625),
+            ["thanh pho ho chi minh|quan 10"] = (10.774596, 106.667954),
+            ["thanh pho ho chi minh|quan 11"] = (10.762973, 106.650084),
+            ["thanh pho ho chi minh|quan 12"] = (10.867153, 106.641332),
+            ["thanh pho ho chi minh|quan binh thanh"] = (10.805493, 106.694821),
+            ["thanh pho ho chi minh|quan go vap"] = (10.838678, 106.665290),
+            ["thanh pho ho chi minh|quan phu nhuan"] = (10.799194, 106.680263),
+            ["thanh pho ho chi minh|quan tan binh"] = (10.801465, 106.652597),
+            ["thanh pho ho chi minh|quan tan phu"] = (10.790051, 106.628190),
+            ["thanh pho ho chi minh|quan binh tan"] = (10.765258, 106.603853),
+            ["thanh pho ho chi minh|thanh pho thu duc"] = (10.849409, 106.753705),
+            ["thanh pho ho chi minh|thu duc"] = (10.849409, 106.753705),
+            ["thanh pho ho chi minh|huyen binh chanh"] = (10.687392, 106.593854),
+            ["thanh pho ho chi minh|huyen can gio"] = (10.411380, 106.954741),
+            ["thanh pho ho chi minh|huyen cu chi"] = (10.973602, 106.493392),
+            ["thanh pho ho chi minh|huyen hoc mon"] = (10.889814, 106.595382),
+            ["thanh pho ho chi minh|huyen nha be"] = (10.695264, 106.704874)
+        };
+
         public static bool TryGetCityCenter(string? cityName, out double latitude, out double longitude)
         {
             latitude = 0;
@@ -97,6 +124,37 @@ namespace DoAnLapTrinhWeb.Models
             latitude = center.Latitude;
             longitude = center.Longitude;
             return true;
+        }
+
+        public static bool TryGetDistrictCenter(string? cityName, string? districtName, out double latitude, out double longitude)
+        {
+            latitude = 0;
+            longitude = 0;
+            if (string.IsNullOrWhiteSpace(cityName) || string.IsNullOrWhiteSpace(districtName)) return false;
+
+            var cityKey = Normalize(cityName);
+            var districtKey = Normalize(districtName);
+            var compactDistrictKey = districtKey
+                .Replace("quan ", "", StringComparison.Ordinal)
+                .Replace("huyen ", "", StringComparison.Ordinal)
+                .Replace("thanh pho ", "", StringComparison.Ordinal)
+                .Replace("thi xa ", "", StringComparison.Ordinal);
+
+            var keys = new[]
+            {
+                $"{cityKey}|{districtKey}",
+                $"{cityKey}|{compactDistrictKey}"
+            };
+
+            foreach (var key in keys)
+            {
+                if (!DistrictCenters.TryGetValue(key, out var center)) continue;
+                latitude = center.Latitude;
+                longitude = center.Longitude;
+                return true;
+            }
+
+            return false;
         }
 
         public static double CalculateKm(double latitude1, double longitude1, double latitude2, double longitude2)

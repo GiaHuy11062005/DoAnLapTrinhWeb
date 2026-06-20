@@ -11,6 +11,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllersWithViews();
 builder.Services.AddSignalR();
 builder.Services.AddHttpClient();
+builder.Services.AddMemoryCache();
 
 // Đăng ký AppDbContext kết nối với SQL Server
 builder.Services.AddDbContext<AppDbContext>(options =>

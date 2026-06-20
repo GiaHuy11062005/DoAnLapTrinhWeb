@@ -185,6 +185,45 @@ namespace DoAnLapTrinhWeb.Migrations
                     b.ToTable("AccommodationImages");
                 });
 
+            modelBuilder.Entity("DoAnLapTrinhWeb.Models.AccommodationReview", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AccommodationId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Comment")
+                        .HasMaxLength(600)
+                        .HasColumnType("nvarchar(600)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Rating")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RentalRequestId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ReviewerId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AccommodationId");
+
+                    b.HasIndex("RentalRequestId")
+                        .IsUnique();
+
+                    b.HasIndex("ReviewerId");
+
+                    b.ToTable("AccommodationReviews");
+                });
+
             modelBuilder.Entity("DoAnLapTrinhWeb.Models.AppNotification", b =>
                 {
                     b.Property<int>("Id")
@@ -648,6 +687,33 @@ namespace DoAnLapTrinhWeb.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("DoAnLapTrinhWeb.Models.AccommodationReview", b =>
+                {
+                    b.HasOne("DoAnLapTrinhWeb.Models.Accommodation", "Accommodation")
+                        .WithMany("Reviews")
+                        .HasForeignKey("AccommodationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DoAnLapTrinhWeb.Models.RentalRequest", "RentalRequest")
+                        .WithOne("Review")
+                        .HasForeignKey("DoAnLapTrinhWeb.Models.AccommodationReview", "RentalRequestId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("DoAnLapTrinhWeb.Models.AppUser", "Reviewer")
+                        .WithMany()
+                        .HasForeignKey("ReviewerId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Accommodation");
+
+                    b.Navigation("RentalRequest");
+
+                    b.Navigation("Reviewer");
+                });
+
             modelBuilder.Entity("DoAnLapTrinhWeb.Models.ChatConversation", b =>
                 {
                     b.HasOne("DoAnLapTrinhWeb.Models.Accommodation", "Accommodation")
@@ -757,6 +823,8 @@ namespace DoAnLapTrinhWeb.Migrations
                     b.Navigation("Documents");
 
                     b.Navigation("Images");
+
+                    b.Navigation("Reviews");
                 });
 
             modelBuilder.Entity("DoAnLapTrinhWeb.Models.AppUser", b =>
@@ -772,6 +840,11 @@ namespace DoAnLapTrinhWeb.Migrations
             modelBuilder.Entity("DoAnLapTrinhWeb.Models.City", b =>
                 {
                     b.Navigation("Districts");
+                });
+
+            modelBuilder.Entity("DoAnLapTrinhWeb.Models.RentalRequest", b =>
+                {
+                    b.Navigation("Review");
                 });
 #pragma warning restore 612, 618
         }

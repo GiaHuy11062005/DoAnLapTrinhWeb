@@ -1,0 +1,206 @@
+@model IReadOnlyCollection<DoAnLapTrinhWeb.Models.RentalRequest>
+@using DoAnLapTrinhWeb.Models
+@using System.Globalization
+@{
+    ViewData["Title"] = "Phòng đã thuê";
+    var conversationLookup = ViewBag.ConversationLookup as Dictionary<string, int> ?? new();
+}
+
+<main class="resident-rentals-page">
+    <div class="container">
+        <section class="resident-rentals-hero">
+            <div>
+                <span class="resident-rentals-hero__eyebrow"><i class="fas fa-house-circle-check"></i> Không gian của bạn</span>
+                <h1>Phòng đã thuê</h1>
+                <p>Quản lý nơi ở hiện tại và tìm nhanh các địa điểm thiết yếu quanh phòng.</p>
+            </div>
+            <div class="resident-rentals-hero__count">
+                <strong>@Model.Count</strong>
+                <span>phòng đã xác nhận</span>
+            </div>
+        </section>
+
+        @if (Model.Any())
+        {
+            <div class="resident-rentals-list">
+                @foreach (var rental in Model)
+                {
+                    var room = rental.Accommodation!;
+                    var imageUrl = room.Images?.FirstOrDefault()?.ImageUrl ?? "/images/default-room.jpg";
+                    var hasCoordinates = GoogleMapsUrlHelper.TryGetCoordinates(room.GoogleMapsUrl, out var latitude, out var longitude);
+                    var latitudeValue = hasCoordinates ? latitude.ToString(CultureInfo.InvariantCulture) : string.Empty;
+                    var longitudeValue = hasCoordinates ? longitude.ToString(CultureInfo.InvariantCulture) : string.Empty;
+                    var conversationKey = $"{room.Id}:{rental.RenterId}:{room.OwnerId}";
+                    var hasConversation = conversationLookup.TryGetValue(conversationKey, out var conversationId);
+                    var chatUrl = hasConversation ? $"/Chat/Inbox?openChat={conversationId}" : "/Chat/Inbox";
+
+                    <article class="resident-rental-card"
+                             data-rental-card
+                             data-latitude="@latitudeValue"
+                             data-longitude="@longitudeValue"
+                             data-room-name="@room.Title">
+                        <div class="resident-rental-card__image">
+                            <img src="@imageUrl" alt="@room.Title" />
+                            <span><i class="fas fa-circle-check"></i> Đã xác nhận thuê</span>
+                        </div>
+
+                        <div class="resident-rental-card__content">
+                            <div class="resident-rental-card__heading">
+                                <div>
+                                    <span>Nơi ở hiện tại</span>
+                                    <h2>@room.Title</h2>
+                                </div>
+                                <strong>@room.Price.ToString("N0") <small>VNĐ/tháng</small></strong>
+                            </div>
+
+                            <p class="resident-rental-card__address">
+                                <i class="fas fa-location-dot"></i>
+                                @room.SpecificAddress, @room.District?.Name, @room.City?.Name
+                            </p>
+
+                            <div class="resident-rental-card__facts">
+                                <span><i class="fas fa-expand"></i> @room.Area m²</span>
+                                <span><i class="fas fa-user-group"></i> Tối đa @room.MaxOccupants người</span>
+                                <span><i class="fas fa-calendar-check"></i> Xác nhận ngày @((rental.ConfirmedAt ?? rental.CreatedAt).ToString("dd/MM/yyyy"))</span>
+                                @if (!string.IsNullOrWhiteSpace(room.Owner?.FullName))
+                                {
+                                    <span><i class="fas fa-user-shield"></i> Chủ trọ: @room.Owner.FullName</span>
+                                }
+                            </div>
+
+                            <div class="resident-utility-section">
+                                <div class="resident-utility-section__heading">
+                                    <div>
+                                        <strong>Tiện ích thiết yếu quanh bạn</strong>
+                                        <small>Chọn một loại để tìm các địa điểm gần phòng nhất.</small>
+                                    </div>
+                                    <a href="@chatUrl" class="resident-owner-chat-link">
+                                        <i class="fas fa-comments"></i> Nhắn chủ trọ
+                                    </a>
+                                </div>
+
+                                <div class="resident-utility-actions">
+                                    <button type="button" data-nearby-type="hospital"><i class="fas fa-hospital"></i><span>Bệnh viện</span></button>
+                                    <button type="button" data-nearby-type="supermarket"><i class="fas fa-basket-shopping"></i><span>Chợ & siêu thị</span></button>
+                                    <button type="button" data-nearby-type="convenience_store"><i class="fas fa-store"></i><span>Tiện lợi 24/7</span></button>
+                                    <button type="button" data-nearby-type="bus_stop"><i class="fas fa-bus"></i><span>Trạm xe buýt</span></button>
+                                    <button type="button" data-nearby-type="restaurant_cafe"><i class="fas fa-utensils"></i><span>Ăn uống</span></button>
+                                </div>
+
+                                <p class="resident-utility-error" data-utility-error hidden></p>
+                                <div class="resident-utility-results" data-utility-results></div>
+                            </div>
+                        </div>
+                    </article>
+                }
+            </div>
+
+            <section class="resident-route-panel" id="residentRoutePanel" hidden>
+                <div class="resident-route-panel__heading">
+                    <div>
+                        <span><i class="fas fa-route"></i> Đường đi từ phòng</span>
+                        <h2 id="residentRouteTitle">Địa điểm đã chọn</h2>
+                    </div>
+                    <button type="button" id="residentRouteClose" aria-label="Đóng bản đồ"><i class="fas fa-xmark"></i></button>
+                </div>
+                <iframe id="residentRouteFrame" title="Đường đi đến tiện ích" loading="lazy"></iframe>
+            </section>
+        }
+        else
+        {
+            <section class="resident-rentals-empty">
+                <span><i class="fas fa-key"></i></span>
+                <h2>Bạn chưa có phòng thuê đã xác nhận</h2>
+                <p>Khi chủ trọ xác nhận cho thuê thành công, nơi ở sẽ xuất hiện tại đây để bạn tiện quản lý.</p>
+                <a href="/Accommodation/Search"><i class="fas fa-magnifying-glass"></i> Tìm phòng phù hợp</a>
+            </section>
+        }
+    </div>
+</main>
+
+@section Scripts {
+    <script>
+        (() => {
+            const routePanel = document.getElementById("residentRoutePanel");
+            const routeFrame = document.getElementById("residentRouteFrame");
+            const routeTitle = document.getElementById("residentRouteTitle");
+
+            function escapeText(value) {
+                const element = document.createElement("div");
+                element.textContent = value || "";
+                return element.innerHTML;
+            }
+
+            function renderResults(container, results) {
+                if (!results?.length) {
+                    container.innerHTML = '<p class="resident-utility-results__empty">Chưa tìm thấy địa điểm phù hợp trong bán kính 2,5 km.</p>';
+                    return;
+                }
+
+                container.innerHTML = results.map(result => `
+                    <button type="button" class="resident-utility-result"
+                            data-place-latitude="${result.latitude}"
+                            data-place-longitude="${result.longitude}"
+                            data-place-name="${encodeURIComponent(result.name || "Địa điểm")}">
+                        <span><strong>${escapeText(result.name)}</strong><small>Cách khoảng ${Number(result.distanceKm).toLocaleString("vi-VN")} km</small></span>
+                        <i class="fas fa-route"></i>
+                    </button>
+                `).join("");
+            }
+
+            document.querySelectorAll("[data-nearby-type]").forEach(button => {
+                button.addEventListener("click", async () => {
+                    const card = button.closest("[data-rental-card]");
+                    const results = card.querySelector("[data-utility-results]");
+                    const error = card.querySelector("[data-utility-error]");
+                    const latitude = card.dataset.latitude;
+                    const longitude = card.dataset.longitude;
+
+                    card.querySelectorAll("[data-nearby-type]").forEach(item => item.classList.toggle("is-active", item === button));
+                    error.hidden = true;
+
+                    if (!latitude || !longitude) {
+                        results.innerHTML = "";
+                        error.textContent = "Chưa đọc được tọa độ từ link Google Maps của phòng này.";
+                        error.hidden = false;
+                        return;
+                    }
+
+                    button.disabled = true;
+                    results.innerHTML = '<p class="resident-utility-results__empty">Đang tìm địa điểm gần nhất...</p>';
+                    try {
+                        const response = await fetch(`/Map/Nearby?latitude=${latitude}&longitude=${longitude}&type=${encodeURIComponent(button.dataset.nearbyType)}&radius=2500`);
+                        const data = await response.json();
+                        if (!response.ok || !data.success) throw new Error(data.message || "Không thể tìm tiện ích lúc này.");
+                        renderResults(results, data.results);
+                    } catch (requestError) {
+                        results.innerHTML = "";
+                        error.textContent = requestError.message || "Không thể tìm tiện ích lúc này.";
+                        error.hidden = false;
+                    } finally {
+                        button.disabled = false;
+                    }
+                });
+            });
+
+            document.querySelectorAll("[data-utility-results]").forEach(results => {
+                results.addEventListener("click", event => {
+                    const result = event.target.closest("[data-place-latitude]");
+                    if (!result) return;
+
+                    const card = result.closest("[data-rental-card]");
+                    const destinationName = decodeURIComponent(result.dataset.placeName);
+                    routeTitle.textContent = destinationName;
+                    routeFrame.src = `/Map/PreviewRoute?originLat=${card.dataset.latitude}&originLon=${card.dataset.longitude}&destinationLat=${result.dataset.placeLatitude}&destinationLon=${result.dataset.placeLongitude}&destinationName=${encodeURIComponent(destinationName)}`;
+                    routePanel.hidden = false;
+                    routePanel.scrollIntoView({ behavior: "smooth", block: "start" });
+                });
+            });
+
+            document.getElementById("residentRouteClose")?.addEventListener("click", () => {
+                routePanel.hidden = true;
+                routeFrame.src = "";
+            });
+        })();
+    </script>
+}

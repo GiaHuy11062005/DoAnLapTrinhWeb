@@ -2,7 +2,14 @@
 @inject DoAnLapTrinhWeb.Data.AppDbContext LayoutDbContext
 @{
     var layoutUnreadMessageCount = 0;
+    var layoutRentedRoomCount = 0;
     var layoutUserIdValue = User.Claims.FirstOrDefault(claim => claim.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    var layoutUserIdentity = User.Claims.FirstOrDefault(claim => claim.Type == "UserIdentity")?.Value;
+    var layoutUserIdentityLabel = layoutUserIdentity == "Student"
+        ? "Sinh viên"
+        : layoutUserIdentity == "Worker"
+            ? "Người đi làm"
+            : "Người tìm trọ";
     if ((User.IsInRole("User") || User.IsInRole("Landlord")) && int.TryParse(layoutUserIdValue, out var layoutUserId))
     {
         layoutUnreadMessageCount = await LayoutDbContext.ChatMessages.CountAsync(message =>
@@ -10,6 +17,13 @@
             message.SenderId != layoutUserId &&
             message.Conversation != null &&
             (message.Conversation.RenterId == layoutUserId || message.Conversation.LandlordId == layoutUserId));
+
+        if (User.IsInRole("User"))
+        {
+            layoutRentedRoomCount = await LayoutDbContext.RentalRequests.CountAsync(request =>
+                request.RenterId == layoutUserId &&
+                request.Status == "Success");
+        }
     }
 }
 <!DOCTYPE html>
@@ -62,6 +76,12 @@
                             <li class="nav-item">
                                 <a class="nav-link app-nav-link" href="/Home/SearchHistory">Lịch sử tìm phòng</a>
                             </li>
+                            <li class="nav-item">
+                                <a class="nav-link app-nav-link app-rented-link" href="/Rental/MyRentals">
+                                    <span><i class="fas fa-house-circle-check me-1"></i>Phòng đã thuê</span>
+                                    <small>@layoutRentedRoomCount phòng đang thuê</small>
+                                </a>
+                            </li>
                         }
                         @if (User.IsInRole("User") || User.IsInRole("Landlord"))
                         {
@@ -102,9 +122,15 @@
                                 </div>
                             </div>
                             <div class="dropdown">
-                                <button class="btn btn-light dropdown-toggle rounded-pill fw-medium border-0 px-3 py-2 bg-light d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <button class="btn btn-light dropdown-toggle rounded-pill border-0 px-3 py-2 bg-light d-flex align-items-center gap-2 app-profile-button" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                                     <img src="/images/avatar-default.png" class="rounded-circle" width="28" height="28" alt="User" onerror="this.src='https://cdn-icons-png.flaticon.com/512/149/149071.png'">
-                                    @User.Identity.Name
+                                    <span class="app-profile-button__text">
+                                        <strong>@User.Identity.Name</strong>
+                                        @if (User.IsInRole("User"))
+                                        {
+                                            <small>@layoutUserIdentityLabel</small>
+                                        }
+                                    </span>
                                 </button>
                                 <ul class="dropdown-menu dropdown-menu-end border-0 shadow-lg rounded-4 mt-2">
                                     <li><a class="dropdown-item py-2" href="/Profile"><i class="fas fa-user-edit text-muted me-2"></i> Trang cá nhân</a></li>
@@ -120,6 +146,15 @@
                                     {
                                         <li><a class="dropdown-item py-2" href="/Chat/Inbox"><i class="fas fa-comments text-success me-2"></i> Tin nhắn</a></li>
                                         <li><a class="dropdown-item py-2" href="/Favorite/Index"><i class="fas fa-heart text-danger me-2"></i> Mục ưa thích</a></li>
+                                    }
+                                    @if (User.IsInRole("User"))
+                                    {
+                                        <li>
+                                            <a class="dropdown-item py-2 app-rented-dropdown-item" href="/Rental/MyRentals">
+                                                <i class="fas fa-house-circle-check text-primary me-2"></i>
+                                                <span><strong>Phòng đã thuê</strong><small>@layoutRentedRoomCount phòng đang thuê</small></span>
+                                            </a>
+                                        </li>
                                     }
                                     <li><a class="dropdown-item py-2" href="/Home/SearchHistory"><i class="fas fa-clock-rotate-left text-muted me-2"></i> Lịch sử tìm phòng</a></li>
                                     @if (!User.IsInRole("Admin"))
@@ -243,9 +278,9 @@
                                 <div class="map-location-feedback">
                                     <div class="map-location-feedback__radius">
                                         <span><i class="fas fa-route"></i> Bán kính từ trung tâm thành phố</span>
-                                        <input type="text" id="modalMapRadius" value="Dán link Google Maps để hệ thống tính" readonly />
+                                        <input type="text" id="modalMapRadius" value="Chưa xác định" readonly />
                                     </div>
-                                    <small id="modalMapRadiusStatus">Hệ thống sẽ tự động đọc tọa độ và tính bán kính thật từ chính liên kết này.</small>
+                                    <small id="modalMapRadiusStatus"></small>
                                     <iframe id="modalMapPreview" title="Xem trước vị trí bài đăng" loading="lazy" hidden></iframe>
                                 </div>
                             </div>

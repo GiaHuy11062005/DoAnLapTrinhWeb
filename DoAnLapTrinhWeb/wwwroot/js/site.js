@@ -161,6 +161,7 @@ async function loadFavoriteStatuses() {
     }
 }
 
+window.loadFavoriteStatuses = loadFavoriteStatuses;
 document.addEventListener('DOMContentLoaded', loadFavoriteStatuses);
 
 
@@ -233,7 +234,14 @@ $(document).ready(function () {
     const previewMapRadius = async () => {
         const googleMapsUrl = mapLinkInput?.value.trim();
         const cityId = modalCitySelect.val();
-        if (!googleMapsUrl || !cityId || !mapRadiusInput) return;
+        if (!mapRadiusInput) return;
+        if (!googleMapsUrl || !cityId) {
+            mapRadiusInput.value = 'Chưa xác định';
+            mapRadiusStatus.textContent = '';
+            mapRadiusStatus.classList.remove('text-danger');
+            mapPreview.hidden = true;
+            return;
+        }
 
         mapRadiusInput.value = 'Đang tính bán kính...';
         try {
@@ -242,7 +250,7 @@ $(document).ready(function () {
             if (!response.ok || !data.success) throw new Error(data.message || 'Không thể tính bán kính.');
 
             mapRadiusInput.value = `${Number(data.distanceKm).toLocaleString('vi-VN')} km từ trung tâm ${data.centerName}`;
-            mapRadiusStatus.textContent = 'Đã đọc tọa độ thật từ liên kết Google Maps.';
+            mapRadiusStatus.textContent = 'Bán kính được tính tự động theo vị trí đã chọn.';
             mapRadiusStatus.classList.remove('text-danger');
             mapPreview.src = data.mapUrl;
             mapPreview.hidden = false;

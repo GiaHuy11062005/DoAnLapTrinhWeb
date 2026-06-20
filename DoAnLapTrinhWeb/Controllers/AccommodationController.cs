@@ -165,6 +165,11 @@ namespace DoAnLapTrinhWeb.Controllers
                 return RedirectToAction(nameof(Index), new { tab = "choduyet" });
             }
             ViewBag.IsApproved = room.IsApproved;
+            var oldPrice = room.Price;
+            var oldAvailableRooms = room.AvailableRooms;
+            var oldIsRentedOut = room.IsRentedOut;
+            var oldDescription = room.Description;
+            var oldAmenitiesSignature = BuildAmenitiesSignature(room);
 
             var allowedImageTypes = new[] { "image/jpeg", "image/png", "image/webp" };
             if (replacementImages.Count > 5)
@@ -280,6 +285,36 @@ namespace DoAnLapTrinhWeb.Controllers
             }
 
             // Giấy tờ đất không được gán hoặc thay đổi trong chức năng chỉnh sửa này.
+            List<AppNotification> favoriteNotifications = new();
+            if (room.IsApproved)
+            {
+                var changedParts = new List<string>();
+                if (oldPrice != room.Price) changedParts.Add("giá thuê");
+                if (oldAvailableRooms != room.AvailableRooms || oldIsRentedOut != room.IsRentedOut) changedParts.Add("tình trạng phòng");
+                if (!string.Equals(oldDescription, room.Description, StringComparison.Ordinal)) changedParts.Add("mô tả");
+                if (!string.Equals(oldAmenitiesSignature, BuildAmenitiesSignature(room), StringComparison.Ordinal)) changedParts.Add("tiện ích");
+                if (replacementImages.Count > 0) changedParts.Add("hình ảnh");
+
+                if (changedParts.Count > 0)
+                {
+                    var favoriteUserIds = await _context.Favorites
+                        .Where(item => item.AccommodationId == room.Id && item.UserId != currentUserId)
+                        .Select(item => item.UserId)
+                        .Distinct()
+                        .ToListAsync();
+
+                    favoriteNotifications = favoriteUserIds.Select(userId => new AppNotification
+                    {
+                        UserId = userId,
+                        Type = "FavoriteUpdate",
+                        Title = "Tin đã lưu có cập nhật mới",
+                        Message = $"{room.Title} vừa cập nhật {string.Join(", ", changedParts)}.",
+                        Url = $"/Accommodation/Details/{room.Id}"
+                    }).ToList();
+                    _context.Notifications.AddRange(favoriteNotifications);
+                }
+            }
+
             await _context.SaveChangesAsync();
 
             foreach (var oldImagePath in oldImagePaths)
@@ -288,6 +323,11 @@ namespace DoAnLapTrinhWeb.Controllers
             }
 
             TempData["Success"] = "Đã cập nhật thông tin phòng trọ.";
+            foreach (var notification in favoriteNotifications)
+            {
+                await SendNotification(notification);
+            }
+
             return RedirectToAction(nameof(Index));
         }
 
@@ -403,6 +443,24 @@ namespace DoAnLapTrinhWeb.Controllers
         }
 
         // --- API LOAD DANH SÁCH THÀNH PHỐ CHO POPUP ---
+        private static string BuildAmenitiesSignature(Accommodation room)
+        {
+            return string.Join("|", new[]
+            {
+                room.MaxOccupants.ToString(),
+                room.AllowsPets.ToString(),
+                room.HasParking.ToString(),
+                room.HasHighSpeedWifi.ToString(),
+                room.HasInverterAirConditioner.ToString(),
+                room.HasWasherDryer.ToString(),
+                room.Has24HourSecurity.ToString(),
+                room.HasBasementParking.ToString(),
+                room.HasElevator.ToString(),
+                room.HasRefrigerator.ToString(),
+                room.HasBalcony.ToString()
+            });
+        }
+
         [HttpGet]
         public async Task<IActionResult> GetAllCities()
         {
@@ -446,28 +504,6 @@ namespace DoAnLapTrinhWeb.Controllers
                 distanceKm = Math.Round(distanceKm, 2),
                 centerName = cityName,
                 mapUrl = GoogleMapsUrlHelper.GetEmbedUrl(normalizedUrl, "")
-            });
-        }
-
-        [HttpGet]
-        public async Task<IActionResult> ResolveMapDestination(string googleMapsUrl)
-        {
-            if (!IsGoogleMapsUrl(googleMapsUrl))
-                return BadRequest(new { success = false, message = "Liên kết Google Maps chưa hợp lệ." });
-
-            var normalizedUrl = await NormalizeGoogleMapsUrlAsync(googleMapsUrl);
-            if (!GoogleMapsUrlHelper.TryGetCoordinates(normalizedUrl, out var latitude, out var longitude))
-                return BadRequest(new { success = false, message = "Không đọc được vị trí từ link này. Hãy chia sẻ đúng ghim của tiện ích." });
-
-            var destination =
-                $"{latitude.ToString(System.Globalization.CultureInfo.InvariantCulture)}," +
-                $"{longitude.ToString(System.Globalization.CultureInfo.InvariantCulture)}";
-
-            return Ok(new
-            {
-                success = true,
-                destination,
-                mapUrl = GoogleMapsUrlHelper.GetDetailedUrl(normalizedUrl, destination)
             });
         }
 
@@ -664,18 +700,15 @@ namespace DoAnLapTrinhWeb.Controllers
                 .ToListAsync();
             var distanceLookup = new Dictionary<int, double>();
 
-            if (cityId.HasValue && radiusKm.HasValue && radiusKm.Value > 0)
+            if ((cityId.HasValue || districtId.HasValue) && radiusKm.HasValue && radiusKm.Value > 0)
             {
-                var cityName = await _context.Cities
-                    .Where(city => city.Id == cityId.Value)
-                    .Select(city => city.Name)
-                    .FirstOrDefaultAsync();
-                if (MapDistanceHelper.TryGetCityCenter(cityName, out var centerLatitude, out var centerLongitude))
+                var searchCenter = await ResolveSearchCenterAsync(cityId, districtId, candidateRooms);
+                if (searchCenter.HasValue)
                 {
                     candidateRooms = candidateRooms.Where(room =>
                     {
                         if (!GoogleMapsUrlHelper.TryGetCoordinates(room.GoogleMapsUrl, out var latitude, out var longitude)) return false;
-                        var distance = MapDistanceHelper.CalculateKm(centerLatitude, centerLongitude, latitude, longitude);
+                        var distance = MapDistanceHelper.CalculateKm(searchCenter.Value.Latitude, searchCenter.Value.Longitude, latitude, longitude);
                         distanceLookup[room.Id] = distance;
                         return distance <= radiusKm.Value;
                     }).ToList();
@@ -683,7 +716,7 @@ namespace DoAnLapTrinhWeb.Controllers
                 else
                 {
                     candidateRooms.Clear();
-                    ViewBag.RadiusError = "Thành phố đã chọn chưa có tâm bản đồ chuẩn để tính bán kính.";
+                    ViewBag.RadiusError = "Khu vực đã chọn chưa có tâm bản đồ phù hợp để tính bán kính.";
                 }
             }
 
@@ -743,6 +776,53 @@ namespace DoAnLapTrinhWeb.Controllers
             return View(results);
         }
 
+        private async Task<(double Latitude, double Longitude)?> ResolveSearchCenterAsync(
+            int? cityId,
+            int? districtId,
+            IEnumerable<Accommodation> rooms)
+        {
+            if (districtId.HasValue)
+            {
+                var district = await _context.Districts
+                    .Include(item => item.City)
+                    .FirstOrDefaultAsync(item => item.Id == districtId.Value);
+                if (district != null &&
+                    MapDistanceHelper.TryGetDistrictCenter(district.City?.Name, district.Name, out var districtLatitude, out var districtLongitude))
+                    return (districtLatitude, districtLongitude);
+
+                if (TryGetAverageRoomCenter(rooms, out var averageLatitude, out var averageLongitude))
+                    return (averageLatitude, averageLongitude);
+            }
+
+            if (!cityId.HasValue) return null;
+            var cityName = await _context.Cities
+                .Where(city => city.Id == cityId.Value)
+                .Select(city => city.Name)
+                .FirstOrDefaultAsync();
+            return MapDistanceHelper.TryGetCityCenter(cityName, out var cityLatitude, out var cityLongitude)
+                ? (cityLatitude, cityLongitude)
+                : null;
+        }
+
+        private static bool TryGetAverageRoomCenter(IEnumerable<Accommodation> rooms, out double latitude, out double longitude)
+        {
+            var points = rooms
+                .Select(room => GoogleMapsUrlHelper.TryGetCoordinates(room.GoogleMapsUrl, out var roomLatitude, out var roomLongitude)
+                    ? (Latitude: roomLatitude, Longitude: roomLongitude)
+                    : ((double Latitude, double Longitude)?)null)
+                .Where(point => point.HasValue)
+                .Select(point => point!.Value)
+                .ToList();
+
+            latitude = 0;
+            longitude = 0;
+            if (points.Count == 0) return false;
+
+            latitude = points.Average(point => point.Latitude);
+            longitude = points.Average(point => point.Longitude);
+            return true;
+        }
+
         // --- HÀM XỬ LÝ TRANG CHI TIẾT (TASK 1) ---
         [HttpGet]
         [AllowAnonymous]
@@ -753,6 +833,8 @@ namespace DoAnLapTrinhWeb.Controllers
                 .Include(a => a.District)
                 .Include(a => a.Images)
                 .Include(a => a.Owner)
+                .Include(a => a.Reviews!)
+                    .ThenInclude(review => review.Reviewer)
                 .AsQueryable();
 
             // Khách chỉ được xem phòng đã duyệt. Admin và chính chủ vẫn được xem trước bài chờ duyệt.
@@ -776,19 +858,96 @@ namespace DoAnLapTrinhWeb.Controllers
             // Bài cũ có thể đang lưu link chia sẻ rút gọn. Mở rộng link trong bộ nhớ
             // để preview vẫn lấy được tọa độ ghim chính xác khi người dùng mở bản đồ.
             room.GoogleMapsUrl = await NormalizeGoogleMapsUrlAsync(room.GoogleMapsUrl);
+            var roomReviews = room.Reviews?
+                .OrderByDescending(review => review.CreatedAt)
+                .ToList() ?? new List<AccommodationReview>();
+            ViewBag.RoomReviews = roomReviews;
+            ViewBag.AverageRating = roomReviews.Count > 0
+                ? Math.Round(roomReviews.Average(review => review.Rating), 1)
+                : 0;
+            ViewBag.ReviewCount = roomReviews.Count;
 
             if (User.Identity != null && User.Identity.IsAuthenticated)
             {
-                var userEmail = User.FindFirstValue(ClaimTypes.Email);
-                var currentUser = await _context.Users.FirstOrDefaultAsync(u => u.Email == userEmail);
+                var currentUserIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                var currentUser = int.TryParse(currentUserIdClaim, out var signedInUserId)
+                    ? await _context.Users.FindAsync(signedInUserId)
+                    : null;
 
                 if (currentUser != null)
                 {
                     ViewBag.UserDestination = currentUser.DestinationAddress;
+                    var activeRental = await _context.RentalRequests
+                        .AsNoTracking()
+                        .Include(request => request.Accommodation)
+                        .FirstOrDefaultAsync(request =>
+                            request.RenterId == currentUser.Id &&
+                            request.Status == "Success");
+                    ViewBag.ActiveRentalAccommodationId = activeRental?.AccommodationId;
+                    ViewBag.ActiveRentalTitle = activeRental?.Accommodation?.Title;
+
+                    var reviewableRequest = await _context.RentalRequests
+                        .AsNoTracking()
+                        .Include(request => request.Review)
+                        .FirstOrDefaultAsync(request =>
+                            request.AccommodationId == room.Id &&
+                            request.RenterId == currentUser.Id &&
+                            (request.Status == "Success" || request.Status == "Completed") &&
+                            request.Review == null);
+                    ViewBag.ReviewableRentalRequestId = reviewableRequest?.Id;
                 }
             }
 
             return View(room);
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "User")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SubmitReview(int accommodationId, int rentalRequestId, int rating, string? comment)
+        {
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userIdString, out var currentUserId)) return Unauthorized();
+
+            rating = Math.Clamp(rating, 1, 5);
+            comment = comment?.Trim();
+            if (!string.IsNullOrWhiteSpace(comment) && comment.Length > 600)
+            {
+                TempData["Error"] = "Đánh giá chỉ nên dưới 600 ký tự để mọi người đọc nhanh hơn.";
+                return RedirectToAction(nameof(Details), new { id = accommodationId, review = "open" });
+            }
+
+            var rentalRequest = await _context.RentalRequests
+                .Include(request => request.Review)
+                .FirstOrDefaultAsync(request =>
+                    request.Id == rentalRequestId &&
+                    request.AccommodationId == accommodationId &&
+                    request.RenterId == currentUserId &&
+                    (request.Status == "Success" || request.Status == "Completed"));
+            if (rentalRequest == null)
+            {
+                TempData["Error"] = "Chỉ tài khoản đã thuê thành công phòng này mới có thể đánh giá.";
+                return RedirectToAction(nameof(Details), new { id = accommodationId });
+            }
+            if (rentalRequest.Review != null)
+            {
+                TempData["Error"] = "Bạn đã đánh giá lượt thuê này rồi.";
+                return RedirectToAction(nameof(Details), new { id = accommodationId });
+            }
+
+            _context.AccommodationReviews.Add(new AccommodationReview
+            {
+                AccommodationId = accommodationId,
+                RentalRequestId = rentalRequestId,
+                ReviewerId = currentUserId,
+                Rating = rating,
+                Comment = string.IsNullOrWhiteSpace(comment) ? null : comment,
+                CreatedAt = DateTime.Now
+            });
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = "Cảm ơn bạn đã đánh giá phòng trọ. Đánh giá này sẽ giúp phòng tốt nổi bật hơn.";
+            return Redirect($"/Accommodation/Details/{accommodationId}#roomReviewSection");
         }
 
         private async Task SendNotification(AppNotification notification)

@@ -3,10 +3,15 @@
     ViewData["Title"] = "Trang chủ";
     var featuredRooms = ViewBag.SuggestedRooms as List<Accommodation> ?? new List<Accommodation>();
     var cities = ViewBag.Cities as List<City> ?? new List<City>();
+    var homeBanner = ViewBag.HomeBanner as HomeBannerSettings ?? new HomeBannerSettings();
+    var homeBannerImages = homeBanner.ImageUrls.Any()
+        ? homeBanner.ImageUrls
+        : new List<string> { homeBanner.ImageUrl };
+    var homeBannerImagesJson = System.Text.Json.JsonSerializer.Serialize(homeBannerImages);
 }
 
 <div class="home-page">
-    <section class="home-hero">
+    <section class="home-hero" id="homeHeroBanner" style="background-image: url('@homeBannerImages.First()')" data-banner-skip-seconds="@homeBanner.SkipSeconds" data-banner-images='@Html.Raw(homeBannerImagesJson)'>
         <div class="home-hero__overlay"></div>
         <div class="home-hero__content">
             <h1>Tìm kiếm tổ ấm hoàn hảo của bạn</h1>
@@ -16,7 +21,8 @@
                     <button type="button" class="home-search__tab active" data-home-type="room">Nhà trọ</button>
                     <button type="button" class="home-search__tab" data-home-type="whole-house">Nhà nguyên căn</button>
                 </div>
-                <form action="/Accommodation/Search" method="get" class="home-search__form">
+                <form action="/Accommodation/Search" method="get" class="home-search__form" id="homeSearchForm">
+                    <input type="hidden" name="accommodationType" id="homeAccommodationType" value="room" />
                     <div class="home-field">
                         <label for="citySelect">Địa điểm</label>
                         <div class="home-field__control">
@@ -63,7 +69,7 @@
             {
                 <button type="button" id="homeLatestNotificationButton" class="home-latest-button">
                     <i class="far fa-bell"></i>
-                    <span>Xem cập nhật trọ mới nhất</span>
+                    <span>Xem thông báo của bạn</span>
                     <strong id="homeLatestNotificationCount" hidden>0</strong>
                 </button>
             }
@@ -76,20 +82,28 @@
                 <h2>Phòng trọ &amp; Nhà ở nổi bật</h2>
                 <p>Khám phá những lựa chọn tốt nhất được xác thực bởi Chỗ Ở Tiện Ích.</p>
             </div>
-            <a href="/Accommodation/Search">Xem tất cả <i class="fas fa-arrow-right"></i></a>
         </div>
 
-        <form action="/Accommodation/Search" method="get" class="featured-quick-search">
-            <div class="featured-quick-search__input">
-                <i class="fas fa-magnifying-glass"></i>
-                <input type="text" name="keyword" aria-label="Tìm kiếm phòng" placeholder="Tìm kiếm vị trí hoặc từ khóa..." />
+        <form action="/Home/FeaturedRooms" method="get" class="featured-quick-search" id="featuredQuickSearch">
+            <label class="featured-quick-search__label" for="featuredKeywordInput">
+                <i class="fas fa-keyboard"></i> Tìm kiếm theo tên, địa chỉ
+            </label>
+            <div class="featured-quick-search__keyword">
+                <div class="featured-quick-search__input">
+                    <i class="fas fa-magnifying-glass"></i>
+                    <input type="text" id="featuredKeywordInput" name="keyword" aria-label="Tìm kiếm phòng theo tên hoặc địa chỉ" placeholder="Tìm kiếm vị trí hoặc từ khóa..." />
+                </div>
+                <button type="submit" class="featured-quick-search__button">Tìm kiếm</button>
             </div>
-            <select name="cityId" id="featuredCitySelect" aria-label="Chọn thành phố để tìm theo bán kính" required>
+            <select name="cityId" id="featuredCitySelect" aria-label="Chọn thành phố để tìm theo bán kính">
                 <option value="" selected disabled>Chọn thành phố</option>
                 @foreach (var city in cities)
                 {
                     <option value="@city.Id">@city.Name</option>
                 }
+            </select>
+            <select name="districtId" id="featuredDistrictSelect" aria-label="Chọn quận huyện để làm tâm bán kính" disabled>
+                <option value="" selected>Tất cả quận/huyện</option>
             </select>
             <select name="radiusKm" id="featuredRadiusSelect" aria-label="Bán kính tìm kiếm" disabled>
                 <option value="" selected>Mọi bán kính</option>
@@ -98,9 +112,10 @@
                 <option value="10">Trong 10 km</option>
                 <option value="20">Trong 20 km</option>
             </select>
-            <button type="submit">Tìm kiếm</button>
         </form>
 
+        <p class="featured-quick-search__status" id="featuredQuickSearchStatus" hidden></p>
+        <div id="featuredRoomResults">
         @if (featuredRooms.Any())
         {
             <div class="listing-grid">
@@ -119,6 +134,10 @@
                     var firstImage = !string.IsNullOrWhiteSpace(savedImage)
                         ? savedImage
                         : fallbackImage;
+                    var roomReviewCount = room.Reviews?.Count ?? 0;
+                    var roomAverageRating = roomReviewCount > 0
+                        ? Math.Round(room.Reviews!.Average(review => review.Rating), 1)
+                        : 0;
                     <article class="listing-card">
                         <a class="listing-card__image" href="/Accommodation/Details/@room.Id">
                             <img src="@firstImage" alt="@room.Title" onerror="this.onerror=null;this.src='@fallbackImage';" />
@@ -132,6 +151,7 @@
                             <a href="/Accommodation/Details/@room.Id" class="listing-card__title">@room.Title</a>
                             <p class="listing-card__location"><i class="fas fa-location-dot"></i> @room.District?.Name, @room.City?.Name</p>
                             <div class="listing-card__tags">
+                                @if (roomReviewCount > 0) { <span><i class="fas fa-star"></i> @roomAverageRating.ToString("0.0") · @roomReviewCount đánh giá</span> }
                                 @if (room.HasParking) { <span><i class="fas fa-square-parking"></i> Chỗ để xe</span> }
                                 @if (room.AllowsPets) { <span><i class="fas fa-paw"></i> Cho thú cưng</span> }
                                 <span><i class="fas fa-ruler-combined"></i> @room.Area m²</span>
@@ -150,6 +170,7 @@
                 <p>Các bài đăng đã duyệt sẽ xuất hiện tại đây.</p>
             </div>
         }
+        </div>
     </section>
 
     <section class="home-benefits">
@@ -298,18 +319,93 @@
         document.addEventListener("DOMContentLoaded", function () {
             const citySelect = document.getElementById("citySelect");
             const districtSelect = document.getElementById("districtSelect");
+            const homeSearchForm = document.getElementById("homeSearchForm");
+            const homeAccommodationType = document.getElementById("homeAccommodationType");
             const searchTabs = document.querySelectorAll("[data-home-type]");
             const reviewCarousel = document.getElementById("homeReviewCarousel");
             const reviewTrack = document.getElementById("homeReviewTrack");
             const reviewPrevious = document.getElementById("homeReviewPrevious");
             const reviewNext = document.getElementById("homeReviewNext");
             const featuredCitySelect = document.getElementById("featuredCitySelect");
+            const featuredDistrictSelect = document.getElementById("featuredDistrictSelect");
             const featuredRadiusSelect = document.getElementById("featuredRadiusSelect");
+            const featuredQuickSearch = document.getElementById("featuredQuickSearch");
+            const featuredResults = document.getElementById("featuredRoomResults");
+            const featuredStatus = document.getElementById("featuredQuickSearchStatus");
+            const homeHeroBanner = document.getElementById("homeHeroBanner");
+            const featuredFallbackImages = [
+                "/images/accommodations/5007c941-3c42-4e59-8723-0e6c6a85373d_nhatro.jpg",
+                "/images/accommodations/da3b6c60-91a7-43e6-a237-055b3af7a96c_anh1.png"
+            ];
+
+            const escapeHtml = value => {
+                const element = document.createElement("div");
+                element.textContent = value || "";
+                return element.innerHTML;
+            };
+
+            const renderFeaturedRooms = rooms => {
+                if (!featuredResults) return;
+                if (!rooms.length) {
+                    featuredResults.innerHTML = `
+                        <div class="home-empty">
+                            <i class="fas fa-magnifying-glass-location"></i>
+                            <h3>Chưa tìm thấy phòng phù hợp</h3>
+                            <p>Hãy thử đổi từ khóa, thành phố hoặc mở rộng bán kính tìm kiếm.</p>
+                        </div>`;
+                    return;
+                }
+
+                featuredResults.innerHTML = `<div class="listing-grid">${rooms.map((room, index) => {
+                    const fallbackImage = featuredFallbackImages[index % featuredFallbackImages.length];
+                    const imageUrl = room.imageUrl || fallbackImage;
+                    return `
+                        <article class="listing-card">
+                            <a class="listing-card__image" href="/Accommodation/Details/${room.id}">
+                                <img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(room.title)}" onerror="this.onerror=null;this.src='${fallbackImage}';" />
+                                <span class="listing-card__badge"><i class="fas fa-circle-check"></i> Xác thực</span>
+                            </a>
+                            <button type="button" class="listing-card__favorite" data-favorite-room-id="${room.id}" onclick="toggleGlobalFavorite(${room.id}, this)" aria-label="Thêm vào yêu thích">
+                                <i class="far fa-heart"></i>
+                            </button>
+                            <div class="listing-card__body">
+                                <div class="listing-card__price">${escapeHtml(room.price)} <small>VNĐ/tháng</small></div>
+                                <a href="/Accommodation/Details/${room.id}" class="listing-card__title">${escapeHtml(room.title)}</a>
+                                <p class="listing-card__location"><i class="fas fa-location-dot"></i> ${escapeHtml(room.location)}</p>
+                                <div class="listing-card__tags">
+                                    ${room.reviewCount > 0 ? `<span><i class="fas fa-star"></i> ${Number(room.averageRating).toLocaleString("vi-VN", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} · ${room.reviewCount} đánh giá</span>` : ''}
+                                    ${room.hasParking ? '<span><i class="fas fa-square-parking"></i> Chỗ để xe</span>' : ''}
+                                    ${room.allowsPets ? '<span><i class="fas fa-paw"></i> Cho thú cưng</span>' : ''}
+                                    <span><i class="fas fa-ruler-combined"></i> ${escapeHtml(room.area)} m²</span>
+                                </div>
+                            </div>
+                        </article>`;
+                }).join("")}</div>`;
+                window.loadFavoriteStatuses?.();
+            };
+
+            if (homeHeroBanner) {
+                let bannerImages = [];
+                try {
+                    bannerImages = JSON.parse(homeHeroBanner.dataset.bannerImages || "[]");
+                } catch {
+                    bannerImages = [];
+                }
+                const skipSeconds = Math.max(2, Number(homeHeroBanner.dataset.bannerSkipSeconds) || 6);
+                if (bannerImages.length > 1) {
+                    let bannerIndex = 0;
+                    window.setInterval(() => {
+                        bannerIndex = (bannerIndex + 1) % bannerImages.length;
+                        homeHeroBanner.style.backgroundImage = `url("${bannerImages[bannerIndex]}")`;
+                    }, skipSeconds * 1000);
+                }
+            }
 
             searchTabs.forEach(tab => {
                 tab.addEventListener("click", () => {
                     searchTabs.forEach(item => item.classList.remove("active"));
                     tab.classList.add("active");
+                    if (homeAccommodationType) homeAccommodationType.value = tab.dataset.homeType || "room";
                     tab.closest(".home-search__tabs")?.classList.toggle(
                         "is-whole-house",
                         tab.dataset.homeType === "whole-house");
@@ -336,8 +432,76 @@
                 }
             });
 
-            featuredCitySelect?.addEventListener("change", () => {
+            featuredCitySelect?.addEventListener("change", async () => {
                 featuredRadiusSelect.disabled = !featuredCitySelect.value;
+                if (!featuredDistrictSelect) return;
+                featuredDistrictSelect.innerHTML = '<option value="" selected>Đang tải quận/huyện...</option>';
+                featuredDistrictSelect.disabled = true;
+                try {
+                    const response = await fetch(`/Home/GetDistrictsWithRooms?cityId=${featuredCitySelect.value}`);
+                    if (!response.ok) throw new Error();
+                    const districts = await response.json();
+                    featuredDistrictSelect.innerHTML = '<option value="" selected>Tất cả quận/huyện</option>';
+                    districts.forEach(district => {
+                        const option = document.createElement("option");
+                        option.value = district.id;
+                        option.textContent = district.name;
+                        featuredDistrictSelect.appendChild(option);
+                    });
+                    featuredDistrictSelect.disabled = false;
+                } catch {
+                    featuredDistrictSelect.innerHTML = '<option value="" selected>Lỗi tải quận/huyện</option>';
+                }
+            });
+
+            const runFeaturedSearch = async (parameters, submitButton, shouldScroll) => {
+                if (featuredStatus) {
+                    featuredStatus.hidden = false;
+                    featuredStatus.textContent = "Đang lọc phòng ngay tại danh sách bên dưới...";
+                }
+                if (submitButton) submitButton.disabled = true;
+
+                try {
+                    const response = await fetch(`/Home/FeaturedRooms?${parameters}`, {
+                        headers: { "X-Requested-With": "XMLHttpRequest" }
+                    });
+                    const data = await response.json();
+                    if (!response.ok || !data.success) throw new Error();
+                    renderFeaturedRooms(data.results || []);
+                    if (featuredStatus) {
+                        featuredStatus.textContent = data.count > 0
+                            ? `Tìm thấy ${data.count} phòng phù hợp.`
+                            : "Không có phòng phù hợp trong danh sách nổi bật hiện tại.";
+                    }
+                } catch {
+                    if (featuredStatus) featuredStatus.textContent = "Không thể lọc phòng lúc này. Vui lòng thử lại.";
+                } finally {
+                    if (submitButton) submitButton.disabled = false;
+                }
+                if (shouldScroll) {
+                    document.querySelector(".home-featured")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }
+            };
+
+            homeSearchForm?.addEventListener("submit", async event => {
+                event.preventDefault();
+                const submitButton = homeSearchForm.querySelector('button[type="submit"]');
+                const parameters = new URLSearchParams(new FormData(homeSearchForm));
+                parameters.delete("recordHistory");
+                await runFeaturedSearch(parameters, submitButton, true);
+            });
+
+            featuredQuickSearch?.addEventListener("submit", async event => {
+                event.preventDefault();
+                const submitButton = featuredQuickSearch.querySelector('button[type="submit"]');
+                const parameters = new URLSearchParams(new FormData(featuredQuickSearch));
+                await runFeaturedSearch(parameters, submitButton, false);
+            });
+
+            featuredRadiusSelect?.addEventListener("change", async () => {
+                if (!featuredQuickSearch || !featuredCitySelect?.value) return;
+                const parameters = new URLSearchParams(new FormData(featuredQuickSearch));
+                await runFeaturedSearch(parameters, featuredRadiusSelect, false);
             });
 
             if (reviewCarousel && reviewTrack) {

@@ -8,6 +8,7 @@
     string statusFilter = ViewBag.StatusFilter ?? "all";
     string keyword = ViewBag.Keyword ?? "";
     bool isLandlord = User.IsInRole("Landlord");
+    var rentalStatusLookup = ViewBag.RentalStatusLookup as Dictionary<string, string> ?? new();
 }
 
 <div class="container-fluid bg-light py-4 chat-inbox-page">
@@ -72,6 +73,27 @@
                         var unreadCount = conversation.Messages?.Count(m => m.SenderId != currentUserId && !m.IsRead) ?? 0;
                         
                         var firstImage = conversation.Accommodation?.Images?.FirstOrDefault();
+                        var rentalStatusKey = $"{conversation.AccommodationId}:{conversation.RenterId}";
+                        rentalStatusLookup.TryGetValue(rentalStatusKey, out var rentalStatus);
+                        var statusLabel = rentalStatus switch
+                        {
+                            "Pending" => "Chờ phản hồi",
+                            "Negotiating" => "Đang thương lượng",
+                            "Success" => "Đã thuê thành công",
+                            "Completed" => "Đã kết thúc",
+                            "Cancelled" => "Đã hủy",
+                            "Rejected" => "Đã từ chối",
+                            _ => conversation.HasPendingNegotiation ? "Chờ xác nhận" : null
+                        };
+                        var statusClass = rentalStatus switch
+                        {
+                            "Success" => "is-success",
+                            "Completed" => "is-muted",
+                            "Cancelled" or "Rejected" => "is-danger",
+                            "Negotiating" => "is-info",
+                            "Pending" => "is-warning",
+                            _ => conversation.HasPendingNegotiation ? "is-warning" : ""
+                        };
                         string accType = conversation.Accommodation?.AccommodationType == "NhaNguyenCan" ? "Nhà" : "Phòng";
 
                         <div class="chat-list-item p-3 border-bottom position-relative @(unreadCount > 0 ? "unread" : "")" 
@@ -124,10 +146,10 @@
                             </div>
                             
                             <!-- Badges -->
-                            @if (conversation.HasPendingNegotiation)
+                            @if (!string.IsNullOrWhiteSpace(statusLabel))
                             {
-                                <div class="position-absolute bottom-0 end-0 p-2">
-                                    <span class="badge bg-warning text-dark" style="font-size: 0.65rem;">Chờ xác nhận</span>
+                                <div class="chat-status-ticket @statusClass">
+                                    <i class="fas fa-ticket"></i> @statusLabel
                                 </div>
                             }
                         </div>
