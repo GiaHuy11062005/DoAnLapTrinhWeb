@@ -27,8 +27,8 @@
                         <label for="citySelect">Địa điểm</label>
                         <div class="home-field__control">
                             <i class="fas fa-location-dot"></i>
-                            <select id="citySelect" name="cityId" required>
-                                <option value="" selected disabled>Chọn tỉnh/thành</option>
+                            <select id="citySelect" name="cityId">
+                                <option value="" selected>Tất cả tỉnh/thành</option>
                                 @if (ViewBag.Cities != null)
                                 {
                                     foreach (var city in ViewBag.Cities)
@@ -96,7 +96,7 @@
                 <button type="submit" class="featured-quick-search__button">Tìm kiếm</button>
             </div>
             <select name="cityId" id="featuredCitySelect" aria-label="Chọn thành phố để tìm theo bán kính">
-                <option value="" selected disabled>Chọn thành phố</option>
+                <option value="" selected>Tất cả tỉnh/thành</option>
                 @foreach (var city in cities)
                 {
                     <option value="@city.Id">@city.Name</option>
@@ -127,7 +127,7 @@
                     };
                     var roomIndex = 0;
                 }
-                @foreach (var room in featuredRooms.Take(3))
+                @foreach (var room in featuredRooms)
                 {
                     var savedImage = room.Images?.FirstOrDefault()?.ImageUrl;
                     var fallbackImage = fallbackImages[roomIndex % fallbackImages.Length];
@@ -171,6 +171,7 @@
             </div>
         }
         </div>
+        <div class="featured-pagination" id="featuredPagination" aria-label="Phân trang phòng nổi bật"></div>
     </section>
 
     <section class="home-benefits">
@@ -332,7 +333,10 @@
             const featuredQuickSearch = document.getElementById("featuredQuickSearch");
             const featuredResults = document.getElementById("featuredRoomResults");
             const featuredStatus = document.getElementById("featuredQuickSearchStatus");
+            const featuredPagination = document.getElementById("featuredPagination");
             const homeHeroBanner = document.getElementById("homeHeroBanner");
+            const featuredPageSize = 6;
+            let featuredCurrentPage = 1;
             const featuredFallbackImages = [
                 "/images/accommodations/5007c941-3c42-4e59-8723-0e6c6a85373d_nhatro.jpg",
                 "/images/accommodations/da3b6c60-91a7-43e6-a237-055b3af7a96c_anh1.png"
@@ -344,6 +348,35 @@
                 return element.innerHTML;
             };
 
+            const updateFeaturedPagination = () => {
+                if (!featuredResults || !featuredPagination) return;
+                const cards = Array.from(featuredResults.querySelectorAll(".listing-card"));
+                const totalPages = Math.ceil(cards.length / featuredPageSize);
+                if (totalPages <= 1) {
+                    featuredPagination.innerHTML = "";
+                    cards.forEach(card => card.hidden = false);
+                    window.loadFavoriteStatuses?.();
+                    return;
+                }
+
+                featuredCurrentPage = Math.min(Math.max(featuredCurrentPage, 1), totalPages);
+                const startIndex = (featuredCurrentPage - 1) * featuredPageSize;
+                const endIndex = startIndex + featuredPageSize;
+                cards.forEach((card, index) => {
+                    card.hidden = index < startIndex || index >= endIndex;
+                });
+
+                featuredPagination.innerHTML = `
+                    <button type="button" data-featured-page="${featuredCurrentPage - 1}" ${featuredCurrentPage === 1 ? "disabled" : ""}>
+                        <i class="fas fa-chevron-left"></i> Trang trước
+                    </button>
+                    <span>Trang ${featuredCurrentPage}/${totalPages}</span>
+                    <button type="button" data-featured-page="${featuredCurrentPage + 1}" ${featuredCurrentPage === totalPages ? "disabled" : ""}>
+                        Trang sau <i class="fas fa-chevron-right"></i>
+                    </button>`;
+                window.loadFavoriteStatuses?.();
+            };
+
             const renderFeaturedRooms = rooms => {
                 if (!featuredResults) return;
                 if (!rooms.length) {
@@ -353,9 +386,11 @@
                             <h3>Chưa tìm thấy phòng phù hợp</h3>
                             <p>Hãy thử đổi từ khóa, thành phố hoặc mở rộng bán kính tìm kiếm.</p>
                         </div>`;
+                    if (featuredPagination) featuredPagination.innerHTML = "";
                     return;
                 }
 
+                featuredCurrentPage = 1;
                 featuredResults.innerHTML = `<div class="listing-grid">${rooms.map((room, index) => {
                     const fallbackImage = featuredFallbackImages[index % featuredFallbackImages.length];
                     const imageUrl = room.imageUrl || fallbackImage;
@@ -381,7 +416,7 @@
                             </div>
                         </article>`;
                 }).join("")}</div>`;
-                window.loadFavoriteStatuses?.();
+                updateFeaturedPagination();
             };
 
             if (homeHeroBanner) {
@@ -413,6 +448,12 @@
             });
 
             citySelect?.addEventListener("change", async function () {
+                if (!this.value) {
+                    districtSelect.innerHTML = '<option value="" selected>Tất cả khu vực</option>';
+                    districtSelect.disabled = true;
+                    return;
+                }
+
                 districtSelect.innerHTML = '<option value="" selected>Đang tải...</option>';
                 districtSelect.disabled = true;
                 try {
@@ -435,6 +476,15 @@
             featuredCitySelect?.addEventListener("change", async () => {
                 featuredRadiusSelect.disabled = !featuredCitySelect.value;
                 if (!featuredDistrictSelect) return;
+                if (!featuredCitySelect.value) {
+                    featuredDistrictSelect.innerHTML = '<option value="" selected>Tất cả quận/huyện</option>';
+                    featuredDistrictSelect.disabled = true;
+                    if (featuredRadiusSelect) {
+                        featuredRadiusSelect.value = "";
+                        featuredRadiusSelect.disabled = true;
+                    }
+                    return;
+                }
                 featuredDistrictSelect.innerHTML = '<option value="" selected>Đang tải quận/huyện...</option>';
                 featuredDistrictSelect.disabled = true;
                 try {
@@ -503,6 +553,16 @@
                 const parameters = new URLSearchParams(new FormData(featuredQuickSearch));
                 await runFeaturedSearch(parameters, featuredRadiusSelect, false);
             });
+
+            featuredPagination?.addEventListener("click", event => {
+                const button = event.target.closest("[data-featured-page]");
+                if (!button || button.disabled) return;
+                featuredCurrentPage = Number(button.dataset.featuredPage) || 1;
+                updateFeaturedPagination();
+                featuredResults?.scrollIntoView({ behavior: "smooth", block: "start" });
+            });
+
+            updateFeaturedPagination();
 
             if (reviewCarousel && reviewTrack) {
                 const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;

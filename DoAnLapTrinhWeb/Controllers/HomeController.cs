@@ -60,7 +60,7 @@ namespace DoAnLapTrinhWeb.Controllers
                             .ThenByDescending(GetPositiveReviewScore)
                             .ThenByDescending(a => a.Reviews?.Count ?? 0)
                             .ThenByDescending(a => a.CreatedAt)
-                            .Take(6)
+                            .Take(12)
                             .ToList();
                     }
                 }
@@ -69,11 +69,20 @@ namespace DoAnLapTrinhWeb.Controllers
             // Khách chưa đăng nhập hoặc chưa có địa chỉ vẫn thấy phòng nổi bật mới nhất.
             if (suggestedRooms.Count == 0)
             {
-                suggestedRooms = await BuildFeaturedRoomsAsync(null, null, null, null, null, null, 6);
+                suggestedRooms = await BuildFeaturedRoomsAsync(null, null, null, null, null, null, 12);
             }
             else
             {
                 var suggestedIds = suggestedRooms.Select(room => room.Id).ToList();
+                if (suggestedIds.Count < 12)
+                {
+                    var additionalRooms = await BuildFeaturedRoomsAsync(null, null, null, null, null, null, 12);
+                    suggestedIds.AddRange(additionalRooms
+                        .Where(room => !suggestedIds.Contains(room.Id))
+                        .Select(room => room.Id)
+                        .Take(12 - suggestedIds.Count));
+                }
+
                 suggestedRooms = await _context.Accommodations
                     .Include(a => a.Images)
                     .Include(a => a.City)

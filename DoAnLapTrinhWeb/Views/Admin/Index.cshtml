@@ -124,7 +124,7 @@
                 </div>
             </div>
             <div class="dashboard-banner-editor">
-                <div class="dashboard-banner-preview" id="dashboardBannerPreview" style="background-image: url('@homeBannerImages.First()')">
+                <div class="dashboard-banner-preview" id="dashboardBannerPreview" data-current-banner="@homeBannerImages.First()" style="background-image: url('@homeBannerImages.First()')">
                     <span id="dashboardBannerPreviewMeta">@homeBannerImages.Count ảnh · @homeBanner.SkipSeconds giây</span>
                 </div>
                 <form action="/Admin/UpdateHomeBanner" method="post" enctype="multipart/form-data" class="dashboard-banner-form">
@@ -132,6 +132,7 @@
                     <label>
                         <span>Ảnh banner mới (có thể chọn nhiều ảnh)</span>
                         <input type="file" name="bannerImages" accept="image/jpeg,image/png,image/webp" class="form-control" id="dashboardBannerInput" multiple />
+                        <div id="dashboardBannerImagePreview" class="listing-image-preview dashboard-banner-image-preview" aria-live="polite"></div>
                     </label>
                     <label>
                         <span>Thời gian skip/chuyển banner (giây)</span>
@@ -254,25 +255,93 @@
             const bannerPreview = document.getElementById("dashboardBannerPreview");
             const bannerMeta = document.getElementById("dashboardBannerPreviewMeta");
             const bannerInput = document.getElementById("dashboardBannerInput");
+            const bannerImagePreview = document.getElementById("dashboardBannerImagePreview");
             const bannerSkipSeconds = document.getElementById("dashboardBannerSkipSeconds");
-            let previewUrl = null;
+            const existingBannerImageCount = @homeBannerImages.Count;
+            const existingBannerSkipSeconds = @homeBanner.SkipSeconds;
+            const currentBannerImage = bannerPreview?.dataset.currentBanner || "";
+            const allowedBannerTypes = ["image/jpeg", "image/png", "image/webp"];
+            let previewUrls = [];
+
+            const clearPreviewUrls = () => {
+                previewUrls.forEach(url => URL.revokeObjectURL(url));
+                previewUrls = [];
+            };
 
             const updateBannerMeta = () => {
                 if (!bannerMeta) return;
-                const imageCount = bannerInput?.files?.length || @homeBannerImages.Count;
-                const seconds = Math.max(2, Number(bannerSkipSeconds?.value) || @homeBanner.SkipSeconds);
+                const imageCount = bannerInput?.files?.length || existingBannerImageCount;
+                const seconds = Math.max(2, Number(bannerSkipSeconds?.value) || existingBannerSkipSeconds);
                 bannerMeta.textContent = `${imageCount} ảnh · ${seconds} giây`;
             };
 
-            bannerInput?.addEventListener("change", () => {
-                if (previewUrl) URL.revokeObjectURL(previewUrl);
-                const firstFile = bannerInput.files?.[0];
-                if (firstFile && bannerPreview) {
-                    previewUrl = URL.createObjectURL(firstFile);
-                    bannerPreview.style.backgroundImage = `url("${previewUrl}")`;
+            const syncBannerInputFiles = files => {
+                if (!bannerInput || !window.DataTransfer) return;
+                const dataTransfer = new DataTransfer();
+                files.forEach(file => dataTransfer.items.add(file));
+                bannerInput.files = dataTransfer.files;
+            };
+
+            const renderBannerThumbnails = () => {
+                clearPreviewUrls();
+                const files = Array.from(bannerInput?.files || []);
+
+                if (bannerImagePreview) {
+                    bannerImagePreview.innerHTML = "";
+                }
+
+                if (!files.length) {
+                    if (bannerPreview && currentBannerImage) {
+                        bannerPreview.style.backgroundImage = `url("${currentBannerImage}")`;
+                    }
+                    updateBannerMeta();
+                    return;
+                }
+
+                files.forEach((file, index) => {
+                    if (!allowedBannerTypes.includes(file.type)) return;
+
+                    const previewUrl = URL.createObjectURL(file);
+                    previewUrls.push(previewUrl);
+
+                    if (previewUrls.length === 1 && bannerPreview) {
+                        bannerPreview.style.backgroundImage = `url("${previewUrl}")`;
+                    }
+
+                    if (!bannerImagePreview) return;
+
+                    const item = document.createElement("div");
+                    item.className = "listing-image-preview__item dashboard-banner-image-preview__item";
+
+                    const removeButton = document.createElement("button");
+                    removeButton.type = "button";
+                    removeButton.className = "listing-image-preview__remove";
+                    removeButton.textContent = "x";
+                    removeButton.setAttribute("aria-label", `Gỡ ảnh ${file.name}`);
+                    removeButton.addEventListener("click", () => {
+                        const nextFiles = Array.from(bannerInput.files || []).filter((_, fileIndex) => fileIndex !== index);
+                        syncBannerInputFiles(nextFiles);
+                        renderBannerThumbnails();
+                    });
+
+                    const image = document.createElement("img");
+                    image.src = previewUrl;
+                    image.alt = file.name;
+
+                    const name = document.createElement("span");
+                    name.textContent = file.name;
+
+                    item.append(removeButton, image, name);
+                    bannerImagePreview.appendChild(item);
+                });
+
+                if (!previewUrls.length && bannerPreview && currentBannerImage) {
+                    bannerPreview.style.backgroundImage = `url("${currentBannerImage}")`;
                 }
                 updateBannerMeta();
-            });
+            };
+
+            bannerInput?.addEventListener("change", renderBannerThumbnails);
 
             bannerSkipSeconds?.addEventListener("input", updateBannerMeta);
         });

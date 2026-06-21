@@ -265,6 +265,12 @@ ServiceFabricBackup/
 *.mdf
 *.ldf
 *.ndf
+*.bak
+
+# Local database backups for this app. Keep the folder, ignore backup files.
+!DoAnLapTrinhWeb/App_Data/Backups/
+DoAnLapTrinhWeb/App_Data/Backups/*
+!DoAnLapTrinhWeb/App_Data/Backups/.gitkeep
 
 # Business Intelligence projects
 *.rdl.data
