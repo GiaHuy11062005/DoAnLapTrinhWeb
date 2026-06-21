@@ -1,1 +1,1 @@
-Đây là nhánh chứa đầu tiên
+Đây là nhánh chính của dự án tụi em đã hoàn thành niếu thầy cần chạy test thì hãy chạy nhánh này, file sql tụi em để trong App_data có cả file hình ảnh thầy phải clone project này xuống thì mới test được.
